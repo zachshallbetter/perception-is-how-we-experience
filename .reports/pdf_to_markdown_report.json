@@ -1,0 +1,205 @@
+{
+  "count": 22,
+  "input_dir": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature",
+  "items": [
+    {
+      "arxiv_id": "1607.08584v1",
+      "error": "arxiv: Error at \"/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/.cache/arxiv/1607.08584/__oz_expanded_main.tex\" (line 281, column 14):\nexpecting \\end{table}\n\\end{tabular}\n             ^",
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/Connectionist Temporal Modeling for Weakly Supervised Action Labeling.md",
+      "pdf": "1607.08584v1.pdf",
+      "pipeline": "pdf",
+      "title": "Connectionist Temporal Modeling for Weakly Supervised Action Labeling",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "1611.08563v6",
+      "error": "arxiv: Error at \"/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/.cache/arxiv/1611.08563/__oz_expanded_main.tex\" (line 941, column 1):\nunexpected \\end\n\\end{document}\n^",
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/Online Real-time Multiple Spatiotemporal Action Localisation and Prediction.md",
+      "pdf": "1611.08563v6.pdf",
+      "pipeline": "web",
+      "title": "Online Real-time Multiple Spatiotemporal Action Localisation and Prediction",
+      "web_url": "https://github.com/gurkirt/realtime-action-detection"
+    },
+    {
+      "arxiv_id": "1911.11462v2",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/G-TAD - Sub-Graph Localization for Temporal Action Detection.md",
+      "pdf": "1911.11462v2.pdf",
+      "pipeline": "arxiv",
+      "title": "G-TAD: Sub-Graph Localization for Temporal Action Detection",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "1912.03458v2",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/Dynamic Convolution - Attention over Convolution Kernels.md",
+      "pdf": "1912.03458v2.pdf",
+      "pipeline": "arxiv",
+      "title": "Dynamic Convolution: Attention over Convolution Kernels",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "1912.03590v3",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/Learning 2D Temporal Adjacent Networks for Moment Localization with Natural Language.md",
+      "pdf": "1912.03590v3.pdf",
+      "pipeline": "arxiv",
+      "title": "Learning 2D Temporal Adjacent Networks for Moment Localization with Natural Language",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "2004.01398v1",
+      "error": "arxiv: Error at \"/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/.cache/arxiv/2004.01398/__oz_expanded_main.tex\" (line 629, column 1):\nunexpected \\end\n\\end{document}\n^",
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/TEA - Temporal Excitation and Aggregation for Action Recognition.md",
+      "pdf": "2004.01398v1.pdf",
+      "pipeline": "pdf",
+      "title": "TEA: Temporal Excitation and Aggregation for Action Recognition",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "2005.10229v1",
+      "error": "arxiv: Error at \"/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/.cache/arxiv/2005.10229/__oz_expanded_main.tex\" (line 708, column 1):\nunexpected \\end\n\\end{document}\n^",
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/Intra- and Inter-Action Understanding via Temporal Action Parsing.md",
+      "pdf": "2005.10229v1.pdf",
+      "pipeline": "web",
+      "title": "Intra- and Inter-Action Understanding via Temporal Action Parsing",
+      "web_url": "https://sdolivia.github.io/TAPOS/"
+    },
+    {
+      "arxiv_id": "2103.03206v2",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/Perceiver - General Perception with Iterative Attention.md",
+      "pdf": "2103.03206v2.pdf",
+      "pipeline": "arxiv",
+      "title": "Perceiver: General Perception with Iterative Attention",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "2107.14795v3",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/Perceiver IO - A General Architecture for Structured Inputs & Outputs.md",
+      "pdf": "2107.14795v3.pdf",
+      "pipeline": "arxiv",
+      "title": "Perceiver IO: A General Architecture for Structured Inputs & Outputs",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "2202.07765v2",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/General-purpose, long-context autoregressive modeling with Perceiver AR.md",
+      "pdf": "2202.07765v2.pdf",
+      "pipeline": "arxiv",
+      "title": "General-purpose, long-context autoregressive modeling with Perceiver AR",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "2202.10890v2",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/HiP - Hierarchical Perceiver.md",
+      "pdf": "2202.10890v2.pdf",
+      "pipeline": "arxiv",
+      "title": "HiP: Hierarchical Perceiver",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "2203.00307v2",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/Temporal Perceiver - A General Architecture for Arbitrary Boundary Detection.md",
+      "pdf": "2203.00307v2.pdf",
+      "pipeline": "arxiv",
+      "title": "Temporal Perceiver: A General Architecture for Arbitrary Boundary Detection",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "2204.02227v3",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/SD-Conv - Towards the Parameter-Efficiency of Dynamic Convolution.md",
+      "pdf": "2204.02227v3.pdf",
+      "pipeline": "arxiv",
+      "title": "SD-Conv: Towards the Parameter-Efficiency of Dynamic Convolution",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "2209.07947v1",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/OMNI -Dimensional Dynamic Convolution.md",
+      "pdf": "2209.07947v1.pdf",
+      "pipeline": "arxiv",
+      "title": "OMNI -Dimensional Dynamic Convolution",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "2301.13823v4",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/Grounding Language Models to Images for Multimodal Inputs and Outputs.md",
+      "pdf": "2301.13823v4.pdf",
+      "pipeline": "arxiv",
+      "title": "Grounding Language Models to Images for Multimodal Inputs and Outputs",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "2308.08361v1",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/KernelWarehouse - Towards Parameter-Efficient Dynamic Convolution.md",
+      "pdf": "2308.08361v1.pdf",
+      "pipeline": "arxiv",
+      "title": "KernelWarehouse: Towards Parameter-Efficient Dynamic Convolution",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "2312.07104v2",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/SGLang - Efficient Execution of Structured Language Model Programs.md",
+      "pdf": "2312.07104v2.pdf",
+      "pipeline": "arxiv",
+      "title": "SGLang: Efficient Execution of Structured Language Model Programs",
+      "web_url": null
+    },
+    {
+      "arxiv_id": "2407.12622v1",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/Rethinking the Architecture Design for Efficient Generic Event Boundary Detection.md",
+      "pdf": "2407.12622v1.pdf",
+      "pipeline": "arxiv",
+      "title": "Rethinking the Architecture Design for Efficient Generic Event Boundary Detection",
+      "web_url": null
+    },
+    {
+      "arxiv_id": null,
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/Dual-stream hybrid architecture.md",
+      "pdf": "690432403.pdf",
+      "pipeline": "web",
+      "title": "Dual-stream hybrid architecture",
+      "web_url": "https://doi.org/10.1038/s41598-025-16148-5"
+    },
+    {
+      "arxiv_id": "1706.03762v7",
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/Attention Is All You Need.md",
+      "pdf": "Attention Is All You Need (Vaswani et al., 2017).pdf",
+      "pipeline": "arxiv",
+      "title": "Attention Is All You Need",
+      "web_url": null
+    },
+    {
+      "arxiv_id": null,
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/The Annotated Transformer.md",
+      "pdf": "The Annotated Transformer.pdf",
+      "pipeline": "web",
+      "title": "The Annotated Transformer",
+      "web_url": "https://nlp.seas.harvard.edu/annotated-transformer/"
+    },
+    {
+      "arxiv_id": null,
+      "error": null,
+      "md": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown/The Ultimate Guide to Transformer Deep Learning.md",
+      "pdf": "The Ultimate Guide to Transformer Deep Learning.pdf",
+      "pipeline": "pdf",
+      "title": "The Ultimate Guide to Transformer Deep Learning",
+      "web_url": null
+    }
+  ],
+  "output_dir": "/Users/zachshallbetter/Projects/perception-is-how-we-experience/Literature/markdown"
+}

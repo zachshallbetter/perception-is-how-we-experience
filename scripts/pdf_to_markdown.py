@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import urllib.error
 import urllib.request
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pypdf import PdfReader
 
@@ -324,6 +327,120 @@ def _extract_arxiv_id_from_text(text: str) -> str | None:
     return None
 
 
+_URL_RE = re.compile(r"https?://[^\s\)\]<>\"']+")
+
+
+def _extract_urls_from_text(text: str) -> list[str]:
+    urls = []
+    for m in _URL_RE.finditer(text or ""):
+        u = m.group(0).rstrip(".,;:")
+        urls.append(u)
+    return urls
+
+
+def _extract_urls_from_pdf_annotations(reader: PdfReader, max_pages: int = 3) -> list[str]:
+    urls: list[str] = []
+
+    for i in range(min(max_pages, len(reader.pages))):
+        page = reader.pages[i]
+        annots = page.get("/Annots") if hasattr(page, "get") else None
+        if not annots:
+            continue
+
+        for annot_ref in annots:
+            try:
+                annot = annot_ref.get_object()
+            except Exception:
+                continue
+
+            try:
+                action = annot.get("/A")
+                if not action:
+                    continue
+                uri = action.get("/URI")
+                if not uri:
+                    continue
+                urls.append(str(uri))
+            except Exception:
+                continue
+
+    return urls
+
+
+_KNOWN_TITLE_URLS: list[tuple[re.Pattern[str], str]] = [
+    (
+        re.compile(r"\bannotated\s+transformer\b", flags=re.IGNORECASE),
+        "https://nlp.seas.harvard.edu/annotated-transformer/",
+    ),
+]
+
+
+def extract_web_source_urls(title: str, reader: PdfReader) -> list[str]:
+    # 1) Known title mappings (best-effort; avoids relying on PDF having embedded links).
+    for pat, url in _KNOWN_TITLE_URLS:
+        if pat.search(title):
+            return [url]
+
+    # 2) Try PDF link annotations.
+    urls = _extract_urls_from_pdf_annotations(reader)
+
+    # 3) Try URLs visible in extracted text.
+    for i in range(min(3, len(reader.pages))):
+        try:
+            t = reader.pages[i].extract_text() or ""
+        except Exception:
+            t = ""
+        urls.extend(_extract_urls_from_text(t))
+
+    # Filter + de-dup.
+    seen: set[str] = set()
+    cleaned: list[str] = []
+    for u in urls:
+        u2 = u.strip()
+        if not u2:
+            continue
+        if u2 in seen:
+            continue
+        seen.add(u2)
+
+        pr = urlparse(u2)
+        if pr.scheme not in {"http", "https"}:
+            continue
+        cleaned.append(u2)
+
+    if not cleaned:
+        return []
+
+    title_words = {
+        w
+        for w in re.findall(r"[A-Za-z]{4,}", title.lower())
+        if w not in {"guide", "ultimate", "deep", "learning", "towards"}
+    }
+
+    # Prefer URLs that look related to the title.
+    def score(u: str) -> int:
+        ul = u.lower()
+        s = 0
+        if "arxiv.org" in ul:
+            s -= 50
+        if "github.com" in ul:
+            s += 10
+        if ul.startswith("https://"):
+            s += 2
+        if "doi.org" in ul:
+            s += 3
+
+        # Reward overlap with title keywords.
+        for w in title_words:
+            if w in ul:
+                s += 6
+
+        return s
+
+    cleaned.sort(key=score, reverse=True)
+    return cleaned
+
+
 def extract_arxiv_id(pdf: Path, reader: PdfReader) -> str | None:
     # Prefer from filename if it looks like an arXiv id.
     m = re.fullmatch(r"(\d{4}\.\d{5})(v\d+)?", pdf.stem)
@@ -472,6 +589,82 @@ def _convert_refs_html_to_markdown(html: str) -> str:
 
 _LATEX_INCLUDE_RE = re.compile(r"\\(input|include)\{([^}]+)\}")
 
+
+_LATEX_DOC_BOUNDARY_RE = re.compile(
+    r"\\(documentclass|begin\{document\}|end\{document\})\b"
+)
+
+
+def _rewrite_tex_skip_primitives(line: str) -> str:
+    # pandoc's LaTeX reader can choke on raw TeX primitives like:
+    #   \vskip - 0.55 in
+    # Rewrite to more standard LaTeX where possible.
+    def _repl_skip(m: re.Match[str]) -> str:
+        cmd = m.group(1)
+        sign = (m.group(2) or "").replace(" ", "")
+        num = m.group(3)
+        unit = m.group(4)
+        val = f"{sign}{num}{unit}"
+        if cmd == "vskip":
+            return f"\\vspace{{{val}}}"
+        return f"\\hspace{{{val}}}"
+
+    line = re.sub(
+        r"\\(vskip|hskip)\s*([-+]?\s*)?([0-9]+(?:\.[0-9]+)?)\s*([a-zA-Z]+)",
+        _repl_skip,
+        line,
+    )
+    return line
+
+
+def _sanitize_latex_line(line: str, *, is_root: bool) -> str:
+    # Drop document boundaries in included fragments; keep only for the root file.
+    if (not is_root) and _LATEX_DOC_BOUNDARY_RE.search(line):
+        return ""
+
+    line = _rewrite_tex_skip_primitives(line)
+    return line
+
+
+def _ensure_single_end_document(tex: str) -> str:
+    # Keep only the last \end{document}.
+    matches = list(re.finditer(r"\\end\{document\}", tex))
+    if len(matches) <= 1:
+        return tex
+
+    last = matches[-1].start()
+    before = tex[:last]
+    after = tex[last:]
+    before = re.sub(r"\\end\{document\}\s*", "", before)
+    return before + after
+
+
+def _strip_environments(tex: str, envs: set[str]) -> str:
+    # Line-based removal of \begin{env}...\end{env} blocks (including nested).
+    begin_re = re.compile(r"\\begin\{([A-Za-z*]+)\}")
+    end_re = re.compile(r"\\end\{([A-Za-z*]+)\}")
+
+    out: list[str] = []
+    stack: list[str] = []
+
+    for line in tex.splitlines(True):
+        mb = begin_re.search(line)
+        if mb and mb.group(1) in envs:
+            stack.append(mb.group(1))
+            continue
+
+        me = end_re.search(line)
+        if me and stack and me.group(1) == stack[-1]:
+            stack.pop()
+            continue
+
+        if stack:
+            continue
+
+        out.append(line)
+
+    return "".join(out)
+
 # Convert common LaTeX citation macros to pandoc citations so they survive even
 # when we can't run citeproc due to broken .bib files.
 _LATEX_CITE_RE = re.compile(
@@ -502,7 +695,7 @@ def _strip_latex_comment(line: str) -> str:
     return "".join(out)
 
 
-def _expand_latex_includes(path: Path, seen: set[Path]) -> str:
+def _expand_latex_includes(path: Path, seen: set[Path], *, is_root: bool) -> str:
     path = path.resolve()
     if path in seen:
         return f"% [oz] skipped recursive include: {path.name}\n"
@@ -515,14 +708,17 @@ def _expand_latex_includes(path: Path, seen: set[Path]) -> str:
 
     out_lines: list[str] = []
     for line in raw.splitlines(True):
+        # Keep a newline even if we strip the comment.
         stripped = _strip_latex_comment(line)
+        stripped = _sanitize_latex_line(stripped, is_root=is_root)
+
         m = _LATEX_INCLUDE_RE.search(stripped)
         if not m:
-            out_lines.append(_rewrite_latex_citations(line))
+            out_lines.append(_rewrite_latex_citations(stripped))
             continue
 
         cmd, rel = m.group(1), m.group(2).strip()
-        # Support \input{foo} and \input{foo.tex}
+        # Support \\input{foo} and \\input{foo.tex}
         inc = Path(rel)
         if inc.suffix == "":
             inc = inc.with_suffix(".tex")
@@ -530,10 +726,68 @@ def _expand_latex_includes(path: Path, seen: set[Path]) -> str:
 
         # Replace the whole line with expanded content.
         out_lines.append(f"% [oz] begin {cmd}: {inc}\n")
-        out_lines.append(_expand_latex_includes(inc_path, seen))
+        out_lines.append(_expand_latex_includes(inc_path, seen, is_root=False))
         out_lines.append(f"% [oz] end {cmd}: {inc}\n")
 
-    return "".join(out_lines)
+    tex = "".join(out_lines)
+    if is_root:
+        tex = _ensure_single_end_document(tex)
+    return tex
+
+
+def _pandoc_latex_to_md(
+    expanded_tex: Path,
+    *,
+    out_dir: Path,
+    main_tex_dir: Path,
+    media_rel: Path,
+    bibliography: Path | None,
+    use_bibliography: bool,
+) -> subprocess.CompletedProcess[str]:
+    cmd = [
+        "pandoc",
+        str(expanded_tex),
+        "-f",
+        "latex",
+        "-t",
+        "gfm",
+        "--wrap=preserve",
+        "--shift-heading-level-by=1",
+        "--resource-path",
+        str(main_tex_dir),
+        "--extract-media",
+        str(media_rel),
+    ]
+
+    if use_bibliography and bibliography is not None:
+        cmd += ["--citeproc", "--bibliography", str(bibliography)]
+
+    return subprocess.run(
+        cmd, check=False, capture_output=True, text=True, cwd=str(out_dir)
+    )
+
+
+def _postprocess_pandoc_markdown(md: str) -> str:
+    # Strip some common HTML wrappers pandoc emits (safe, conservative).
+    lines = md.splitlines()
+    out: list[str] = []
+    for ln in lines:
+        s = ln.strip()
+        if re.fullmatch(r"</?div[^>]*>", s):
+            continue
+        if re.fullmatch(r"</?span[^>]*>", s):
+            continue
+        if re.fullmatch(r"</?figure[^>]*>", s):
+            continue
+
+        m = re.match(r"^<embed\s+[^>]*src=\"([^\"]+)\"[^>]*/?>\s*$", s)
+        if m:
+            out.append(f"![]({m.group(1)})")
+            continue
+
+        out.append(ln)
+
+    return "\n".join(out).strip() + "\n"
 
 
 def latex_source_to_markdown(
@@ -546,12 +800,10 @@ def latex_source_to_markdown(
     if not _pandoc_available():
         raise RuntimeError("pandoc not found")
 
-    # Expand \input / \include so pandoc sees the whole document.
+    # Expand \\input / \\include so pandoc sees the whole document.
     expanded_tex = main_tex.parent / "__oz_expanded_main.tex"
-    expanded_tex.write_text(
-        _expand_latex_includes(main_tex, seen=set()),
-        encoding="utf-8",
-    )
+    expanded_content = _expand_latex_includes(main_tex, seen=set(), is_root=True)
+    expanded_tex.write_text(expanded_content, encoding="utf-8")
 
     slug = _slugify(title)
 
@@ -568,49 +820,109 @@ def latex_source_to_markdown(
 
     media_rel = Path("media") / slug
 
-    cmd = [
-        "pandoc",
-        str(expanded_tex),
-        "-f",
-        "latex",
-        "-t",
-        "gfm",
-        "--wrap=preserve",
-        "--shift-heading-level-by=1",
-        "--resource-path",
-        str(main_tex.parent),
-        "--extract-media",
-        str(media_rel),
-    ]
-
-    used_bib = False
-    if bibliography is not None:
-        cmd += ["--citeproc", "--bibliography", str(bibliography)]
-        used_bib = True
-
-    res = subprocess.run(
-        cmd, check=False, capture_output=True, text=True, cwd=str(out_dir)
+    # 1) Try with bibliography (if present)
+    res = _pandoc_latex_to_md(
+        expanded_tex,
+        out_dir=out_dir,
+        main_tex_dir=main_tex.parent,
+        media_rel=media_rel,
+        bibliography=bibliography,
+        use_bibliography=True,
     )
 
-    if res.returncode != 0 and used_bib:
-        # Common failure mode: arXiv bib files that pandoc can't parse.
-        # Retry without citeproc/bibliography so we still get structure + equations.
-        cmd2 = [c for c in cmd if c not in {"--citeproc"}]
-        if "--bibliography" in cmd2:
-            i = cmd2.index("--bibliography")
-            # drop flag + path
-            cmd2 = cmd2[:i] + cmd2[i + 2 :]
-
-        res2 = subprocess.run(
-            cmd2, check=False, capture_output=True, text=True, cwd=str(out_dir)
+    # 2) If that fails, retry without bibliography/citeproc.
+    if res.returncode != 0 and bibliography is not None:
+        res2 = _pandoc_latex_to_md(
+            expanded_tex,
+            out_dir=out_dir,
+            main_tex_dir=main_tex.parent,
+            media_rel=media_rel,
+            bibliography=bibliography,
+            use_bibliography=False,
         )
         if res2.returncode == 0:
             res = res2
 
+    # 3) If still failing, sanitize + retry.
     if res.returncode != 0:
-        raise RuntimeError(res.stderr.strip() or "pandoc failed")
+        err = (res.stderr or "").strip()
 
-    body = res.stdout
+        sanitized = expanded_content
+
+        # If pandoc complains about table/tabular, strip them rather than failing the whole paper.
+        if re.search(r"end\{(table|tabular)\}\b", err):
+            sanitized = _strip_environments(
+                sanitized,
+                {"table", "table*", "tabular", "tabular*", "longtable"},
+            )
+
+        # If pandoc complains about unexpected end{document}, ensure we only keep the last one.
+        if "end{document}" in err:
+            sanitized = _ensure_single_end_document(sanitized)
+
+        # Strip stray bare \end tokens.
+        sanitized = re.sub(r"^\s*\\end\s*$", "", sanitized, flags=re.MULTILINE)
+
+        sanitized_tex = main_tex.parent / "__oz_expanded_main.sanitized.tex"
+        sanitized_tex.write_text(sanitized, encoding="utf-8")
+
+        res3 = _pandoc_latex_to_md(
+            sanitized_tex,
+            out_dir=out_dir,
+            main_tex_dir=main_tex.parent,
+            media_rel=media_rel,
+            bibliography=bibliography,
+            use_bibliography=False,
+        )
+        if res3.returncode == 0:
+            res = res3
+
+        # 4) Last resort: strip a wider set of environments and retry.
+        if res.returncode != 0:
+            sanitized2 = _strip_environments(
+                sanitized,
+                {
+                    "table",
+                    "table*",
+                    "tabular",
+                    "tabular*",
+                    "longtable",
+                    "algorithm",
+                    "algorithm*",
+                    "lstlisting",
+                },
+            )
+            sanitized2_tex = main_tex.parent / "__oz_expanded_main.sanitized2.tex"
+            sanitized2_tex.write_text(sanitized2, encoding="utf-8")
+
+            res4 = _pandoc_latex_to_md(
+                sanitized2_tex,
+                out_dir=out_dir,
+                main_tex_dir=main_tex.parent,
+                media_rel=media_rel,
+                bibliography=bibliography,
+                use_bibliography=False,
+            )
+            if res4.returncode == 0:
+                res = res4
+
+    # 5) If still failing, try converting the original main .tex without include expansion.
+    if res.returncode != 0:
+        res5 = _pandoc_latex_to_md(
+            main_tex,
+            out_dir=out_dir,
+            main_tex_dir=main_tex.parent,
+            media_rel=media_rel,
+            bibliography=bibliography,
+            use_bibliography=False,
+        )
+        if res5.returncode == 0:
+            res = res5
+
+    if res.returncode != 0:
+        raise RuntimeError((res.stderr or "").strip() or "pandoc failed")
+
+    body = _postprocess_pandoc_markdown(res.stdout)
 
     # If citeproc emitted HTML refs, convert that block to markdown.
     m = re.search(r"(<div id=\"refs\"[\s\S]*?</div>\s*</div>)", body)
@@ -646,6 +958,107 @@ _HEADING_WORDS = {
 
 def _is_page_number_line(s: str) -> bool:
     return bool(re.fullmatch(r"\d{1,3}", s))
+
+
+def _inject_html_base_tag(html: str, base_url: str) -> str:
+    hl = html.lower()
+    if "<base" in hl:
+        return html
+
+    base_tag = f"<base href=\"{base_url}\">"
+
+    m = re.search(r"<head[^>]*>", html, flags=re.IGNORECASE)
+    if m:
+        i = m.end()
+        return html[:i] + base_tag + html[i:]
+
+    # No <head>: prepend a minimal one.
+    return f"<head>{base_tag}</head>\n" + html
+
+
+def _looks_like_blocked_or_error_page(md: str) -> bool:
+    ml = md.lower().strip()
+    if not ml:
+        return True
+    if "incapsula incident" in ml or "request unsuccessful" in ml:
+        return True
+    if len(ml) < 200:
+        return True
+    return False
+
+
+def web_source_to_markdown(
+    url: str,
+    out_dir: Path,
+    title: str,
+    pdf_name: str,
+) -> str:
+    if not _pandoc_available():
+        raise RuntimeError("pandoc not found")
+
+    slug = _slugify(title)
+    media_rel = Path("media") / slug
+
+    with tempfile.TemporaryDirectory(prefix="oz-websrc-") as td:
+        td_path = Path(td)
+
+        req = urllib.request.Request(url, headers={"User-Agent": "oz-pdf-to-markdown/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                content = resp.read()
+                ctype = (resp.headers.get("Content-Type") or "").lower()
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"failed to fetch web source: {e}")
+
+        # Heuristic input format.
+        is_ipynb = url.lower().endswith(".ipynb") or "application/x-ipynb+json" in ctype
+        in_path = td_path / ("doc.ipynb" if is_ipynb else "doc.html")
+
+        if is_ipynb:
+            in_path.write_bytes(content)
+        else:
+            html = content.decode("utf-8", errors="ignore")
+            html = _inject_html_base_tag(html, base_url=url)
+            in_path.write_text(html, encoding="utf-8")
+
+        def run(extract_media: bool) -> subprocess.CompletedProcess[str]:
+            cmd = [
+                "pandoc",
+                str(in_path),
+                "-f",
+                "ipynb" if is_ipynb else "html",
+                "-t",
+                "gfm",
+                "--wrap=preserve",
+                "--shift-heading-level-by=1",
+            ]
+            if extract_media:
+                cmd += ["--extract-media", str(media_rel)]
+            return subprocess.run(
+                cmd, check=False, capture_output=True, text=True, cwd=str(out_dir)
+            )
+
+        res = run(extract_media=True)
+        if res.returncode != 0:
+            # Retry without fetching/extracting media (more robust for ad-heavy pages).
+            res2 = run(extract_media=False)
+            if res2.returncode == 0:
+                res = res2
+
+        if res.returncode != 0:
+            raise RuntimeError((res.stderr or "").strip() or "pandoc html conversion failed")
+
+        body = _postprocess_pandoc_markdown(res.stdout)
+
+    if _looks_like_blocked_or_error_page(body):
+        raise RuntimeError("web source looks like an error/blocked page")
+
+    return (
+        f"# {title}\n\n"
+        f"<!-- Source: {pdf_name} -->\n"
+        f"<!-- Generated from: web source ({url}) -->\n\n"
+        f"{body.strip()}\n"
+    )
 
 
 def _is_heading_line(s: str) -> bool:
@@ -749,7 +1162,11 @@ def reader_to_markdown(reader: PdfReader) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Convert PDFs to Markdown (prefer arXiv LaTeX source when available; fallback to PDF text extraction)."
+        description=(
+            "Convert PDFs to Markdown (prefer arXiv LaTeX source when available; "
+            "otherwise try to fetch a web/HTML source if the PDF contains a URL; "
+            "fallback to PDF text extraction)."
+        )
     )
     parser.add_argument(
         "input",
@@ -765,7 +1182,12 @@ def main() -> int:
     parser.add_argument(
         "--no-arxiv",
         action="store_true",
-        help="Disable downloading/converting from arXiv sources; always use PDF text extraction.",
+        help="Disable downloading/converting from arXiv sources.",
+    )
+    parser.add_argument(
+        "--no-web",
+        action="store_true",
+        help="Disable fetching/converting from web sources (HTML/ipynb).",
     )
     parser.add_argument(
         "--arxiv-cache-dir",
@@ -776,6 +1198,16 @@ def main() -> int:
         "--refresh-arxiv",
         action="store_true",
         help="Re-download arXiv sources even if they are present in cache.",
+    )
+    parser.add_argument(
+        "--no-report",
+        action="store_true",
+        help="Disable writing a conversion report under .reports/.",
+    )
+    parser.add_argument(
+        "--report-path",
+        default=".reports/pdf_to_markdown_report.json",
+        help="Path for conversion report (default: .reports/pdf_to_markdown_report.json)",
     )
     args = parser.parse_args()
 
@@ -798,12 +1230,29 @@ def main() -> int:
 
     arxiv_cache_dir = (project_root / args.arxiv_cache_dir).resolve()
 
+    report: dict[str, object] = {
+        "input_dir": str(in_dir),
+        "output_dir": str(out_dir),
+        "count": len(pdfs),
+        "items": [],
+    }
+
     for pdf in pdfs:
         reader = PdfReader(str(pdf))
 
         title = extract_pdf_title(reader, fallback=pdf.stem)
         base = _safe_filename(title) or pdf.stem
         md_path = out_dir / f"{base}.md"
+
+        item: dict[str, object] = {
+            "pdf": pdf.name,
+            "title": title,
+            "md": str(md_path),
+            "pipeline": None,
+            "arxiv_id": None,
+            "web_url": None,
+            "error": None,
+        }
 
         # If this filename collides with a different source, disambiguate.
         if md_path.exists():
@@ -843,6 +1292,7 @@ def main() -> int:
 
         if not args.no_arxiv:
             arxiv_id = extract_arxiv_id(pdf, reader)
+            item["arxiv_id"] = arxiv_id
             if arxiv_id:
                 try:
                     src_dir = download_arxiv_source(
@@ -860,11 +1310,38 @@ def main() -> int:
                             pdf_name=pdf.name,
                             bibliography=bib,
                         )
+                        item["pipeline"] = "arxiv"
                 except Exception as e:
+                    item["error"] = f"arxiv: {e}"
                     print(
                         f"  [warn] arXiv source conversion failed for {pdf.name}: {e}",
                         file=sys.stderr,
                     )
+
+        if md_text is None and not args.no_web:
+            try:
+                urls = extract_web_source_urls(title, reader)
+                # Try a few candidates in order; keep the first that converts.
+                for url in urls[:3]:
+                    try:
+                        md_text = web_source_to_markdown(
+                            url=url,
+                            out_dir=out_dir,
+                            title=title,
+                            pdf_name=pdf.name,
+                        )
+                        item["web_url"] = url
+                        item["pipeline"] = "web"
+                        break
+                    except Exception:
+                        continue
+            except Exception as e:
+                if not item.get("error"):
+                    item["error"] = f"web: {e}"
+                print(
+                    f"  [warn] web source conversion failed for {pdf.name}: {e}",
+                    file=sys.stderr,
+                )
 
         if md_text is None:
             body = reader_to_markdown(reader)
@@ -873,8 +1350,15 @@ def main() -> int:
                 f"<!-- Source: {pdf.name} -->\n\n"
                 f"{body}"
             )
+            item["pipeline"] = "pdf"
 
         md_path.write_text(md_text, encoding="utf-8")
+        report["items"].append(item)
+
+    if not args.no_report:
+        report_path = (project_root / args.report_path).resolve()
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     return 0
 

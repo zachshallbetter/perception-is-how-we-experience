@@ -1,0 +1,160 @@
+# Utility Scripts for Sensory Perceiver Experiments
+
+## Dataset Preparation
+
+### `generate_synthetic_iot.py`
+Generate synthetic IoT sensor streams for validation (no external dependencies).
+
+```bash
+python scripts/generate_synthetic_iot.py \
+  --n_sequences 100 \
+  --sequence_length 500 \
+  --output_dir data/iot-streams
+```
+
+**Output**: Multimodal sensor data (smartwatch, environmental, robot arm)
+
+### `download_audioset.py` (user implementation)
+Download and preprocess AudioSet (22K balanced subset).
+- Requires: `yt-dlp`, `librosa`
+- Converts to 16kHz mono WAV files
+- User should implement using AudioSet's official download instructions
+
+### `preprocess_coco.py` (user implementation)
+Preprocess MSCOCO 2017 validation split (5K images).
+- Download from: https://cocodataset.org/
+- Expected structure: `data/coco/images/val2017/` + annotations JSON
+
+### `generate_av_mnist.py` (user implementation)
+Generate synthetic audio-visual MNIST pairs (5K samples).
+- Combines visual digits with synthetic speech
+
+### `preprocess_flickr.py` (user implementation)
+Preprocess Flickr30K (31K image-text pairs).
+- Download from: https://www.flickr30k.org/
+- Extract images and captions to parallel files
+
+### `generate_split_cifar.py` (user implementation)
+Generate Split-CIFAR-100 (20 sequential tasks, 5 classes each).
+- Automatically downloads CIFAR-100
+- Splits into task-specific subsets
+
+### `generate_permuted_mnist.py` (user implementation)
+Generate Permuted MNIST (20 tasks with random pixel permutations).
+- Automatically downloads MNIST
+- Applies task-specific permutations
+
+## Training & Evaluation
+
+### `train.py` (main training loop)
+Train Sensory Perceiver on any experiment type.
+
+```bash
+python train.py \
+  --experiment continual \
+  --dataset split_cifar \
+  --batch_size 32 \
+  --epochs 50 \
+  --output_dir results/my_experiment
+```
+
+**Outputs**:
+- `best_model.pt`: Best validation checkpoint
+- `latest_model.pt`: Final model
+- `train_log.csv`: Training history
+- `config.yaml`: Experiment configuration
+
+### `eval.py`
+Evaluate trained model on validation set.
+
+```bash
+python eval.py \
+  --checkpoint results/my_experiment/best_model.pt \
+  --experiment continual \
+  --dataset split_cifar \
+  --output_file results/my_experiment/eval_results.json
+```
+
+**Outputs**:
+- `eval_results.json`: Per-class accuracy, confusion matrix, latency
+- `embeddings.npy`: Per-modality embeddings (for visualization)
+
+## Benchmarking
+
+### `run_full_benchmark.sh`
+Execute all 4 experiments × 3 seeds with evaluation.
+
+```bash
+bash scripts/run_full_benchmark.sh
+# Outputs: results/benchmark_YYYYMMDD_HHMMSS/
+```
+
+**Runs** (parallel-friendly):
+1. Continual Learning: Split-CIFAR-100 (3 seeds)
+2. Continual Learning: Permuted MNIST (3 seeds)
+3. IoT Streaming: Synthetic sensor data (3 seeds)
+4. Aggregation: Compile statistics
+
+**Duration**: ~6-12 hours on A100 (2h per seed × 3 seeds × 2 datasets)
+
+## Analysis & Visualization
+
+### `aggregate_results.py`
+Aggregate results across multiple experiment runs.
+
+```bash
+python scripts/aggregate_results.py \
+  --results_dir results/benchmark_20260219_120000 \
+  --output_file results/benchmark_20260219_120000/summary.csv
+```
+
+**Outputs**:
+- `summary.csv`: Mean ± std accuracy per experiment
+- `aggregate_stats.json`: Full statistics (latency, per-seed breakdowns)
+
+### `plot_results.py`
+Generate visualization plots from evaluation results.
+
+```bash
+python scripts/plot_results.py \
+  --results_dir results/benchmark_20260219_120000 \
+  --output_dir results/benchmark_20260219_120000/plots
+```
+
+**Plots Generated**:
+- `confusion_matrix.png`: Heatmap of prediction errors
+- `per_class_accuracy.png`: Bar chart by class
+- `training_curves.png`: Loss & accuracy over epochs
+- `embeddings_tsne.png`: t-SNE projection of learned representations
+
+## Workflow Example
+
+```bash
+# 1. Generate synthetic IoT data
+python scripts/generate_synthetic_iot.py --output_dir data/iot-streams
+
+# 2. Train on IoT experiment
+python train.py \
+  --experiment iot \
+  --batch_size 32 \
+  --epochs 50 \
+  --output_dir results/iot_seed0
+
+# 3. Evaluate
+python eval.py \
+  --checkpoint results/iot_seed0/best_model.pt \
+  --experiment iot \
+  --output_file results/iot_seed0/eval_results.json
+
+# 4. Visualize
+python scripts/plot_results.py \
+  --results_dir results/iot_seed0 \
+  --output_dir results/iot_seed0/plots
+```
+
+## Notes
+
+- **External datasets** (AudioSet, COCO, Flickr30K): Users must implement download scripts or use standard dataset repositories
+- **Synthetic data**: Use `generate_synthetic_iot.py` for quick validation without external dependencies
+- **GPU memory**: Reduce `--batch_size` or `--d_model` if OOM errors occur
+- **Reproducibility**: All scripts accept `--seed` parameter for deterministic runs

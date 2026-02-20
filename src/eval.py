@@ -33,12 +33,14 @@ class Evaluator:
     def __init__(
         self,
         model: nn.Module,
+        classifier: Optional[nn.Module],
         val_loader: DataLoader,
         device: torch.device,
         n_classes: int,
         output_dir: Path,
     ):
         self.model = model.to(device)
+        self.classifier = classifier.to(device) if classifier is not None else None
         self.val_loader = val_loader
         self.device = device
         self.n_classes = n_classes
@@ -76,7 +78,15 @@ class Evaluator:
                 all_latencies.append(latency)
 
             # Get predictions
-            logits = outputs.mean(dim=1)
+            pooled = outputs.mean(dim=1)
+            if self.classifier is not None:
+                logits = self.classifier(pooled)
+            else:
+                if pooled.shape[1] < self.n_classes:
+                    raise ValueError(
+                        f"Backbone output dim {pooled.shape[1]} < n_classes {self.n_classes}"
+                    )
+                logits = pooled[:, : self.n_classes]
             _, predicted = logits.max(1)
 
             all_preds.append(predicted.cpu().numpy())
@@ -130,7 +140,10 @@ class Evaluator:
         # Confusion matrix
         confusion_matrix = np.zeros((self.n_classes, self.n_classes), dtype=int)
         for pred, label in zip(preds, labels):
-            confusion_matrix[label, pred] += 1
+            pred_idx = int(pred)
+            label_idx = int(label)
+            if 0 <= label_idx < self.n_classes and 0 <= pred_idx < self.n_classes:
+                confusion_matrix[label_idx, pred_idx] += 1
 
         results = {
             'overall_accuracy': float(accuracy),
@@ -156,8 +169,9 @@ class Evaluator:
 
         logger.info(f"Results saved to {self.output_dir}")
         logger.info(f"Overall Accuracy: {results['overall_accuracy']:.4f}")
-        if results['latency_mean']:
-            logger.info(f"Mean Latency: {results['latency_mean']:.2f} ms")
+        latency_mean = results.get("latency_mean")
+        if latency_mean is not None:
+            logger.info(f"Mean Latency: {latency_mean:.2f} ms")
 
 
 def load_checkpoint(checkpoint_path: str, device: torch.device):
@@ -180,7 +194,13 @@ def load_checkpoint(checkpoint_path: str, device: torch.device):
     )
 
     model.load_state_dict(checkpoint['model_state_dict'])
-    return model, config
+    classifier = None
+    classifier_state_dict = checkpoint.get("classifier_state_dict")
+    if classifier_state_dict is not None:
+        classifier = nn.Linear(config['d_model'], config['n_classes'])
+        classifier.load_state_dict(classifier_state_dict)
+
+    return model, classifier, config
 
 
 def main():
@@ -206,7 +226,7 @@ def main():
 
     # Load model
     logger.info(f"Loading checkpoint from {args.checkpoint}")
-    model, config = load_checkpoint(args.checkpoint, device)
+    model, classifier, config = load_checkpoint(args.checkpoint, device)
 
     # Create dataloader
     _, val_loader = create_dataloaders(
@@ -223,6 +243,7 @@ def main():
     output_dir = Path(args.output_file).parent
     evaluator = Evaluator(
         model=model,
+        classifier=classifier,
         val_loader=val_loader,
         device=device,
         n_classes=n_classes,

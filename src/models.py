@@ -11,7 +11,7 @@ Core components:
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from timm.models.layers import DropPath
+from timm.layers import DropPath
 from typing import Dict, Tuple, Optional
 
 
@@ -89,9 +89,20 @@ class PerceiverTower(nn.Module):
             x = x.flatten(2)  # (batch, dim, H'*W')
             x = x.permute(2, 0, 1)  # (H'*W', batch, dim)
         else:
-            # (batch, features) → (batch, dim) → (1, batch, dim)
-            x = self.conv(x)  # (batch, dim)
-            x = x.unsqueeze(0)  # (1, batch, dim) - treat as single sequence position
+            if x.dim() == 3:
+                # (batch, seq_len, features) -> (seq_len, batch, dim)
+                batch, seq_len, _ = x.shape
+                x = x.reshape(batch * seq_len, self.input_dim)
+                x = self.conv(x)
+                x = x.view(batch, seq_len, self.dim).permute(1, 0, 2)
+            elif x.dim() == 2:
+                # (batch, features) -> (1, batch, dim)
+                x = self.conv(x)
+                x = x.unsqueeze(0)
+            else:
+                raise ValueError(
+                    f"Expected non-conv input with 2 or 3 dims, got {x.dim()}"
+                )
 
         seq_len, batch, _ = x.shape
 
@@ -348,21 +359,23 @@ class SensoryPerceiver(nn.Module):
             return
 
         # Freeze current adapter
-        self.current_adapter.freeze()
+        old_adapter = self.current_adapter
+        old_adapter.freeze()
 
         # Allocate new adapter for next task
         self.current_task_id += 1
         task_name = f"task_{self.current_task_id}"
-        self.current_adapter = TaskAdapter(
+        new_adapter = TaskAdapter(
             dim=self.dim,
-            hidden_dim=self.current_adapter.adapter[0].out_features,  # Match hidden dim
+            hidden_dim=old_adapter.adapter[0].out_features,  # Match hidden dim
             dropout=(
-                self.current_adapter.adapter[2].p
-                if isinstance(self.current_adapter.adapter[2], nn.Dropout)
+                old_adapter.adapter[2].p
+                if isinstance(old_adapter.adapter[2], nn.Dropout)
                 else 0.1
             ),
-        )
-        self.task_adapters[task_name] = self.current_adapter
+        ).to(next(self.parameters()).device)
+        self.current_adapter = new_adapter
+        self.task_adapters[task_name] = new_adapter
 
     def get_trainable_parameters(self) -> int:
         """Count trainable parameters (excluding frozen task adapters)."""

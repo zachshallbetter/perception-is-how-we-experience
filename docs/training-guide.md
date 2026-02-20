@@ -22,7 +22,9 @@ It outputs Task-Incremental metrics, measuring absolute Catastrophic Forgetting,
 ### B. Standard Multimodal Training (`src/train.py`)
 Used for generic, single-task multimodal learning across vision, IoT streaming, or medical benchmarks.
 ```bash
-python src/train.py --experiment multimodal --d_model 768 --output_dir results/multimodal
+python -m src.train --experiment multimodal --dataset audiovisual --d_model 768 --output_dir results/multimodal
+# MIME routing mode is supported as an alias of multimodal data loading:
+python -m src.train --experiment mime_routing --dataset audiovisual --d_model 768 --output_dir results/mime_routing
 ```
 
 ### C. Baselines (`train_perceiver_io.py`)
@@ -121,6 +123,10 @@ python src/train.py --config configs/ablation_study_config.py --ablation [ABLATI
 - **Live Dashboard**: Open `monitor_dashboard.html` in your browser during `scripts/run_experiments.ps1` to view live metric updates and estimated time of arrival (ETA).
 - **Logging**: Console output is piped to `experiment_orchestrator.log`.
 - **Artifacts**: All trained checkpoints (`best_model.pt`), evaluation metrics (`eval_results.json`), and hyperparameter configs are saved automatically to the `results/` directory under a timestamped folder.
+- **Direct Evaluation**:
+  ```bash
+  python -m src.eval --checkpoint results/<run>/best_model.pt --experiment continual --dataset split_cifar --output_file results/<run>/eval_results.json
+  ```
 
 ### Aggregating Results
 Once runs are complete, compile the CSV summaries and generate Matplotlib figures:

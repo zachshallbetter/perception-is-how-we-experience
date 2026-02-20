@@ -15,6 +15,7 @@ Usage:
 """
 
 import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import torch
 import numpy as np
 import time
@@ -27,6 +28,7 @@ from typing import List, Dict, Optional
 import logging
 import sys
 import os
+import threading
 
 logging.basicConfig(
     level=logging.INFO,
@@ -65,6 +67,7 @@ class ExperimentOrchestrator:
         self.experiments: List[ExperimentConfig] = []
         self.active_experiments: Dict[int, ExperimentConfig] = {}  # gpu_id -> experiment
         self.results_file = Path('results/experiment_log.json')
+        self._results_lock = threading.Lock()
 
     def add_experiment(self, name: str, dataset: str, gpu_id: Optional[int] = None, epochs: int = 50):
         """Add experiment to queue."""
@@ -163,7 +166,7 @@ class ExperimentOrchestrator:
             return {}
 
         cmd = [
-            'python', 'eval.py',
+            'python', '-m', 'src.eval',
             '--checkpoint', str(checkpoint),
             '--experiment', 'iot' if exp.dataset == 'iot' else 'continual',
             '--dataset', exp.dataset,
@@ -212,39 +215,47 @@ class ExperimentOrchestrator:
 
     def _run_parallel(self):
         """Run experiments in parallel (one per GPU)."""
-        queue = list(self.experiments)
-        active = {}  # gpu_id -> (exp, process)
+        gpu_queues = {gpu_id: [] for gpu_id in range(self.n_gpus)}
+        for exp in self.experiments:
+            gpu_id = exp.gpu_id % self.n_gpus
+            exp.gpu_id = gpu_id
+            gpu_queues[gpu_id].append(exp)
 
-        while queue or active:
-            # Start new experiments on free GPUs
-            while queue and len(active) < self.n_gpus:
-                exp = queue.pop(0)
+        def run_gpu_queue(gpu_id: int, queue: List[ExperimentConfig]):
+            for exp in queue:
+                logger.info(f"\n[GPU {gpu_id}] Running {exp.name}")
                 self.run_experiment(exp)
-                logger.info(f"GPU {exp.gpu_id}: {exp.name}")
+                time.sleep(5)
 
-            # Monitor active experiments
-            if active:
-                time.sleep(self.monitor_interval)
+        with ThreadPoolExecutor(max_workers=self.n_gpus) as executor:
+            futures = [
+                executor.submit(run_gpu_queue, gpu_id, queue)
+                for gpu_id, queue in gpu_queues.items()
+                if queue
+            ]
+            for future in as_completed(futures):
+                future.result()
 
     def _save_results(self):
         """Save experiment results to JSON."""
-        results = []
-        for exp in self.experiments:
-            results.append({
-                'name': exp.name,
-                'dataset': exp.dataset,
-                'gpu_id': exp.gpu_id,
-                'status': exp.status,
-                'start_time': exp.start_time.isoformat() if exp.start_time else None,
-                'end_time': exp.end_time.isoformat() if exp.end_time else None,
-                'duration_hours': (exp.end_time - exp.start_time).total_seconds() / 3600
-                    if exp.start_time and exp.end_time else None,
-                'output_dir': str(exp.output_dir),
-                'result': exp.result,
-            })
+        with self._results_lock:
+            results = []
+            for exp in self.experiments:
+                results.append({
+                    'name': exp.name,
+                    'dataset': exp.dataset,
+                    'gpu_id': exp.gpu_id,
+                    'status': exp.status,
+                    'start_time': exp.start_time.isoformat() if exp.start_time else None,
+                    'end_time': exp.end_time.isoformat() if exp.end_time else None,
+                    'duration_hours': (exp.end_time - exp.start_time).total_seconds() / 3600
+                        if exp.start_time and exp.end_time else None,
+                    'output_dir': str(exp.output_dir),
+                    'result': exp.result,
+                })
 
-        with open(self.results_file, 'w') as f:
-            json.dump(results, f, indent=2)
+            with open(self.results_file, 'w') as f:
+                json.dump(results, f, indent=2)
 
     def _print_summary(self):
         """Print summary of all experiments."""

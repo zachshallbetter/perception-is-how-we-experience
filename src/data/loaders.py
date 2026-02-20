@@ -106,10 +106,11 @@ class PermutedMNIST(MultimodalDataset):
             self.data["vision"].append(perm_img)
             self.labels.append(label)
 
-        self.data["vision"] = torch.cat(self.data["vision"])
+        self.data["vision"] = torch.stack(self.data["vision"])
         self.labels = torch.tensor(self.labels)
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        sample = super().__getitem__(idx)
         sample["label"] = self.labels[idx]
         return sample
 
@@ -248,6 +249,8 @@ def create_dataloaders(
         elif dataset_name == "permuted_mnist":
             train_ds = PermutedMNIST(n_tasks=20, task_id=0, split="train")
             val_ds = PermutedMNIST(n_tasks=20, task_id=0, split="test")
+        else:
+            raise ValueError(f"Unknown continual dataset: {dataset_name}")
 
     elif experiment == "iot":
         train_ds = SyntheticIOTStream(
@@ -263,7 +266,7 @@ def create_dataloaders(
             seed=seed + 1,
         )
 
-    elif experiment == "multimodal":
+    elif experiment in {"multimodal", "mime_routing"}:
         if dataset_name == "audiovisual":
             train_ds = AudioVisualProxyDataset(
                 n_sequences=1000, n_classes=10, seed=seed
@@ -277,19 +280,23 @@ def create_dataloaders(
     else:
         raise ValueError(f"Unknown experiment: {experiment}")
 
+    use_pin_memory = not (
+        hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+    )
+
     train_loader = DataLoader(
         train_ds,
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=use_pin_memory,
     )
     val_loader = DataLoader(
         val_ds,
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=use_pin_memory,
     )
 
     return train_loader, val_loader

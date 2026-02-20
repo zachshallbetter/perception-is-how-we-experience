@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
 """
-Sensory Perceiver — Continual Learning Experiment (M1-ready)
+Sensory Perceiver — Local Continual Learning Experiment (M1-ready)
 
 Runs Split-CIFAR-100: N sequential tasks, 5 classes/task.
 Measures CIL accuracy, Backward Transfer (BWT), Forward Transfer (FWT).
 
-Fixes vs src/train.py:
-  1. Classification head (n_classes output) — src/train.py omitted this
-  2. Full sequential task loop — src/train.py only trained task 0
-  3. R[t][j] accuracy matrix → CIL / BWT / FWT
-  4. FWT: evaluates on next unseen task after each training phase
-  5. Auto-detects MPS (Mac M1) > CUDA > CPU
-  6. pin_memory=False and num_workers=0 for MPS/CPU safety
-  7. Saves accuracy matrix heatmap + metrics bar chart
+Purpose:
+  1. Full sequential task loop for Split-CIFAR-100 CIL metrics
+  2. R[t][j] accuracy matrix → CIL / BWT / FWT
+  3. FWT evaluation on next unseen task after each training phase
+  4. Auto-detects MPS (Mac M1) > CUDA > CPU
+  5. MPS-safe dataloader defaults (pin_memory=False, num_workers=0)
+  6. Saves accuracy matrix heatmap + metrics bar chart
 
 Usage:
-  python run_m1.py --quick        # 3 tasks, 1 epoch, d_model=128  (~5 min CPU)
-  python run_m1.py                # baseline: 10 tasks, 5 epochs, replay_weight=0.1
-  python run_m1.py --tuned        # tuned:    10 tasks, 5 epochs, replay_weight=0.5, buffer=5000
+  python scripts/run_local.py --quick        # 3 tasks, 1 epoch, d_model=128  (~5 min CPU)
+  python scripts/run_local.py                # baseline: 10 tasks, 5 epochs, replay_weight=0.1
+  python scripts/run_local.py --tuned        # tuned:    10 tasks, 5 epochs, replay_weight=0.5, buffer=5000
 
 Baseline vs Tuned:
   --baseline  replay_weight=0.1, replay_buffer=1000, lr=1e-4  → results/cl_experiment/

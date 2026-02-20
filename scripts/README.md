@@ -46,11 +46,11 @@ Generate Permuted MNIST (20 tasks with random pixel permutations).
 
 ## Training & Evaluation
 
-### `train.py` (main training loop)
+### `src.train` (main training loop)
 Train Sensory Perceiver on any experiment type.
 
 ```bash
-python train.py \
+python -m src.train \
   --experiment continual \
   --dataset split_cifar \
   --batch_size 32 \
@@ -64,11 +64,11 @@ python train.py \
 - `train_log.csv`: Training history
 - `config.yaml`: Experiment configuration
 
-### `eval.py`
+### `src.eval`
 Evaluate trained model on validation set.
 
 ```bash
-python eval.py \
+python -m src.eval \
   --checkpoint results/my_experiment/best_model.pt \
   --experiment continual \
   --dataset split_cifar \
@@ -134,14 +134,14 @@ python scripts/plot_results.py \
 python scripts/generate_synthetic_iot.py --output_dir data/iot-streams
 
 # 2. Train on IoT experiment
-python train.py \
+python -m src.train \
   --experiment iot \
   --batch_size 32 \
   --epochs 50 \
   --output_dir results/iot_seed0
 
 # 3. Evaluate
-python eval.py \
+python -m src.eval \
   --checkpoint results/iot_seed0/best_model.pt \
   --experiment iot \
   --output_file results/iot_seed0/eval_results.json

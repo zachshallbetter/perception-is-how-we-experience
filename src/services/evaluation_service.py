@@ -1,6 +1,8 @@
 """Evaluation service for Sensory Perceiver runtime jobs."""
 
 import json
+import logging
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -11,7 +13,16 @@ import torch.nn as nn
 
 from src.data.loaders import create_dataloaders
 from src.models import SensoryPerceiver
-from src.runtime import AppError, ErrorCode, EvalRuntimeConfig
+from src.observability import MetricsCollector, emit_event, generate_trace_id
+from src.runtime import (
+    AppError,
+    ErrorCode,
+    EvalRuntimeConfig,
+    classify_exception,
+    validate_training_config_schema,
+)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -20,6 +31,8 @@ class EvaluationRunResult:
 
     output_file: Path
     results: Dict
+    metrics_file: Path
+    trace_id: str
 
 
 class Evaluator:
@@ -162,6 +175,7 @@ def load_checkpoint(
         ) from exc
 
     config = checkpoint["config"]
+    validate_training_config_schema(config)
     model = SensoryPerceiver(
         modality_configs=config["modality_configs"],
         dim=config["d_model"],
@@ -200,32 +214,92 @@ def load_checkpoint(
 
 def run_evaluation(runtime_config: EvalRuntimeConfig) -> EvaluationRunResult:
     """Execute an evaluation job from validated runtime config."""
-    torch.manual_seed(runtime_config.seed)
-    np.random.seed(runtime_config.seed)
-
-    model, classifier, checkpoint_config = load_checkpoint(
-        str(runtime_config.checkpoint), runtime_config.device
-    )
-    _, val_loader = create_dataloaders(
-        experiment=runtime_config.experiment,
-        dataset_name=runtime_config.dataset,
-        batch_size=runtime_config.batch_size,
-        num_workers=runtime_config.num_workers,
-        seed=runtime_config.seed,
-    )
-
+    trace_id = generate_trace_id("evaluation")
+    metrics = MetricsCollector()
+    start_time = time.perf_counter()
     output_dir = runtime_config.output_file.parent
-    evaluator = Evaluator(
-        model=model,
-        classifier=classifier,
-        val_loader=val_loader,
-        device=runtime_config.device,
-        n_classes=checkpoint_config["n_classes"],
-        output_dir=output_dir,
+    metrics_file = output_dir / "evaluation_metrics.json"
+    emit_event(
+        logger,
+        logging.INFO,
+        "evaluation.started",
+        trace_id,
+        experiment=runtime_config.experiment,
+        dataset=runtime_config.dataset,
+        checkpoint=str(runtime_config.checkpoint),
     )
-    results = evaluator.evaluate()
-    evaluator.save_results(results)
-    return EvaluationRunResult(
-        output_file=output_dir / "eval_results.json",
-        results=results,
-    )
+    try:
+        torch.manual_seed(runtime_config.seed)
+        np.random.seed(runtime_config.seed)
+
+        model, classifier, checkpoint_config = load_checkpoint(
+            str(runtime_config.checkpoint), runtime_config.device
+        )
+        _, val_loader = create_dataloaders(
+            experiment=runtime_config.experiment,
+            dataset_name=runtime_config.dataset,
+            batch_size=runtime_config.batch_size,
+            num_workers=runtime_config.num_workers,
+            seed=runtime_config.seed,
+        )
+
+        evaluator = Evaluator(
+            model=model,
+            classifier=classifier,
+            val_loader=val_loader,
+            device=runtime_config.device,
+            n_classes=checkpoint_config["n_classes"],
+            output_dir=output_dir,
+        )
+        results = evaluator.evaluate()
+        evaluator.save_results(results)
+
+        duration_sec = time.perf_counter() - start_time
+        metrics.increment("evaluation.runs.success")
+        metrics.observe("evaluation.duration_sec", duration_sec)
+        metrics.observe("evaluation.samples", float(results.get("n_samples", 0)))
+        metrics.observe(
+            "evaluation.overall_accuracy", float(results.get("overall_accuracy", 0.0))
+        )
+        metrics.write_json(metrics_file)
+        emit_event(
+            logger,
+            logging.INFO,
+            "evaluation.completed",
+            trace_id,
+            duration_sec=duration_sec,
+            n_samples=results.get("n_samples", 0),
+            overall_accuracy=results.get("overall_accuracy", 0.0),
+            metrics_file=str(metrics_file),
+        )
+        return EvaluationRunResult(
+            output_file=output_dir / "eval_results.json",
+            results=results,
+            metrics_file=metrics_file,
+            trace_id=trace_id,
+        )
+    except Exception as exc:
+        duration_sec = time.perf_counter() - start_time
+        metrics.increment("evaluation.runs.failure")
+        metrics.observe("evaluation.duration_sec", duration_sec)
+        metrics.write_json(metrics_file)
+        app_error = classify_exception(
+            exc,
+            default_code=ErrorCode.INTERNAL_ERROR,
+            context={
+                "service": "evaluation",
+                "trace_id": trace_id,
+                "experiment": runtime_config.experiment,
+                "dataset": runtime_config.dataset,
+            },
+        )
+        emit_event(
+            logger,
+            logging.ERROR,
+            "evaluation.failed",
+            trace_id,
+            code=app_error.code.value,
+            retryable=app_error.retryable,
+            message=str(app_error),
+        )
+        raise app_error

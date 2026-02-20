@@ -3,7 +3,6 @@
 import json
 import logging
 import subprocess
-import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -13,10 +12,12 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
+from src.observability import MetricsCollector, emit_event, generate_trace_id
 from src.runtime import (
     AppError,
     ErrorCode,
     OrchestratorRuntimeConfig,
+    classify_exception,
     validate_experiment_dataset,
 )
 
@@ -441,20 +442,88 @@ class ExperimentOrchestrator:
 
 def run_orchestration(runtime_config: OrchestratorRuntimeConfig) -> Optional[str]:
     """Execute orchestrator flow from validated runtime config."""
-    orchestrator = ExperimentOrchestrator(n_gpus=runtime_config.n_gpus)
-    if runtime_config.mode == "full":
-        orchestrator.queue_full_benchmark()
-    elif runtime_config.mode == "quick":
-        orchestrator.queue_quick_test()
-    elif runtime_config.mode == "monitor":
-        return orchestrator.generate_dashboard()
+    trace_id = generate_trace_id("orchestration")
+    metrics = MetricsCollector()
+    start_time = time.perf_counter()
+    metrics_path = Path("results") / "orchestration_metrics.json"
+    emit_event(
+        logger,
+        logging.INFO,
+        "orchestration.started",
+        trace_id,
+        mode=runtime_config.mode,
+        n_gpus=runtime_config.n_gpus,
+        parallel=runtime_config.parallel,
+        push_to_github=runtime_config.push_to_github,
+    )
+    try:
+        orchestrator = ExperimentOrchestrator(n_gpus=runtime_config.n_gpus)
+        if runtime_config.mode == "full":
+            orchestrator.queue_full_benchmark()
+        elif runtime_config.mode == "quick":
+            orchestrator.queue_quick_test()
+        elif runtime_config.mode == "monitor":
+            dashboard_path = orchestrator.generate_dashboard()
+            metrics.increment("orchestration.runs.success")
+            metrics.observe("orchestration.duration_sec", time.perf_counter() - start_time)
+            metrics.write_json(metrics_path)
+            emit_event(
+                logger,
+                logging.INFO,
+                "orchestration.completed",
+                trace_id,
+                dashboard_path=dashboard_path,
+                metrics_file=str(metrics_path),
+            )
+            return dashboard_path
 
-    dashboard_path = orchestrator.generate_dashboard()
-    logger.info(f"Open monitor: file://{dashboard_path}")
-    logger.info(f"Running {len(orchestrator.experiments)} experiments...")
-    orchestrator.run_all(parallel=runtime_config.parallel)
+        dashboard_path = orchestrator.generate_dashboard()
+        logger.info(f"Open monitor: file://{dashboard_path}")
+        logger.info(f"Running {len(orchestrator.experiments)} experiments...")
+        orchestrator.run_all(parallel=runtime_config.parallel)
 
-    if runtime_config.push_to_github:
-        logger.info("Pushing results to GitHub...")
-        subprocess.run(["python", "scripts/push_results.py"], check=False)
-    return dashboard_path
+        if runtime_config.push_to_github:
+            logger.info("Pushing results to GitHub...")
+            subprocess.run(["python", "scripts/push_results.py"], check=False)
+
+        duration_sec = time.perf_counter() - start_time
+        metrics.increment("orchestration.runs.success")
+        metrics.observe("orchestration.duration_sec", duration_sec)
+        metrics.observe("orchestration.experiments", float(len(orchestrator.experiments)))
+        completed = len([exp for exp in orchestrator.experiments if exp.status == "completed"])
+        failed = len([exp for exp in orchestrator.experiments if exp.status == "failed"])
+        metrics.observe("orchestration.completed", float(completed))
+        metrics.observe("orchestration.failed", float(failed))
+        metrics.write_json(metrics_path)
+        emit_event(
+            logger,
+            logging.INFO,
+            "orchestration.completed",
+            trace_id,
+            duration_sec=duration_sec,
+            experiments=len(orchestrator.experiments),
+            completed=completed,
+            failed=failed,
+            metrics_file=str(metrics_path),
+        )
+        return dashboard_path
+    except Exception as exc:
+        duration_sec = time.perf_counter() - start_time
+        metrics.increment("orchestration.runs.failure")
+        metrics.observe("orchestration.duration_sec", duration_sec)
+        metrics.write_json(metrics_path)
+        app_error = classify_exception(
+            exc,
+            default_code=ErrorCode.ORCHESTRATION_FAILED,
+            context={"service": "orchestration", "trace_id": trace_id},
+        )
+        emit_event(
+            logger,
+            logging.ERROR,
+            "orchestration.failed",
+            trace_id,
+            code=app_error.code.value,
+            retryable=app_error.retryable,
+            message=str(app_error),
+        )
+        raise app_error

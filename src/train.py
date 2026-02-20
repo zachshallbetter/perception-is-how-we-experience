@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 
 import torch
 
-from src.runtime import AppError, TrainRuntimeConfig, format_error
+from src.runtime import AppError, TrainRuntimeConfig, format_error, validate_environment
 from src.services import run_training
 
 logging.basicConfig(
@@ -54,6 +54,7 @@ def build_parser() -> ArgumentParser:
 
 def main():
     """Validate runtime config and execute training service."""
+    validate_environment()
     runtime_config = TrainRuntimeConfig.from_namespace(build_parser().parse_args())
     logger.info(f"Using device: {runtime_config.device}")
     result = run_training(runtime_config)

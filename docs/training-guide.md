@@ -7,7 +7,7 @@ This document outlines the standard training procedures, multi-GPU orchestration
 The project utilizes several distinct training tracks depending on the experimental goal:
 
 ### A. Continual Learning Benchmark (`scripts/run_local.py`)
-This is the **primary continual learning script** (superseding purely synthetic testing in `src/train.py`). It executes Split-CIFAR-100 across 10 sequential tasks to test the replay mechanisms.
+This is the **primary local continual learning script** for Split-CIFAR-100. It executes 10 sequential tasks to test replay mechanisms and continual-learning metrics.
 
 ```bash
 # Run Split-CIFAR-100 benchmark evaluating BWT and FWT
@@ -60,7 +60,7 @@ The primary benchmarking suite is located in the `scripts/` directory and manage
 bash scripts/run_full_benchmark.sh
 ```
 
-### Allocation Strategy (via `experiment_orchestrator.py`)
+### Allocation Strategy (via `src.experiments.experiment_orchestrator`)
 When running parallel full modes:
 - **GPU 0 (`SensoryPerceiver` Primary)**: Runs benchmarks for CIFAR, Permuted MNIST, and IoT data (expected 14 hours).
 - **GPU 1 (`Perceiver IO` Baseline)**: Runs baseline comparisons matching GPU 0 data (expected 13 hours).
@@ -108,7 +108,7 @@ bash scripts/run_full_benchmark.sh && python scripts/push_results.py --message "
 
 Ablation studies isolate the impact of the Sensory Perceiver's core innovations. They are executed using:
 ```bash
-python src/train.py --config configs/ablation_study_config.py --ablation [ABLATION_NAME]
+python -m src.train --experiment continual --dataset split_cifar --output_dir results/ablation_[ABLATION_NAME]
 ```
 
 **Key Ablations:**
@@ -123,6 +123,9 @@ python src/train.py --config configs/ablation_study_config.py --ablation [ABLATI
 - **Live Dashboard**: Open `monitor_dashboard.html` in your browser during `scripts/run_experiments.ps1` to view live metric updates and estimated time of arrival (ETA).
 - **Logging**: Console output is piped to `experiment_orchestrator.log`.
 - **Artifacts**: All trained checkpoints (`best_model.pt`), evaluation metrics (`eval_results.json`), and hyperparameter configs are saved automatically to the `results/` directory under a timestamped folder.
+- **Versioned Config Schema**: Training checkpoints now include `config_schema_version` and evaluation rejects unknown/missing schema versions.
+- **Structured Service Events**: `src.services.*` emit JSON logs with `event`, `trace_id`, and typed failure metadata.
+- **Metrics Snapshots**: Service runs write `training_metrics.json`, `evaluation_metrics.json`, and `results/orchestration_metrics.json`.
 - **Direct Evaluation**:
   ```bash
   python -m src.eval --checkpoint results/<run>/best_model.pt --experiment continual --dataset split_cifar --output_file results/<run>/eval_results.json
@@ -156,4 +159,14 @@ If processes hang or block memory:
 pkill -f python
 # On Windows
 taskkill /IM python.exe /F 
+```
+
+---
+
+## 8. Service & Contract Test Gate
+
+Before running long training jobs, run the lightweight service/contract checks:
+
+```bash
+python3 -m unittest test_runtime_contracts.py test_service_layer_smoke.py
 ```

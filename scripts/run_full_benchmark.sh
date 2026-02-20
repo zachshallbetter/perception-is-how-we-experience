@@ -16,7 +16,7 @@ echo -e "\n[1/4] Running Continual Learning (Split-CIFAR-100)..."
 for seed in 0 1 2; do
     OUTPUT_DIR="$RESULTS_DIR/continual_cifar_seed_$seed"
     mkdir -p "$OUTPUT_DIR"
-    python train.py \
+    python -m src.train \
         --experiment continual \
         --dataset split_cifar \
         --batch_size 32 \
@@ -30,7 +30,7 @@ for seed in 0 1 2; do
         --seed $seed \
         --output_dir "$OUTPUT_DIR"
 
-    python eval.py \
+    python -m src.eval \
         --checkpoint "$OUTPUT_DIR/best_model.pt" \
         --experiment continual \
         --dataset split_cifar \
@@ -42,7 +42,7 @@ echo -e "\n[2/4] Running Continual Learning (Permuted MNIST)..."
 for seed in 0 1 2; do
     OUTPUT_DIR="$RESULTS_DIR/continual_mnist_seed_$seed"
     mkdir -p "$OUTPUT_DIR"
-    python train.py \
+    python -m src.train \
         --experiment continual \
         --dataset permuted_mnist \
         --batch_size 32 \
@@ -56,7 +56,7 @@ for seed in 0 1 2; do
         --seed $seed \
         --output_dir "$OUTPUT_DIR"
 
-    python eval.py \
+    python -m src.eval \
         --checkpoint "$OUTPUT_DIR/best_model.pt" \
         --experiment continual \
         --dataset permuted_mnist \
@@ -68,7 +68,7 @@ echo -e "\n[3/4] Running IoT Streaming Classification..."
 for seed in 0 1 2; do
     OUTPUT_DIR="$RESULTS_DIR/iot_streaming_seed_$seed"
     mkdir -p "$OUTPUT_DIR"
-    python train.py \
+    python -m src.train \
         --experiment iot \
         --dataset iot \
         --batch_size 32 \
@@ -81,7 +81,7 @@ for seed in 0 1 2; do
         --seed $seed \
         --output_dir "$OUTPUT_DIR"
 
-    python eval.py \
+    python -m src.eval \
         --checkpoint "$OUTPUT_DIR/best_model.pt" \
         --experiment iot \
         --dataset iot \

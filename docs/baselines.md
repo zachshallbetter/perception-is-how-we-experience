@@ -42,7 +42,7 @@ pip install transformers torch
 To run a baseline continuously across the orchestration test suite:
 
 ```bash
-python src/train.py --experiment continual --dataset split_cifar --model vilt
+python scripts/run_baselines_cl.py --model vilt --output_dir results/baselines_cl
 ```
 
 *(Note: Ensure your `experiment_config.yaml` points `--model` to the appropriate baseline identifier).*

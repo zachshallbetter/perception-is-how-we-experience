@@ -1,6 +1,8 @@
 """Training service for Sensory Perceiver runtime jobs."""
 
 import csv
+import logging
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -15,7 +17,16 @@ from tqdm import tqdm
 
 from src.data.loaders import create_dataloaders
 from src.models import ContrastiveLoss, SensoryPerceiver
-from src.runtime import TrainRuntimeConfig, resolve_modality_setup
+from src.observability import MetricsCollector, emit_event, generate_trace_id
+from src.runtime import (
+    ErrorCode,
+    TRAIN_CONFIG_SCHEMA_VERSION,
+    TrainRuntimeConfig,
+    classify_exception,
+    resolve_modality_setup,
+)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -27,6 +38,8 @@ class TrainingRunResult:
     best_checkpoint: Path
     latest_checkpoint: Path
     history_file: Path
+    metrics_file: Path
+    trace_id: str
 
 
 class Trainer:
@@ -255,88 +268,144 @@ class Trainer:
 
 def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
     """Execute a training job from validated runtime config."""
-    torch.manual_seed(runtime_config.seed)
-    np.random.seed(runtime_config.seed)
-
-    train_loader, val_loader = create_dataloaders(
+    trace_id = generate_trace_id("training")
+    metrics = MetricsCollector()
+    start_time = time.perf_counter()
+    metrics_file = runtime_config.output_dir / "training_metrics.json"
+    emit_event(
+        logger,
+        logging.INFO,
+        "training.started",
+        trace_id,
         experiment=runtime_config.experiment,
-        dataset_name=runtime_config.dataset,
-        batch_size=runtime_config.batch_size,
-        num_workers=runtime_config.num_workers,
-        seed=runtime_config.seed,
+        dataset=runtime_config.dataset,
+        output_dir=str(runtime_config.output_dir),
     )
 
-    modality_configs, n_classes = resolve_modality_setup(runtime_config.experiment)
-    model = SensoryPerceiver(
-        modality_configs=modality_configs,
-        dim=runtime_config.d_model,
-        num_heads=runtime_config.num_heads,
-        mlp_dim=runtime_config.mlp_dim,
-        depth=runtime_config.depth,
-        dropout=runtime_config.dropout,
-        replay_buffer_size=runtime_config.replay_buffer_size,
-        contrastive_temp=runtime_config.contrastive_temp,
-    )
+    try:
+        torch.manual_seed(runtime_config.seed)
+        np.random.seed(runtime_config.seed)
 
-    classifier = nn.Linear(runtime_config.d_model, n_classes).to(runtime_config.device)
-    criterion = nn.CrossEntropyLoss()
-    replay_criterion = ContrastiveLoss(temperature=runtime_config.contrastive_temp)
-    optimizer = optim.AdamW(
-        list(model.parameters()) + list(classifier.parameters()),
-        lr=runtime_config.learning_rate,
-        weight_decay=0.01,
-    )
-    scheduler = CosineAnnealingLR(optimizer, T_max=runtime_config.epochs)
+        train_loader, val_loader = create_dataloaders(
+            experiment=runtime_config.experiment,
+            dataset_name=runtime_config.dataset,
+            batch_size=runtime_config.batch_size,
+            num_workers=runtime_config.num_workers,
+            seed=runtime_config.seed,
+        )
 
-    config = {
-        "experiment": runtime_config.experiment,
-        "dataset": runtime_config.dataset,
-        "d_model": runtime_config.d_model,
-        "num_heads": runtime_config.num_heads,
-        "depth": runtime_config.depth,
-        "mlp_dim": runtime_config.mlp_dim,
-        "dropout": runtime_config.dropout,
-        "replay_buffer_size": runtime_config.replay_buffer_size,
-        "contrastive_temp": runtime_config.contrastive_temp,
-        "replay_mode": runtime_config.replay_mode,
-        "batch_size": runtime_config.batch_size,
-        "epochs": runtime_config.epochs,
-        "learning_rate": runtime_config.learning_rate,
-        "warmup_steps": runtime_config.warmup_steps,
-        "num_workers": runtime_config.num_workers,
-        "seed": runtime_config.seed,
-        "device": str(runtime_config.device),
-        "output_dir": str(runtime_config.output_dir),
-        "modality_configs": modality_configs,
-        "n_classes": n_classes,
-    }
+        modality_configs, n_classes = resolve_modality_setup(runtime_config.experiment)
+        model = SensoryPerceiver(
+            modality_configs=modality_configs,
+            dim=runtime_config.d_model,
+            num_heads=runtime_config.num_heads,
+            mlp_dim=runtime_config.mlp_dim,
+            depth=runtime_config.depth,
+            dropout=runtime_config.dropout,
+            replay_buffer_size=runtime_config.replay_buffer_size,
+            contrastive_temp=runtime_config.contrastive_temp,
+        )
 
-    output_dir = runtime_config.output_dir
-    output_dir.mkdir(parents=True, exist_ok=True)
-    config_file = output_dir / "config.yaml"
-    with open(config_file, "w") as file:
-        yaml.dump(config, file)
+        classifier = nn.Linear(runtime_config.d_model, n_classes).to(runtime_config.device)
+        criterion = nn.CrossEntropyLoss()
+        replay_criterion = ContrastiveLoss(temperature=runtime_config.contrastive_temp)
+        optimizer = optim.AdamW(
+            list(model.parameters()) + list(classifier.parameters()),
+            lr=runtime_config.learning_rate,
+            weight_decay=0.01,
+        )
+        scheduler = CosineAnnealingLR(optimizer, T_max=runtime_config.epochs)
 
-    trainer = Trainer(
-        model=model,
-        classifier=classifier,
-        train_loader=train_loader,
-        val_loader=val_loader,
-        criterion=criterion,
-        replay_mode=runtime_config.replay_mode,
-        replay_criterion=replay_criterion,
-        optimizer=optimizer,
-        scheduler=scheduler,
-        device=runtime_config.device,
-        output_dir=output_dir,
-        config=config,
-    )
-    trainer.fit(runtime_config.epochs)
+        config = {
+            "config_schema_version": TRAIN_CONFIG_SCHEMA_VERSION,
+            "experiment": runtime_config.experiment,
+            "dataset": runtime_config.dataset,
+            "d_model": runtime_config.d_model,
+            "num_heads": runtime_config.num_heads,
+            "depth": runtime_config.depth,
+            "mlp_dim": runtime_config.mlp_dim,
+            "dropout": runtime_config.dropout,
+            "replay_buffer_size": runtime_config.replay_buffer_size,
+            "contrastive_temp": runtime_config.contrastive_temp,
+            "replay_mode": runtime_config.replay_mode,
+            "batch_size": runtime_config.batch_size,
+            "epochs": runtime_config.epochs,
+            "learning_rate": runtime_config.learning_rate,
+            "warmup_steps": runtime_config.warmup_steps,
+            "num_workers": runtime_config.num_workers,
+            "seed": runtime_config.seed,
+            "device": str(runtime_config.device),
+            "output_dir": str(runtime_config.output_dir),
+            "modality_configs": modality_configs,
+            "n_classes": n_classes,
+        }
 
-    return TrainingRunResult(
-        output_dir=output_dir,
-        config_file=config_file,
-        best_checkpoint=output_dir / "best_model.pt",
-        latest_checkpoint=output_dir / "latest_model.pt",
-        history_file=output_dir / "train_log.csv",
-    )
+        output_dir = runtime_config.output_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        config_file = output_dir / "config.yaml"
+        with open(config_file, "w") as file:
+            yaml.dump(config, file)
+
+        trainer = Trainer(
+            model=model,
+            classifier=classifier,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            criterion=criterion,
+            replay_mode=runtime_config.replay_mode,
+            replay_criterion=replay_criterion,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            device=runtime_config.device,
+            output_dir=output_dir,
+            config=config,
+        )
+        trainer.fit(runtime_config.epochs)
+
+        duration_sec = time.perf_counter() - start_time
+        metrics.increment("training.runs.success")
+        metrics.observe("training.duration_sec", duration_sec)
+        metrics.write_json(metrics_file)
+        emit_event(
+            logger,
+            logging.INFO,
+            "training.completed",
+            trace_id,
+            duration_sec=duration_sec,
+            metrics_file=str(metrics_file),
+        )
+
+        return TrainingRunResult(
+            output_dir=output_dir,
+            config_file=config_file,
+            best_checkpoint=output_dir / "best_model.pt",
+            latest_checkpoint=output_dir / "latest_model.pt",
+            history_file=output_dir / "train_log.csv",
+            metrics_file=metrics_file,
+            trace_id=trace_id,
+        )
+    except Exception as exc:
+        duration_sec = time.perf_counter() - start_time
+        metrics.increment("training.runs.failure")
+        metrics.observe("training.duration_sec", duration_sec)
+        metrics.write_json(metrics_file)
+        app_error = classify_exception(
+            exc,
+            default_code=ErrorCode.INTERNAL_ERROR,
+            context={
+                "service": "training",
+                "trace_id": trace_id,
+                "experiment": runtime_config.experiment,
+                "dataset": runtime_config.dataset,
+            },
+        )
+        emit_event(
+            logger,
+            logging.ERROR,
+            "training.failed",
+            trace_id,
+            code=app_error.code.value,
+            retryable=app_error.retryable,
+            message=str(app_error),
+        )
+        raise app_error

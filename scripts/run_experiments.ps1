@@ -76,7 +76,7 @@ if (-not (Test-Path "results")) {
 
 # Build command
 $cmdArgs = @(
-    "experiment_orchestrator.py"
+    "-m", "src.experiments.experiment_orchestrator"
     "--mode", $Mode
     "--n-gpus", $NumGPUs
 )

@@ -12,6 +12,8 @@ class ErrorCode(str, Enum):
     DATASET_MISMATCH = "DATASET_MISMATCH"
     DEVICE_UNAVAILABLE = "DEVICE_UNAVAILABLE"
     CHECKPOINT_LOAD_FAILED = "CHECKPOINT_LOAD_FAILED"
+    SCHEMA_VALIDATION_FAILED = "SCHEMA_VALIDATION_FAILED"
+    ENV_VALIDATION_FAILED = "ENV_VALIDATION_FAILED"
     ORCHESTRATION_FAILED = "ORCHESTRATION_FAILED"
     IO_ERROR = "IO_ERROR"
     INTERNAL_ERROR = "INTERNAL_ERROR"
@@ -42,3 +44,19 @@ def format_error(error: AppError) -> str:
         f"code={error.code.value} retryable={error.retryable} "
         f"message={error} context={context}"
     )
+
+
+def classify_exception(
+    exc: Exception,
+    *,
+    default_code: ErrorCode = ErrorCode.INTERNAL_ERROR,
+    context: Optional[Dict[str, Any]] = None,
+) -> AppError:
+    """Map arbitrary exceptions into AppError for consistent failure handling."""
+    if isinstance(exc, AppError):
+        return exc
+    code = ErrorCode.IO_ERROR if isinstance(exc, OSError) else default_code
+    merged_context = {"exception_type": type(exc).__name__}
+    if context:
+        merged_context.update(context)
+    return AppError(code=code, message=str(exc), context=merged_context)

@@ -4,7 +4,12 @@ import logging
 import sys
 from argparse import ArgumentParser
 
-from src.runtime import AppError, OrchestratorRuntimeConfig, format_error
+from src.runtime import (
+    AppError,
+    OrchestratorRuntimeConfig,
+    format_error,
+    validate_environment,
+)
 from src.services import run_orchestration
 
 logging.basicConfig(
@@ -43,6 +48,7 @@ def build_parser() -> ArgumentParser:
 
 def main():
     """Validate runtime config and execute orchestration service."""
+    validate_environment()
     runtime_config = OrchestratorRuntimeConfig.from_namespace(build_parser().parse_args())
     logger.info("Sensory Perceiver Experiment Orchestrator")
     logger.info(

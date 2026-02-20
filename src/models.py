@@ -89,9 +89,9 @@ class PerceiverTower(nn.Module):
             x = x.flatten(2)  # (batch, dim, H'*W')
             x = x.permute(2, 0, 1)  # (H'*W', batch, dim)
         else:
-            # (batch, seq_len, features) → (seq_len, batch, dim)
-            x = self.conv(x)
-            x = x.permute(1, 0, 2)
+            # (batch, features) → (batch, dim) → (1, batch, dim)
+            x = self.conv(x)  # (batch, dim)
+            x = x.unsqueeze(0)  # (1, batch, dim) - treat as single sequence position
 
         seq_len, batch, _ = x.shape
 
@@ -109,15 +109,43 @@ class PerceiverTower(nn.Module):
         return x  # (seq_len, batch, dim)
 
 
+class TaskAdapter(nn.Module):
+    """Lightweight task-specific adapter module for parameter isolation.
+
+    Sits between cross-modal attention and output projection.
+    Enables parameter isolation: freeze after each task, allocate new adapter for next task.
+    """
+
+    def __init__(self, dim: int = 768, hidden_dim: int = 512, dropout: float = 0.1):
+        super().__init__()
+        self.adapter = nn.Sequential(
+            nn.Linear(dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, dim),
+        )
+        self.norm = nn.LayerNorm(dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply adapter transformation with residual connection."""
+        return x + self.adapter(x)
+
+    def freeze(self) -> None:
+        """Freeze all parameters in this adapter (called after task completes)."""
+        for param in self.parameters():
+            param.requires_grad = False
+
+
 class SensoryPerceiver(nn.Module):
-    """Unified multimodal Perceiver with MIME-Type routing and contrastive replay.
+    """Unified multimodal Perceiver with MIME-Type routing, contrastive replay, and parameter isolation.
 
     Architecture:
-    1. MIME-Type router directs inputs to modality-specific towers
+    1. MIME-Type router directs inputs to modality-specific towers (task-agnostic)
     2. Towers extract embeddings (seq_len, batch, dim)
     3. Cross-modal attention integrates all modalities
-    4. Contrastive replay buffer stores/updates tokens
-    5. Output: Unified representation for downstream tasks
+    4. Task-specific adapter applies parameter isolation (frozen per task)
+    5. Contrastive replay buffer stores/updates tokens
+    6. Output: Unified representation for downstream tasks
     """
 
     def __init__(
@@ -130,6 +158,8 @@ class SensoryPerceiver(nn.Module):
         dropout: float = 0.1,
         replay_buffer_size: int = 2000,
         contrastive_temp: float = 0.07,
+        enable_parameter_isolation: bool = True,
+        adapter_hidden_dim: int = 512,
     ):
         """
         Args:
@@ -145,23 +175,27 @@ class SensoryPerceiver(nn.Module):
             dropout: Dropout rate
             replay_buffer_size: Token buffer for contrastive learning
             contrastive_temp: Temperature for NT-Xent loss
+            enable_parameter_isolation: If True, use task-specific adapters for parameter isolation
+            adapter_hidden_dim: Hidden dimension for task adapter layers
         """
         super().__init__()
         self.dim = dim
         self.contrastive_temp = contrastive_temp
         self.num_modalities = len(modality_configs)
+        self.enable_parameter_isolation = enable_parameter_isolation
+        self.current_task_id = 0
 
-        # MIME-Type routed towers
+        # MIME-Type routed towers (task-agnostic)
         self.towers = nn.ModuleDict()
         for modality, config in modality_configs.items():
             self.towers[modality] = PerceiverTower(
-                input_dim=config['input_dim'],
+                input_dim=config["input_dim"],
                 dim=dim,
                 num_heads=num_heads,
                 mlp_dim=mlp_dim,
                 depth=depth,
                 dropout=dropout,
-                use_conv=config.get('use_conv', False),
+                use_conv=config.get("use_conv", False),
             )
 
         # Cross-modal integration (global attention)
@@ -172,29 +206,44 @@ class SensoryPerceiver(nn.Module):
             batch_first=False,
         )
 
-        # Output projection
+        # Task-specific adapters (parameter isolation)
+        if enable_parameter_isolation:
+            self.current_adapter = TaskAdapter(
+                dim=dim, hidden_dim=adapter_hidden_dim, dropout=dropout
+            )
+            self.task_adapters = nn.ModuleDict({"task_0": self.current_adapter})
+        else:
+            self.current_adapter = None
+            self.task_adapters = None
+
+        # Output projection (shared)
         self.output_proj = nn.Linear(dim, dim)
         self.final_norm = nn.LayerNorm(dim)
 
-        # Replay buffer (contrastive learning)
+        # Replay buffer (stores RAW inputs and labels)
+        self.replay_buffer = {}  # mod_name -> tensor (buffer_size, ...)
         self.register_buffer(
-            'replay_buffer',
-            torch.randn(replay_buffer_size, dim)
+            "replay_labels", torch.zeros(replay_buffer_size, dtype=torch.long)
         )
-        self.register_buffer(
-            'replay_buffer_ptr',
-            torch.tensor(0, dtype=torch.long)
-        )
+        self.register_buffer("replay_count", torch.tensor(0, dtype=torch.long))
         self.replay_buffer_size = replay_buffer_size
+        self.modality_configs = modality_configs
+
+        # Initialize modality-specific raw input buffers
+        # Buffers will be created dynamically in _update_replay_buffer on first call.
 
     def forward(
         self,
         inputs: Dict[str, torch.Tensor],
+        labels: Optional[torch.Tensor] = None,
+        update_buffer: bool = True,
         return_embeddings: bool = False,
     ) -> Tuple[torch.Tensor, Optional[Dict[str, torch.Tensor]]]:
         """
         Args:
             inputs: Dict[modality_name] → tensor
+            labels: Ground truth labels (needed for populating replay buffer)
+            update_buffer: If True, update the replay buffer with current batch
             return_embeddings: If True, return per-modality embeddings
 
         Returns:
@@ -218,12 +267,17 @@ class SensoryPerceiver(nn.Module):
         attn_out, _ = self.global_attn(combined, combined, combined)
         integrated = combined + attn_out
 
-        # 4. Output projection + normalization
+        # 3b. Task-specific adapter (parameter isolation)
+        if self.enable_parameter_isolation and self.current_adapter is not None:
+            integrated = self.current_adapter(integrated)
+
+        # 4. Output projection + normalization (shared)
         integrated = self.output_proj(integrated)
         integrated = self.final_norm(integrated)
 
-        # 5. Update replay buffer with new embeddings
-        self._update_replay_buffer(integrated.detach())
+        # 5. Update replay buffer with raw inputs and labels
+        if update_buffer and labels is not None:
+            self._update_replay_buffer(inputs, labels.detach())
 
         # Convert to (batch, seq_len, dim) for downstream
         integrated = integrated.permute(1, 0, 2)
@@ -232,25 +286,100 @@ class SensoryPerceiver(nn.Module):
             return integrated, embeddings
         return integrated, None
 
-    def _update_replay_buffer(self, embeddings: torch.Tensor) -> None:
-        """Update replay buffer with new embeddings (circular buffer)."""
-        batch_size = embeddings.size(1)
-        ptr = self.replay_buffer_ptr.item()
+    def _update_replay_buffer(
+        self, inputs: Dict[str, torch.Tensor], labels: torch.Tensor
+    ) -> None:
+        """Update replay buffer using Reservoir Sampling to ensure long-term retention."""
+        batch_size = labels.size(0)
 
-        if ptr + batch_size <= self.replay_buffer_size:
-            self.replay_buffer[ptr:ptr + batch_size] = embeddings.mean(dim=0)
-            self.replay_buffer_ptr.fill_((ptr + batch_size) % self.replay_buffer_size)
-        else:
-            # Wrap around
-            remaining = self.replay_buffer_size - ptr
-            self.replay_buffer[ptr:] = embeddings.mean(dim=0)[:remaining]
-            self.replay_buffer[:batch_size - remaining] = embeddings.mean(dim=0)[remaining:]
-            self.replay_buffer_ptr.fill_((batch_size - remaining) % self.replay_buffer_size)
+        for i in range(batch_size):
+            count = self.replay_count.item()
+            if count < self.replay_buffer_size:
+                # Buffer not full, just append
+                idx = count
+            else:
+                # Buffer full, replace with probability buffer_size / total_seen
+                idx = torch.randint(0, count + 1, (1,)).item()
+                if idx >= self.replay_buffer_size:
+                    idx = -1  # Do not keep
 
-    def get_replay_samples(self, n_samples: int) -> torch.Tensor:
-        """Sample from replay buffer for contrastive loss."""
-        indices = torch.randint(0, self.replay_buffer_size, (n_samples,))
-        return self.replay_buffer[indices]
+            if idx != -1:
+                # Update all modality buffers
+                for name, tensor in inputs.items():
+                    # Ensure buffer exists
+                    if name not in self.replay_buffer:
+                        shape = [self.replay_buffer_size] + list(tensor.shape[1:])
+                        self.register_buffer(
+                            f"replay_buf_{name}",
+                            torch.zeros(*shape, device=tensor.device),
+                        )
+                        self.replay_buffer[name] = getattr(self, f"replay_buf_{name}")
+
+                    self.replay_buffer[name][idx] = tensor[i].detach()
+
+                # Update labels
+                self.replay_labels[idx] = labels[i].detach()
+
+            self.replay_count += 1
+
+    def get_replay_samples(
+        self, n_samples: int
+    ) -> Tuple[Optional[Dict[str, torch.Tensor]], Optional[torch.Tensor]]:
+        """Sample from replay buffer for continual learning replay."""
+        count = min(self.replay_count.item(), self.replay_buffer_size)
+        if count == 0:
+            return None, None
+        n_samples = min(n_samples, count)
+        indices = torch.randperm(count, device=self.replay_labels.device)[:n_samples]
+
+        samples = {}
+        for name, buf in self.replay_buffer.items():
+            samples[name] = buf[indices]
+
+        return samples, self.replay_labels[indices]
+
+    def freeze_task(self) -> None:
+        """Freeze current task's adapter and prepare for next task (parameter isolation).
+
+        Called at the end of task T training to prevent further updates to task T's parameters.
+        Allocates a new adapter for task T+1 with trainable parameters.
+        """
+        if not self.enable_parameter_isolation or self.current_adapter is None:
+            return
+
+        # Freeze current adapter
+        self.current_adapter.freeze()
+
+        # Allocate new adapter for next task
+        self.current_task_id += 1
+        task_name = f"task_{self.current_task_id}"
+        self.current_adapter = TaskAdapter(
+            dim=self.dim,
+            hidden_dim=self.current_adapter.adapter[0].out_features,  # Match hidden dim
+            dropout=(
+                self.current_adapter.adapter[2].p
+                if isinstance(self.current_adapter.adapter[2], nn.Dropout)
+                else 0.1
+            ),
+        )
+        self.task_adapters[task_name] = self.current_adapter
+
+    def get_trainable_parameters(self) -> int:
+        """Count trainable parameters (excluding frozen task adapters)."""
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+    def get_task_coverage(self) -> float:
+        """Compute task parameter coverage: fraction of original capacity used.
+
+        After K tasks with parameter isolation, coverage indicates how much of the
+        original network capacity remains trainable.
+        """
+        if self.current_task_id == 0:
+            return 1.0
+
+        total_params = sum(p.numel() for p in self.parameters())
+        trainable_params = self.get_trainable_parameters()
+        return trainable_params / total_params if total_params > 0 else 0.0
 
 
 class ContrastiveLoss(nn.Module):
@@ -267,7 +396,7 @@ class ContrastiveLoss(nn.Module):
     def forward(
         self,
         current: torch.Tensor,  # (batch, dim)
-        replay: torch.Tensor,   # (batch, dim)
+        replay: torch.Tensor,  # (batch, dim)
     ) -> torch.Tensor:
         """
         Args:

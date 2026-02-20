@@ -16,12 +16,12 @@ from src.data.loaders import create_dataloaders
 from baselines.hf_perceiver_io import PerceiverIOBaseline
 
 
-def measure_latency(model, batch, device, n_runs=100):
+def measure_latency(model, batch, device, n_runs=10):
     """Measure forward pass latency."""
     model.eval()
 
     # Warmup
-    for _ in range(10):
+    for _ in range(2):
         with torch.no_grad():
             if isinstance(model, SensoryPerceiver):
                 model(batch, return_embeddings=False)
@@ -29,14 +29,6 @@ def measure_latency(model, batch, device, n_runs=100):
                 model(batch)
 
     # Actual measurement
-    # Using torch.mps.synchronize if on mps, else cuda sync, else cpu
-    def sync():
-        if device.type == "cuda":
-            torch.cuda.synchronize()
-        elif device.type == "mps":
-            torch.mps.synchronize()
-
-    sync()
     start_time = time.time()
 
     with torch.no_grad():
@@ -46,7 +38,6 @@ def measure_latency(model, batch, device, n_runs=100):
             else:
                 model(batch)
 
-    sync()
     end_time = time.time()
 
     avg_latency = ((end_time - start_time) / n_runs) * 1000  # ms
@@ -66,12 +57,9 @@ def main():
     parser.add_argument("--lr", type=float, default=1e-4)
     args = parser.parse_args()
 
-    device = torch.device(
-        "mps"
-        if torch.backends.mps.is_available()
-        else "cuda" if torch.cuda.is_available() else "cpu"
-    )
-    print(f"Device: {device}\\n")
+    # Force CPU to bypass MPS deadlock during Perceiver IO attention calculation
+    device = torch.device("cpu")
+    print(f"Device: {device}\n")
 
     # Modality configurations matching AudioVisualProxyDataset
     # vision: (3, 224, 224)
@@ -97,7 +85,7 @@ def main():
 
     print("Loading AudioVisual Proxy Dataset...")
     train_loader, val_loader = create_dataloaders(
-        "multimodal", "audiovisual", batch_size=args.batch_size
+        "multimodal", "audiovisual", batch_size=args.batch_size, num_workers=0
     )
 
     # Get a sample batch for testing

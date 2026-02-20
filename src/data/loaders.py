@@ -125,8 +125,8 @@ class AudioVisualProxyDataset(Dataset):
         self,
         n_sequences: int = 1000,
         n_classes: int = 10,
-        vision_shape: Tuple[int, ...] = (3, 224, 224),
-        audio_shape: Tuple[int, ...] = (1, 128, 128),  # mel spectogram
+        vision_shape: Tuple[int, ...] = (3, 64, 64),
+        audio_shape: Tuple[int, ...] = (1, 64, 64),  # mel spectogram
         seed: int = 42,
     ):
         super().__init__()

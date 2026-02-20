@@ -13,9 +13,9 @@ import torch
 import torch.nn as nn
 
 try:
-    from transformers import PerceiverForImageClassificationDynamic, PerceiverConfig
+    from transformers import PerceiverForImageClassificationLearned, PerceiverConfig
 except ImportError:
-    PerceiverForImageClassificationDynamic, PerceiverConfig = None, None
+    PerceiverForImageClassificationLearned, PerceiverConfig = None, None
 
 
 class PerceiverIOBaseline(nn.Module):
@@ -23,18 +23,18 @@ class PerceiverIOBaseline(nn.Module):
         super().__init__()
         self.name = "Perceiver IO (Jaegle et al., 2022)"
 
-        if PerceiverForImageClassificationDynamic is None:
+        if PerceiverForImageClassificationLearned is None:
             raise ImportError("Please install transformers: `pip install transformers`")
 
         if use_pretrained:
-            self.model = PerceiverForImageClassificationDynamic.from_pretrained(
+            self.model = PerceiverForImageClassificationLearned.from_pretrained(
                 "deepmind/vision-perceiver-learned",
                 num_labels=num_classes,
                 ignore_mismatched_sizes=True,
             )
         else:
             config = PerceiverConfig(num_labels=num_classes)
-            self.model = PerceiverForImageClassificationDynamic(config)
+            self.model = PerceiverForImageClassificationLearned(config)
 
     def forward(self, inputs):
         if isinstance(inputs, dict):
@@ -62,15 +62,35 @@ class PerceiverIOBaseline(nn.Module):
 
             # For Hugging Face's PerceiverForImageClassification, it strictly expects 4D image structures
             # via its preprocessor. To bypass this and feed raw sequences, we must use the base model.
-            # However, since this wrapper uses PerceiverForImageClassificationDynamic, we pass the
+            # However, since this wrapper uses PerceiverForImageClassificationLearned, we pass the
             # vision portion through directly as a fallback, highlighting the rigidity of standard architectures
             # compared to SensoryPerceiver's native routing.
-            # *In a full implementation, we would bypass the image preprocessor and feed `combined_seq`,
-            # but that requires replacing the HF classification head entirely.*
+            # For an untrained config, the default image_size is 56x56 (3136 positional encodings)
+            expected_size = getattr(self.model.config, "image_size", 56)
 
-            outputs = self.model(inputs["vision"])
+            vision_input = inputs["vision"]
+            if vision_input.shape[-1] != expected_size:
+                vision_input = torch.nn.functional.interpolate(
+                    vision_input,
+                    size=(expected_size, expected_size),
+                    mode="bilinear",
+                    align_corners=False,
+                )
+
+            outputs = self.model(vision_input)
             return outputs.logits
         else:
             # Standard single-modality image input
-            outputs = self.model(inputs)
+            expected_size = getattr(self.model.config, "image_size", 56)
+
+            vision_input = inputs
+            if vision_input.shape[-1] != expected_size:
+                vision_input = torch.nn.functional.interpolate(
+                    vision_input,
+                    size=(expected_size, expected_size),
+                    mode="bilinear",
+                    align_corners=False,
+                )
+
+            outputs = self.model(vision_input)
             return outputs.logits

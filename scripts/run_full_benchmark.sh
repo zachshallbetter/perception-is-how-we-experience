@@ -1,5 +1,5 @@
 #!/bin/bash
-# Full benchmark suite: 4 experiments × 3 seeds × evaluation
+# Full benchmark suite: 3 experiments × 3 seeds × evaluation
 
 set -e
 
@@ -66,11 +66,11 @@ done
 # IoT Streaming
 echo -e "\n[3/4] Running IoT Streaming Classification..."
 for seed in 0 1 2; do
-    OUTPUT_DIR="$RESULTS_DIR/iot_streaming_seed_$seed"
+    OUTPUT_DIR="$RESULTS_DIR/sensor_streaming_seed_$seed"
     mkdir -p "$OUTPUT_DIR"
     python -m src.train \
-        --experiment iot \
-        --dataset iot \
+        --experiment sensor_streaming \
+        --dataset sensor_streaming \
         --batch_size 32 \
         --epochs 50 \
         --learning_rate 1e-4 \
@@ -83,8 +83,8 @@ for seed in 0 1 2; do
 
     python -m src.eval \
         --checkpoint "$OUTPUT_DIR/best_model.pt" \
-        --experiment iot \
-        --dataset iot \
+        --experiment sensor_streaming \
+        --dataset sensor_streaming \
         --output_file "$OUTPUT_DIR/eval_results.json"
 done
 

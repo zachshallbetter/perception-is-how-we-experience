@@ -2,14 +2,14 @@
 
 ## Dataset Preparation
 
-### `generate_synthetic_iot.py`
-Generate synthetic IoT sensor streams for validation (no external dependencies).
+### `generate_sensor_streaming_data.py`
+Generate IoT sensor-stream benchmark data for validation (no external dependencies).
 
 ```bash
-python scripts/generate_synthetic_iot.py \
+python scripts/generate_sensor_streaming_data.py \
   --n_sequences 100 \
   --sequence_length 500 \
-  --output_dir data/iot-streams
+  --output_dir data/sensor-streaming
 ```
 
 **Output**: Multimodal sensor data (smartwatch, environmental, robot arm)
@@ -26,8 +26,8 @@ Preprocess MSCOCO 2017 validation split (5K images).
 - Expected structure: `data/coco/images/val2017/` + annotations JSON
 
 ### `generate_av_mnist.py` (user implementation)
-Generate synthetic audio-visual MNIST pairs (5K samples).
-- Combines visual digits with synthetic speech
+Generate audio-visual MNIST pairs (5K samples).
+- Combines visual digits with generated speech
 
 ### `preprocess_flickr.py` (user implementation)
 Preprocess Flickr30K (31K image-text pairs).
@@ -82,7 +82,7 @@ python -m src.eval \
 ## Benchmarking
 
 ### `run_full_benchmark.sh`
-Execute all 4 experiments × 3 seeds with evaluation.
+Execute all 3 experiments × 3 seeds with evaluation.
 
 ```bash
 bash scripts/run_full_benchmark.sh
@@ -92,7 +92,7 @@ bash scripts/run_full_benchmark.sh
 **Runs** (parallel-friendly):
 1. Continual Learning: Split-CIFAR-100 (3 seeds)
 2. Continual Learning: Permuted MNIST (3 seeds)
-3. IoT Streaming: Synthetic sensor data (3 seeds)
+3. IoT Streaming: Generated sensor data (3 seeds)
 4. Aggregation: Compile statistics
 
 **Duration**: ~6-12 hours on A100 (2h per seed × 3 seeds × 2 datasets)
@@ -130,31 +130,31 @@ python scripts/plot_results.py \
 ## Workflow Example
 
 ```bash
-# 1. Generate synthetic IoT data
-python scripts/generate_synthetic_iot.py --output_dir data/iot-streams
+# 1. Generate IoT benchmark data
+python scripts/generate_sensor_streaming_data.py --output_dir data/sensor-streaming
 
 # 2. Train on IoT experiment
 python -m src.train \
-  --experiment iot \
+  --experiment sensor_streaming \
   --batch_size 32 \
   --epochs 50 \
-  --output_dir results/iot_seed0
+  --output_dir results/sensor_streaming_seed0
 
 # 3. Evaluate
 python -m src.eval \
-  --checkpoint results/iot_seed0/best_model.pt \
-  --experiment iot \
-  --output_file results/iot_seed0/eval_results.json
+  --checkpoint results/sensor_streaming_seed0/best_model.pt \
+  --experiment sensor_streaming \
+  --output_file results/sensor_streaming_seed0/eval_results.json
 
 # 4. Visualize
 python scripts/plot_results.py \
-  --results_dir results/iot_seed0 \
-  --output_dir results/iot_seed0/plots
+  --results_dir results/sensor_streaming_seed0 \
+  --output_dir results/sensor_streaming_seed0/plots
 ```
 
 ## Notes
 
 - **External datasets** (AudioSet, COCO, Flickr30K): Users must implement download scripts or use standard dataset repositories
-- **Synthetic data**: Use `generate_synthetic_iot.py` for quick validation without external dependencies
+- **Generated data**: Use `generate_sensor_streaming_data.py` for quick validation without external dependencies
 - **GPU memory**: Reduce `--batch_size` or `--d_model` if OOM errors occur
 - **Reproducibility**: All scripts accept `--seed` parameter for deterministic runs

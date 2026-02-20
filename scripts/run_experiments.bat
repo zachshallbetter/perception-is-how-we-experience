@@ -22,7 +22,7 @@ echo.
 REM Check Python
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Python not found. Install Python 3.8+ and add to PATH.
+    echo ERROR: Python not found. Install Python 3.10+ and add to PATH.
     pause
     exit /b 1
 )

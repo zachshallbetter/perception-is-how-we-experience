@@ -7,13 +7,16 @@ from typing import Dict, Tuple
 import torch
 
 from .errors import AppError, ErrorCode
+from .mime_cases import (
+    SENSOR_STREAMING_EXPERIMENT_ID,
+    get_sensor_streaming_modality_setup,
+)
 
 
 EXPERIMENT_DATASETS = {
     "continual": {"split_cifar", "permuted_mnist"},
-    "iot": {"iot"},
+    SENSOR_STREAMING_EXPERIMENT_ID: {"sensor_streaming"},
     "multimodal": {"audiovisual"},
-    "mime_routing": {"audiovisual"},
 }
 
 
@@ -80,16 +83,9 @@ def resolve_modality_setup(experiment: str) -> Tuple[Dict[str, Dict], int]:
     """Resolve modality config and class count for experiment."""
     if experiment == "continual":
         return {"vision": {"input_dim": 3, "use_conv": True}}, 5
-    if experiment == "iot":
-        return (
-            {
-                "smartwatch": {"input_dim": 7, "use_conv": False},
-                "room_env": {"input_dim": 4, "use_conv": False},
-                "robot_arm": {"input_dim": 9, "use_conv": False},
-            },
-            5,
-        )
-    if experiment in {"multimodal", "mime_routing"}:
+    if experiment == SENSOR_STREAMING_EXPERIMENT_ID:
+        return (get_sensor_streaming_modality_setup(), 5)
+    if experiment == "multimodal":
         return (
             {
                 "vision": {"input_dim": 3, "use_conv": True},

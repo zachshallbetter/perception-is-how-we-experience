@@ -20,7 +20,7 @@ def build_parser() -> ArgumentParser:
         "--experiment",
         type=str,
         default="continual",
-        choices=["multimodal", "continual", "mime_routing", "iot"],
+        choices=["multimodal", "continual", "sensor_streaming"],
     )
     parser.add_argument("--dataset", type=str, default="split_cifar")
     parser.add_argument("--batch_size", type=int, default=32)

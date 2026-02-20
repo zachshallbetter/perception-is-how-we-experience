@@ -10,9 +10,12 @@ from src.runtime import (
     AppError,
     ErrorCode,
     EvalRuntimeConfig,
+    SENSOR_STREAMING_CANONICAL_LABEL,
+    SENSOR_STREAMING_EXPERIMENT_ID,
     OrchestratorRuntimeConfig,
     TRAIN_CONFIG_SCHEMA_VERSION,
     TrainRuntimeConfig,
+    validate_sensor_streaming_mime_bindings,
     resolve_device,
     validate_environment,
     validate_experiment_dataset,
@@ -79,7 +82,7 @@ class RuntimeContractsTest(unittest.TestCase):
 
     def test_train_runtime_config_success(self):
         args = SimpleNamespace(
-            experiment="mime_routing",
+            experiment="multimodal",
             dataset="audiovisual",
             d_model=64,
             num_heads=4,
@@ -99,7 +102,7 @@ class RuntimeContractsTest(unittest.TestCase):
             output_dir="/tmp/train",
         )
         config = TrainRuntimeConfig.from_namespace(args)
-        self.assertEqual(config.experiment, "mime_routing")
+        self.assertEqual(config.experiment, "multimodal")
         self.assertEqual(config.dataset, "audiovisual")
         self.assertEqual(config.device.type, "cpu")
 
@@ -142,6 +145,19 @@ class RuntimeContractsTest(unittest.TestCase):
             with self.assertRaises(AppError) as context:
                 validate_environment(required_env=["MISSING_VAR"])
         self.assertEqual(context.exception.code, ErrorCode.ENV_VALIDATION_FAILED)
+
+    def test_sensor_streaming_identity_constants(self):
+        self.assertEqual(SENSOR_STREAMING_EXPERIMENT_ID, "sensor_streaming")
+        self.assertEqual(SENSOR_STREAMING_CANONICAL_LABEL, "sensor_streaming")
+
+    def test_validate_sensor_streaming_mime_bindings_rejects_wrong_type(self):
+        with self.assertRaises(AppError) as context:
+            validate_sensor_streaming_mime_bindings(
+                {
+                    "smartwatch": "application/octet-stream",
+                }
+            )
+        self.assertEqual(context.exception.code, ErrorCode.CONFIG_VALIDATION_FAILED)
 
 
 if __name__ == "__main__":

@@ -47,8 +47,8 @@ class Validator:
         """Verify Python version."""
         logger.info("\n[1/8] Checking Python...")
         version = f"{sys.version_info.major}.{sys.version_info.minor}"
-        if sys.version_info.major < 3 or sys.version_info.minor < 8:
-            self._log(f"Python {version} (need 3.8+)", 'error')
+        if sys.version_info.major < 3 or sys.version_info.minor < 10:
+            self._log(f"Python {version} (need 3.10+)", 'error')
             return False
         self._log(f"Python {version}")
         return True
@@ -87,25 +87,25 @@ class Validator:
         """Verify core dependencies."""
         logger.info("\n[3/8] Checking dependencies...")
         required = [
-            'numpy',
-            'torch',
-            'torchvision',
-            'torchaudio',
-            'timm',
-            'tensorboard',
-            'tqdm',
-            'pyyaml',
-            'omegaconf',
-            'scikit-learn',
+            ('numpy', 'numpy'),
+            ('torch', 'torch'),
+            ('torchvision', 'torchvision'),
+            ('torchaudio', 'torchaudio'),
+            ('timm', 'timm'),
+            ('tensorboard', 'tensorboard'),
+            ('tqdm', 'tqdm'),
+            ('pyyaml', 'yaml'),
+            ('omegaconf', 'omegaconf'),
+            ('scikit-learn', 'sklearn'),
         ]
 
         all_ok = True
-        for pkg in required:
+        for label, import_name in required:
             try:
-                __import__(pkg)
-                self._log(f"{pkg}")
+                __import__(import_name)
+                self._log(f"{label}")
             except ImportError:
-                self._log(f"{pkg} (missing)", 'error')
+                self._log(f"{label} (missing)", 'error')
                 all_ok = False
 
         return all_ok
@@ -195,8 +195,8 @@ class Validator:
             result = subprocess.run(
                 [
                     'python', '-m', 'src.train',
-                    '--experiment', 'iot',
-                    '--dataset', 'iot',
+                    '--experiment', 'sensor_streaming',
+                    '--dataset', 'sensor_streaming',
                     '--epochs', '1',
                     '--batch_size', '4',
                     '--device', 'cuda:0',

@@ -57,3 +57,4 @@ python scripts/validate_setup.py --verbose
 - Use module entrypoints (`python -m src.*`) as the canonical execution path.
 - Results are written under `results/` with per-run configs, metrics, checkpoints, and eval outputs.
 - Baseline workflows are documented in `docs/baselines.md` and scripts under `scripts/`.
+- Sensor-streaming MIME input cases are defined in `docs/sensor-streaming-mime-cases.md` and `src/runtime/mime_cases.py`.

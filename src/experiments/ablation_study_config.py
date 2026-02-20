@@ -20,7 +20,7 @@ class AblationConfig:
     """Single ablation configuration."""
 
     name: str  # Unique identifier
-    experiment: str  # Experiment type (continual, iot, multimodal)
+    experiment: str  # Experiment type (continual, sensor_streaming, multimodal)
     dataset: str  # Dataset name
     description: str  # Human-readable description
     hypothesis: str  # What we're testing
@@ -40,7 +40,7 @@ class AblationConfig:
 
     # Ablation-specific flags
     use_replay: bool = True
-    use_mime_routing: bool = True
+    use_modality_routing: bool = True
     replay_buffer_size: int = 2000
     contrastive_temp: float = 0.07
 
@@ -85,25 +85,25 @@ class AblationStudy:
     # ============================================================================
 
     ABLATION_2_WITH_MIME = AblationConfig(
-        name="ablation_2_with_mime_routing",
+        name="ablation_2_with_modality_routing",
         experiment="continual",
         dataset="split_cifar",
         description="SensoryPerceiver WITH MIME-Type routing (control)",
         hypothesis="MIME-Type routing outperforms generic latent bottleneck",
         epochs=50,
-        use_mime_routing=True,
+        use_modality_routing=True,
         expected_accuracy_range=(0.84, 0.86),
         expected_latency_ms=12.0,
     )
 
     ABLATION_2_WITHOUT_MIME = AblationConfig(
-        name="ablation_2_without_mime_routing",
+        name="ablation_2_without_modality_routing",
         experiment="continual",
         dataset="split_cifar",
         description="SensoryPerceiver with generic latent bottleneck (like Perceiver IO)",
         hypothesis="Generic bottleneck loses modality-specific information",
         epochs=50,
-        use_mime_routing=False,  # Flag to disable MIME routing in trainer
+        use_modality_routing=False,  # Flag to disable modality routing in trainer
         expected_accuracy_range=(0.80, 0.84),  # Expect lower accuracy
         expected_latency_ms=18.0,  # Expect slower (more computation needed)
     )
@@ -162,8 +162,8 @@ class AblationStudy:
 
     ABLATION_4_MULTIMODAL_NO_REPLAY = AblationConfig(
         name="ablation_4_multimodal_no_replay",
-        experiment="iot",
-        dataset="iot",
+        experiment="sensor_streaming",
+        dataset="sensor_streaming",
         description="Multimodal IoT WITHOUT replay mechanism",
         hypothesis="Replay helps even in single-pass scenarios",
         epochs=50,

@@ -54,12 +54,12 @@ class ExperimentOrchestrator:
 
     def _resolve_experiment_for_dataset(self, dataset: str) -> str:
         """Resolve canonical experiment id for a dataset."""
-        if dataset == "iot":
-            experiment = "iot"
+        if dataset == "sensor_streaming":
+            experiment = "sensor_streaming"
         elif dataset in {"split_cifar", "permuted_mnist"}:
             experiment = "continual"
         elif dataset == "audiovisual":
-            experiment = "mime_routing"
+            experiment = "multimodal"
         else:
             raise AppError(
                 ErrorCode.DATASET_MISMATCH,
@@ -83,7 +83,7 @@ class ExperimentOrchestrator:
     def queue_full_benchmark(self):
         """Queue full benchmark: 3 datasets × 3 seeds = 9 runs."""
         datasets = [
-            ("synthetic_iot", "iot", 50),
+            ("sensor_streaming", "sensor_streaming", 50),
             ("split_cifar", "split_cifar", 50),
             ("permuted_mnist", "permuted_mnist", 50),
         ]
@@ -98,8 +98,10 @@ class ExperimentOrchestrator:
                 logger.info(f"Queued {exp_name} on GPU {gpu_id}")
 
     def queue_quick_test(self):
-        """Queue quick test: 1 synthetic experiment."""
-        exp = ExperimentConfig("quick_test_iot", "iot", gpu_id=0, epochs=10)
+        """Queue quick test: 1 IoT experiment."""
+        exp = ExperimentConfig(
+            "quick_test_sensor_streaming", "sensor_streaming", gpu_id=0, epochs=10
+        )
         self.experiments.append(exp)
         logger.info("Queued quick test on GPU 0")
 

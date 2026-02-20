@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 
 import torch
 
-from src.runtime import AppError, EvalRuntimeConfig, format_error
+from src.runtime import AppError, EvalRuntimeConfig, format_error, validate_environment
 from src.services import run_evaluation
 
 logging.basicConfig(level=logging.INFO)
@@ -35,6 +35,7 @@ def build_parser() -> ArgumentParser:
 
 def main():
     """Validate runtime config and execute evaluation service."""
+    validate_environment()
     runtime_config = EvalRuntimeConfig.from_namespace(build_parser().parse_args())
     logger.info(f"Using device: {runtime_config.device}")
     logger.info(f"Loading checkpoint from {runtime_config.checkpoint}")

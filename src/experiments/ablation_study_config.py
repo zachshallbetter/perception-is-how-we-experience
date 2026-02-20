@@ -5,9 +5,9 @@ Defines all variant configurations needed to validate each component
 of SensoryPerceiver and compare against baselines.
 
 Usage:
-    python train.py --config ablation_study_config.py --ablation replay_off
-    python train.py --config ablation_study_config.py --ablation mime_off
-    python train.py --config ablation_study_config.py --ablation efficiency_small
+    python -m src.train --experiment continual --dataset split_cifar --output_dir results/ablation_replay_off
+    python -m src.train --experiment continual --dataset split_cifar --output_dir results/ablation_mime_off
+    python -m src.train --experiment continual --dataset split_cifar --output_dir results/ablation_efficiency_small
 """
 
 from dataclasses import dataclass, asdict

@@ -54,7 +54,7 @@ if not exist results mkdir results
 
 REM Run orchestrator
 echo Starting experiment orchestrator...
-python experiment_orchestrator.py --mode %MODE% %PARALLEL% %PUSH_GITHUB%
+python -m src.experiments.experiment_orchestrator --mode %MODE% %PARALLEL% %PUSH_GITHUB%
 
 if errorlevel 1 (
     echo.

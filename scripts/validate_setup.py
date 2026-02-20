@@ -153,11 +153,11 @@ class Validator:
         """Verify critical files exist."""
         logger.info("\n[6/8] Checking critical files...")
         required_files = [
-            'train.py',
-            'eval.py',
-            'models.py',
-            'data_loader.py',
-            'experiment_orchestrator.py',
+            'src/train.py',
+            'src/eval.py',
+            'src/models/core.py',
+            'src/data/loaders.py',
+            'src/experiments/experiment_orchestrator.py',
             'requirements.txt',
         ]
 
@@ -194,7 +194,7 @@ class Validator:
         try:
             result = subprocess.run(
                 [
-                    'python', 'train.py',
+                    'python', '-m', 'src.train',
                     '--experiment', 'iot',
                     '--dataset', 'iot',
                     '--epochs', '1',

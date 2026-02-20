@@ -23,6 +23,11 @@ def plot_training_curves(
         title: Plot title
         savepath: Path to save figure
     """
+    if len(train_losses) == 0 or len(val_accs) == 0:
+        raise ValueError("train_losses and val_accs must both be non-empty")
+    if len(train_losses) != len(val_accs):
+        raise ValueError("train_losses and val_accs must have the same length")
+
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
     
     epochs = np.arange(len(train_losses))
@@ -88,6 +93,9 @@ def plot_modality_importance(
         title: Plot title
         savepath: Path to save figure
     """
+    if not importance_scores:
+        raise ValueError("importance_scores must not be empty")
+
     fig, ax = plt.subplots(figsize=(10, 6))
     
     modalities = list(importance_scores.keys())

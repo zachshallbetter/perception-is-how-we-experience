@@ -96,6 +96,15 @@ def compute_continual_learning_metrics(
     Returns:
         Dictionary with keys: 'cil', 'bwt', 'fwt', 'final_accuracy'
     """
+    if not all_task_accuracies:
+        return {
+            'cil': 0.0,
+            'bwt': 0.0,
+            'fwt': 0.0,
+            'final_accuracy': 0.0,
+            'num_tasks': 0,
+        }
+
     num_tasks = len(all_task_accuracies)
     
     # Final task accuracy (Class-Incremental Learning metric)
@@ -109,5 +118,6 @@ def compute_continual_learning_metrics(
         'cil': float(cil),
         'bwt': float(bwt),
         'fwt': float(fwt),
+        'final_accuracy': float(cil),
         'num_tasks': num_tasks,
     }

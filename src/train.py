@@ -74,8 +74,35 @@ class Trainer:
         self.best_val_acc = 0.0
         self.train_history = {"loss": [], "acc": [], "val_loss": [], "val_acc": []}
 
+    def _sync_optimizer_params(self):
+        """Ensure optimizer includes newly added trainable parameters."""
+        known_param_ids = {
+            id(param)
+            for group in self.optimizer.param_groups
+            for param in group["params"]
+        }
+        new_params = [
+            param
+            for param in self.model.parameters()
+            if param.requires_grad and id(param) not in known_param_ids
+        ]
+        if self.classifier is not None:
+            new_params.extend(
+                [
+                    param
+                    for param in self.classifier.parameters()
+                    if param.requires_grad and id(param) not in known_param_ids
+                ]
+            )
+        if new_params:
+            self.optimizer.add_param_group({"params": new_params})
+            logger.info(
+                f"Added {len(new_params)} newly trainable parameters to optimizer"
+            )
+
     def train_epoch(self, epoch: int) -> Tuple[float, float]:
         """Train for one epoch."""
+        self._sync_optimizer_params()
         self.model.train()
         total_loss = 0.0
         total_correct = 0
@@ -143,11 +170,13 @@ class Trainer:
                         rp_outputs, _ = self.model(replay_samples, update_buffer=False)
                         rp_features = rp_outputs.mean(dim=1)
 
-                    pooled_emb = torch.stack(
-                        [emb.mean(dim=0) for emb in embeddings.values()]
-                    )
-                    replay_loss = self.replay_criterion(pooled_emb, rp_features)
-                    loss = loss + 0.1 * replay_loss
+                    current_features = pooled
+                    n_pairs = min(current_features.size(0), rp_features.size(0))
+                    if n_pairs > 0:
+                        replay_loss = self.replay_criterion(
+                            current_features[:n_pairs], rp_features[:n_pairs]
+                        )
+                        loss = loss + 0.1 * replay_loss
 
             # Backward pass
             loss.backward()
@@ -240,6 +269,9 @@ class Trainer:
         torch.save(
             {
                 "model_state_dict": self.model.state_dict(),
+                "classifier_state_dict": (
+                    self.classifier.state_dict() if self.classifier is not None else None
+                ),
                 "optimizer_state_dict": self.optimizer.state_dict(),
                 "config": self.config,
             },

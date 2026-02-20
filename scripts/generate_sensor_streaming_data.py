@@ -1,5 +1,5 @@
 """
-Generate synthetic IoT sensor streams for validation.
+Generate IoT sensor streams for validation.
 
 Simulates:
 - Smartwatch: HR, accelerometer (3-axis), skin conductance
@@ -23,7 +23,7 @@ def generate_smartwatch_data(
     sequence_length: int,
     seed: int = 42,
 ) -> np.ndarray:
-    """Generate synthetic smartwatch data (HR, acc, GSR)."""
+    """Generate smartwatch data (HR, acc, GSR)."""
     np.random.seed(seed)
 
     data = np.zeros((n_sequences, sequence_length, 7))
@@ -55,7 +55,7 @@ def generate_environmental_data(
     sequence_length: int,
     seed: int = 42,
 ) -> np.ndarray:
-    """Generate synthetic room environmental data."""
+    """Generate room environmental data."""
     np.random.seed(seed)
 
     data = np.zeros((n_sequences, sequence_length, 4))
@@ -89,7 +89,7 @@ def generate_robot_arm_data(
     sequence_length: int,
     seed: int = 42,
 ) -> np.ndarray:
-    """Generate synthetic robot arm kinematics data."""
+    """Generate robot arm kinematics data."""
     np.random.seed(seed)
 
     data = np.zeros((n_sequences, sequence_length, 9))
@@ -115,7 +115,7 @@ def main():
                         help='Number of sequences to generate')
     parser.add_argument('--sequence_length', type=int, default=500,
                         help='Length of each sequence')
-    parser.add_argument('--output_dir', type=str, default='data/iot-streams',
+    parser.add_argument('--output_dir', type=str, default='data/sensor-streaming',
                         help='Output directory')
     parser.add_argument('--seed', type=int, default=42)
 
@@ -124,7 +124,7 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Generating synthetic IoT data to {output_dir}")
+    logger.info(f"Generating IoT data to {output_dir}")
 
     # Generate each modality
     logger.info("Generating smartwatch data...")

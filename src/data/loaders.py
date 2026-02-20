@@ -137,7 +137,7 @@ class AudioVisualProxyDataset(Dataset):
         self.n_sequences = n_sequences
         self.n_classes = n_classes
 
-        # Pre-generate synthetic data to save time during dataloading
+        # Pre-generate proxy data to save time during dataloading
         self.vision_data = torch.randn(n_sequences, *vision_shape)
         self.audio_data = torch.randn(n_sequences, *audio_shape)
 
@@ -154,8 +154,8 @@ class AudioVisualProxyDataset(Dataset):
         }
 
 
-class SyntheticIOTStream(Dataset):
-    """Synthetic IoT sensor stream for real-world validation.
+class SensorStreamingDataset(Dataset):
+    """IoT sensor stream dataset for benchmark validation.
 
     Modalities:
     - smartwatch: heart rate, accelerometer (3-axis), skin conductance
@@ -178,7 +178,7 @@ class SyntheticIOTStream(Dataset):
         self.sequence_length = sequence_length
         self.n_classes = n_classes
 
-        # Generate synthetic data
+        # Generate benchmark input data
         self.data = {
             "smartwatch": torch.randn(
                 n_sequences, sequence_length, 7
@@ -227,7 +227,7 @@ def create_dataloaders(
     """Factory function to create train/val dataloaders.
 
     Args:
-        experiment: 'multimodal', 'continual', 'mime_routing', 'iot'
+        experiment: 'multimodal', 'continual', 'sensor_streaming'
         dataset_name: 'coco', 'audioset', 'av_mnist', 'split_cifar', etc.
         batch_size: Batch size
         num_workers: Data loading workers
@@ -252,21 +252,21 @@ def create_dataloaders(
         else:
             raise ValueError(f"Unknown continual dataset: {dataset_name}")
 
-    elif experiment == "iot":
-        train_ds = SyntheticIOTStream(
+    elif experiment == "sensor_streaming":
+        train_ds = SensorStreamingDataset(
             n_sequences=800,
             sequence_length=500,
             n_classes=5,
             seed=seed,
         )
-        val_ds = SyntheticIOTStream(
+        val_ds = SensorStreamingDataset(
             n_sequences=200,
             sequence_length=500,
             n_classes=5,
             seed=seed + 1,
         )
 
-    elif experiment in {"multimodal", "mime_routing"}:
+    elif experiment == "multimodal":
         if dataset_name == "audiovisual":
             train_ds = AudioVisualProxyDataset(
                 n_sequences=1000, n_classes=10, seed=seed

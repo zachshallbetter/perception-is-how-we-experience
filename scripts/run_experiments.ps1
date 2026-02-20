@@ -32,7 +32,7 @@ try {
     $pythonVersion = & python --version 2>&1
     Write-Host "✓ Python found: $pythonVersion" -ForegroundColor Green
 } catch {
-    Write-Host "✗ Python not found. Install Python 3.8+ and add to PATH." -ForegroundColor Red
+    Write-Host "✗ Python not found. Install Python 3.10+ and add to PATH." -ForegroundColor Red
     exit 1
 }
 

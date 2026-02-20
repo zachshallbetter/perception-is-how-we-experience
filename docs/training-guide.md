@@ -23,9 +23,10 @@ It outputs Task-Incremental metrics, measuring absolute Catastrophic Forgetting,
 Used for generic, single-task multimodal learning across vision, IoT streaming, or medical benchmarks.
 ```bash
 python -m src.train --experiment multimodal --dataset audiovisual --d_model 768 --output_dir results/multimodal
-# MIME routing mode is supported as an alias of multimodal data loading:
-python -m src.train --experiment mime_routing --dataset audiovisual --d_model 768 --output_dir results/mime_routing
 ```
+
+For sensor-streaming runs, use experiment ID `sensor_streaming`.  
+Canonical modality MIME cases are documented in `docs/sensor-streaming-mime-cases.md`.
 
 ### C. Baselines (`train_perceiver_io.py`)
 Used to run identical benchmarks using the Perceiver IO architecture to establish baseline accuracy and computing efficiency.

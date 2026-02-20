@@ -1,6 +1,8 @@
 .DS_Store
 __pycache__
 .env
-results
-reference
-archive
+/results
+/reference
+/archive
+CLAUDE.md
+.local 

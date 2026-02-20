@@ -1,5 +1,5 @@
 """Compatibility wrapper for experiment orchestrator symbols."""
 
-from .experiment_orchestrator import ExperimentConfig, ExperimentOrchestrator
+from src.services.orchestration_service import ExperimentConfig, ExperimentOrchestrator
 
 __all__ = ["ExperimentConfig", "ExperimentOrchestrator"]

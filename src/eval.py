@@ -16,12 +16,12 @@ import numpy as np
 from pathlib import Path
 from argparse import ArgumentParser
 import json
-import csv
 import logging
 from typing import Dict, Tuple, Optional
 
 from src.models import SensoryPerceiver
 from src.data.loaders import create_dataloaders
+from src.runtime import AppError, EvalRuntimeConfig, ErrorCode, format_error
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -176,7 +176,14 @@ class Evaluator:
 
 def load_checkpoint(checkpoint_path: str, device: torch.device):
     """Load model from checkpoint."""
-    checkpoint = torch.load(checkpoint_path, map_location=device)
+    try:
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+    except Exception as exc:
+        raise AppError(
+            ErrorCode.CHECKPOINT_LOAD_FAILED,
+            f"Failed to load checkpoint: {checkpoint_path}",
+            context={"checkpoint": checkpoint_path},
+        ) from exc
 
     # Reconstruct config
     config = checkpoint['config']
@@ -193,12 +200,26 @@ def load_checkpoint(checkpoint_path: str, device: torch.device):
         contrastive_temp=config['contrastive_temp'],
     )
 
-    model.load_state_dict(checkpoint['model_state_dict'])
+    try:
+        model.load_state_dict(checkpoint['model_state_dict'])
+    except Exception as exc:
+        raise AppError(
+            ErrorCode.CHECKPOINT_LOAD_FAILED,
+            "Model state dict does not match checkpoint metadata",
+            context={"checkpoint": checkpoint_path},
+        ) from exc
     classifier = None
     classifier_state_dict = checkpoint.get("classifier_state_dict")
     if classifier_state_dict is not None:
         classifier = nn.Linear(config['d_model'], config['n_classes'])
-        classifier.load_state_dict(classifier_state_dict)
+        try:
+            classifier.load_state_dict(classifier_state_dict)
+        except Exception as exc:
+            raise AppError(
+                ErrorCode.CHECKPOINT_LOAD_FAILED,
+                "Classifier state dict does not match checkpoint metadata",
+                context={"checkpoint": checkpoint_path},
+            ) from exc
 
     return model, classifier, config
 
@@ -217,30 +238,31 @@ def main():
     parser.add_argument('--seed', type=int, default=42)
 
     args = parser.parse_args()
+    runtime_config = EvalRuntimeConfig.from_namespace(args)
 
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
+    torch.manual_seed(runtime_config.seed)
+    np.random.seed(runtime_config.seed)
 
-    device = torch.device(args.device)
+    device = runtime_config.device
     logger.info(f"Using device: {device}")
 
     # Load model
-    logger.info(f"Loading checkpoint from {args.checkpoint}")
-    model, classifier, config = load_checkpoint(args.checkpoint, device)
+    logger.info(f"Loading checkpoint from {runtime_config.checkpoint}")
+    model, classifier, config = load_checkpoint(str(runtime_config.checkpoint), device)
 
     # Create dataloader
     _, val_loader = create_dataloaders(
-        experiment=args.experiment,
-        dataset_name=args.dataset,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        seed=args.seed,
+        experiment=runtime_config.experiment,
+        dataset_name=runtime_config.dataset,
+        batch_size=runtime_config.batch_size,
+        num_workers=runtime_config.num_workers,
+        seed=runtime_config.seed,
     )
 
     n_classes = config['n_classes']
 
     # Evaluate
-    output_dir = Path(args.output_file).parent
+    output_dir = runtime_config.output_file.parent
     evaluator = Evaluator(
         model=model,
         classifier=classifier,
@@ -255,4 +277,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except AppError as error:
+        logger.error(format_error(error))
+        raise SystemExit(2)

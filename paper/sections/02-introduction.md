@@ -14,27 +14,29 @@ Beyond the challenge of multimodal integration, real-world AI systems must handl
 
 Human perception, by contrast, exhibits remarkable resistance to catastrophic forgetting. The hippocampus and associated memory consolidation mechanisms enable humans to integrate new sensory experiences while preserving prior knowledge. In particular, hippocampal **replay** during sleep—where previously learned patterns are reactivated and strengthened—is thought to be crucial for preventing forgetting and consolidating memories.
 
-The Sensory Perceiver addresses catastrophic forgetting through two complementary mechanisms:
+The Sensory Perceiver addresses catastrophic forgetting through replay-centric mechanisms in the current runtime:
 
-1. **Experience Replay with NT-Xent Contrastive Loss**: We employ a memory buffer that stores embeddings from previous tasks and replays them during training on new tasks. The replay loss is computed using **NT-Xent (Normalized Temperature-scaled Cross Entropy)**, which aligns current embeddings with replayed embeddings, providing a soft constraint that prevents the shared feature space from drifting away from prior task representations.
+1. **Experience Replay with Reservoir Sampling**: We employ a bounded replay buffer with reservoir updates, so early and late task samples remain represented over long training horizons.
 
-2. **Parameter Isolation via Task Adapters**: We combine replay with a structural approach to forgetting prevention: task-specific adapters that are frozen after each task is learned. This parameter isolation strategy restricts which weights can be updated for new tasks, preserving task-critical weights through explicit freezing rather than implicit regularization.
+2. **Replay Mode Variants**: The training pipeline supports (a) standard replay with cross-entropy on replayed samples and (b) contrastive replay based on NT-Xent-style feature alignment.
 
-These mechanisms reflect a principle observed in neuroscience: effective memory consolidation requires both **soft constraints** (via replay, analogous to memory reactivation) and **structural organization** (via parameter isolation, analogous to synaptic consolidation where critical synaptic weights are stabilized).
+Task-adapter parameter-isolation APIs are implemented in the model and tested in isolated benchmarks, but end-to-end activation in the default service loop is treated as next-phase work.
 
 ## Contributions and Scope
 
-Our contributions in this paper are threefold:
+Our contributions in this paper are fourfold:
 
-1. **Architectural Innovation**: We introduce the Sensory Perceiver, which uses **MIME-Type content-type metadata** as a first-class routing primitive for multimodal perception. This is the first architecture to leverage content-type semantics for input encoding and modality-specific processing.
+1. **Architectural Innovation**: We introduce a modular PerceiverTower + cross-modal attention design with explicit modality identity and MIME-style routing semantics.
 
-2. **Continual Learning Analysis**: We empirically characterize the limits of replay-only approaches (NT-Xent without parameter isolation) on Split-CIFAR-100, showing that insufficient replay weight leads to near-total catastrophic forgetting (BWT −53.6%), and that increasing replay weight alone is insufficient (tuned: CIL 5.16%, BWT −57.6%). We demonstrate that architectural support through parameter isolation is necessary for effective continual learning.
+2. **Replay Mechanism Analysis**: We empirically characterize feature-only replay failure versus raw-input replay with reservoir sampling on Split-CIFAR-100 (Phase 1 → Phase 2).
 
-3. **Biologically-Inspired Framework**: We ground the Sensory Perceiver in principles of human perception and memory consolidation, proposing a new paradigm for AI that combines replay-based and parameter isolation-based approaches to prevent catastrophic forgetting across heterogeneous sensory streams.
+3. **Modern Runtime Implementation**: We provide typed runtime contracts, structured errors, service-layer orchestration, and observability instrumentation suitable for reproducible experimentation.
 
-The remainder of this paper is organized as follows: §3 provides Related Work on Perceiver architectures, continual learning baselines, and parameter isolation methods. §4 details the Sensory Perceiver architecture, including MIME-Type encoding, PerceiverTower design, cross-modal attention, and the combined replay+parameter isolation mechanism. §5 describes the experimental setup on Split-CIFAR-100. §6 presents empirical results for baseline and tuned configurations, with analysis of why replay alone is insufficient. §7 discusses implications for continual learning and parameter isolation. §8 concludes with future work and applications.
+4. **Canonical Sensor-Streaming MIME Registry**: We formalize sensor-streaming input cases (modality, MIME type, feature dimensionality) as a single runtime source of truth.
 
-**Scope Note**: We acknowledge that the name "Perceiver" was independently used by Jaegle et al. (2021) for a different architecture. While both architectures share the goal of general-purpose, multimodal perception, our proposed Sensory Perceiver differs significantly in motivation (continual learning + biological inspiration), design (MIME-Type encoding + task adapters), and scope (8+ modalities + parameter isolation). A detailed comparison is provided in §3 (Related Work).
+The remainder of this paper is organized as follows: §3 provides related work. §4 details architecture and implementation-aligned methods. §5 describes experimental setup and implementation status. §6 presents phase-based empirical results. §7 discusses implications, gaps, and next-stage roadmap. §8 concludes.
+
+**Scope Note**: We acknowledge that the name "Perceiver" was independently used by Jaegle et al. (2021) for a different architecture. While both architectures share the goal of general-purpose multimodal perception, our current implementation focuses on continual-learning behavior, MIME-style modality semantics, and service-oriented runtime architecture. A detailed comparison is provided in §3 (Related Work).
 
 ---
 

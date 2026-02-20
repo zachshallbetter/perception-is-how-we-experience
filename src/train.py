@@ -15,18 +15,20 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
-import json
 import yaml
 from argparse import ArgumentParser
 from typing import Dict, Tuple, Optional
 import logging
 
-from src.models import SensoryPerceiver, ContrastiveLoss, PerceiverTower
+from src.models import SensoryPerceiver, ContrastiveLoss
 from src.data.loaders import (
     create_dataloaders,
-    SplitCIFAR100,
-    PermutedMNIST,
-    SyntheticIOTStream,
+)
+from src.runtime import (
+    AppError,
+    TrainRuntimeConfig,
+    format_error,
+    resolve_modality_setup,
 )
 
 
@@ -341,73 +343,76 @@ def main():
     parser.add_argument("--output_dir", type=str, default="results/exp")
 
     args = parser.parse_args()
+    runtime_config = TrainRuntimeConfig.from_namespace(args)
 
     # Set seed
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
+    torch.manual_seed(runtime_config.seed)
+    np.random.seed(runtime_config.seed)
 
-    device = torch.device(args.device)
+    device = runtime_config.device
     logger.info(f"Using device: {device}")
 
     # Create dataloaders
     train_loader, val_loader = create_dataloaders(
-        experiment=args.experiment,
-        dataset_name=args.dataset,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        seed=args.seed,
+        experiment=runtime_config.experiment,
+        dataset_name=runtime_config.dataset,
+        batch_size=runtime_config.batch_size,
+        num_workers=runtime_config.num_workers,
+        seed=runtime_config.seed,
     )
 
-    # Determine modality configs
-    if args.experiment == "continual":
-        modality_configs = {"vision": {"input_dim": 3, "use_conv": True}}
-        n_classes = 5
-    elif args.experiment == "iot":
-        modality_configs = {
-            "smartwatch": {"input_dim": 7, "use_conv": False},
-            "room_env": {"input_dim": 4, "use_conv": False},
-            "robot_arm": {"input_dim": 9, "use_conv": False},
-        }
-        n_classes = 5
-    else:
-        # Default multimodal
-        modality_configs = {
-            "vision": {"input_dim": 3, "use_conv": True},
-            "audio": {"input_dim": 128, "use_conv": False},
-        }
-        n_classes = 10
+    modality_configs, n_classes = resolve_modality_setup(runtime_config.experiment)
 
     # Create model
     model = SensoryPerceiver(
         modality_configs=modality_configs,
-        dim=args.d_model,
-        num_heads=args.num_heads,
-        mlp_dim=args.mlp_dim,
-        depth=args.depth,
-        dropout=args.dropout,
-        replay_buffer_size=args.replay_buffer_size,
-        contrastive_temp=args.contrastive_temp,
+        dim=runtime_config.d_model,
+        num_heads=runtime_config.num_heads,
+        mlp_dim=runtime_config.mlp_dim,
+        depth=runtime_config.depth,
+        dropout=runtime_config.dropout,
+        replay_buffer_size=runtime_config.replay_buffer_size,
+        contrastive_temp=runtime_config.contrastive_temp,
     )
 
     # Loss functions and classifier
-    classifier = nn.Linear(args.d_model, n_classes).to(device)
+    classifier = nn.Linear(runtime_config.d_model, n_classes).to(device)
     criterion = nn.CrossEntropyLoss()
-    replay_criterion = ContrastiveLoss(temperature=args.contrastive_temp)
+    replay_criterion = ContrastiveLoss(temperature=runtime_config.contrastive_temp)
 
     # Optimizer and scheduler (include classifier params)
     optimizer = optim.AdamW(
         list(model.parameters()) + list(classifier.parameters()),
-        lr=args.learning_rate,
+        lr=runtime_config.learning_rate,
         weight_decay=0.01,
     )
-    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
+    scheduler = CosineAnnealingLR(optimizer, T_max=runtime_config.epochs)
 
     # Save config
-    config = vars(args)
+    config = {
+        "experiment": runtime_config.experiment,
+        "dataset": runtime_config.dataset,
+        "d_model": runtime_config.d_model,
+        "num_heads": runtime_config.num_heads,
+        "depth": runtime_config.depth,
+        "mlp_dim": runtime_config.mlp_dim,
+        "dropout": runtime_config.dropout,
+        "replay_buffer_size": runtime_config.replay_buffer_size,
+        "contrastive_temp": runtime_config.contrastive_temp,
+        "replay_mode": runtime_config.replay_mode,
+        "batch_size": runtime_config.batch_size,
+        "epochs": runtime_config.epochs,
+        "learning_rate": runtime_config.learning_rate,
+        "warmup_steps": runtime_config.warmup_steps,
+        "num_workers": runtime_config.num_workers,
+        "seed": runtime_config.seed,
+        "device": str(runtime_config.device),
+        "output_dir": str(runtime_config.output_dir),
+    }
     config["modality_configs"] = modality_configs
     config["n_classes"] = n_classes
 
-    output_dir = Path(args.output_dir)
+    output_dir = runtime_config.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
     with open(output_dir / "config.yaml", "w") as f:
@@ -420,7 +425,7 @@ def main():
         train_loader=train_loader,
         val_loader=val_loader,
         criterion=criterion,
-        replay_mode=args.replay_mode,
+        replay_mode=runtime_config.replay_mode,
         replay_criterion=replay_criterion,
         optimizer=optimizer,
         scheduler=scheduler,
@@ -429,9 +434,13 @@ def main():
         config=config,
     )
 
-    trainer.fit(args.epochs)
+    trainer.fit(runtime_config.epochs)
     logger.info(f"Training complete. Results saved to {output_dir}")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except AppError as error:
+        logger.error(format_error(error))
+        raise SystemExit(2)

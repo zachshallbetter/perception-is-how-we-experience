@@ -30,6 +30,14 @@ import sys
 import os
 import threading
 
+from src.runtime import (
+    AppError,
+    ErrorCode,
+    OrchestratorRuntimeConfig,
+    format_error,
+    validate_experiment_dataset,
+)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - [%(levelname)s] - %(message)s',
@@ -69,8 +77,27 @@ class ExperimentOrchestrator:
         self.results_file = Path('results/experiment_log.json')
         self._results_lock = threading.Lock()
 
+    def _resolve_experiment_for_dataset(self, dataset: str) -> str:
+        """Resolve canonical experiment id for a dataset."""
+        if dataset == "iot":
+            experiment = "iot"
+        elif dataset in {"split_cifar", "permuted_mnist"}:
+            experiment = "continual"
+        elif dataset == "audiovisual":
+            experiment = "mime_routing"
+        else:
+            raise AppError(
+                ErrorCode.DATASET_MISMATCH,
+                f"Unsupported dataset for orchestrator: {dataset}",
+                context={"dataset": dataset},
+            )
+
+        validate_experiment_dataset(experiment, dataset)
+        return experiment
+
     def add_experiment(self, name: str, dataset: str, gpu_id: Optional[int] = None, epochs: int = 50):
         """Add experiment to queue."""
+        self._resolve_experiment_for_dataset(dataset)
         if gpu_id is None:
             gpu_id = len(self.experiments) % self.n_gpus
         exp = ExperimentConfig(name, dataset, gpu_id, epochs)
@@ -104,10 +131,11 @@ class ExperimentOrchestrator:
         """Execute a single experiment."""
         exp.status = 'running'
         exp.start_time = datetime.now()
+        experiment_name = self._resolve_experiment_for_dataset(exp.dataset)
 
         cmd = [
             'python', '-m', 'src.train',
-            '--experiment', 'iot' if exp.dataset == 'iot' else 'continual',
+            '--experiment', experiment_name,
             '--dataset', exp.dataset,
             '--epochs', str(exp.epochs),
             '--batch_size', '32',
@@ -164,11 +192,12 @@ class ExperimentOrchestrator:
         if not checkpoint.exists():
             logger.warning(f"Checkpoint not found: {checkpoint}")
             return {}
+        experiment_name = self._resolve_experiment_for_dataset(exp.dataset)
 
         cmd = [
             'python', '-m', 'src.eval',
             '--checkpoint', str(checkpoint),
-            '--experiment', 'iot' if exp.dataset == 'iot' else 'continual',
+            '--experiment', experiment_name,
             '--dataset', exp.dataset,
             '--device', f'cuda:{exp.gpu_id}',
             '--output_file', str(exp.output_dir / 'eval_results.json'),
@@ -445,19 +474,23 @@ def main():
                         help='Auto-commit results to GitHub')
 
     args = parser.parse_args()
+    runtime_config = OrchestratorRuntimeConfig.from_namespace(args)
 
     logger.info(f"Sensory Perceiver Experiment Orchestrator")
-    logger.info(f"Mode: {args.mode} | GPUs: {args.n_gpus} | Parallel: {args.parallel}")
+    logger.info(
+        f"Mode: {runtime_config.mode} | GPUs: {runtime_config.n_gpus} | "
+        f"Parallel: {runtime_config.parallel}"
+    )
 
     # Create orchestrator
-    orchestrator = ExperimentOrchestrator(n_gpus=args.n_gpus)
+    orchestrator = ExperimentOrchestrator(n_gpus=runtime_config.n_gpus)
 
     # Queue experiments based on mode
-    if args.mode == 'full':
+    if runtime_config.mode == 'full':
         orchestrator.queue_full_benchmark()
-    elif args.mode == 'quick':
+    elif runtime_config.mode == 'quick':
         orchestrator.queue_quick_test()
-    elif args.mode == 'monitor':
+    elif runtime_config.mode == 'monitor':
         orchestrator.generate_dashboard()
         return
 
@@ -467,13 +500,17 @@ def main():
 
     # Run experiments
     logger.info(f"Running {len(orchestrator.experiments)} experiments...")
-    orchestrator.run_all(parallel=args.parallel)
+    orchestrator.run_all(parallel=runtime_config.parallel)
 
     # Push to GitHub if requested
-    if args.push_to_github:
+    if runtime_config.push_to_github:
         logger.info("Pushing results to GitHub...")
         subprocess.run(['python', 'scripts/push_results.py'], check=False)
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except AppError as error:
+        logger.error(format_error(error))
+        raise SystemExit(2)

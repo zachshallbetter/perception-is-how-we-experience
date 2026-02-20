@@ -20,7 +20,7 @@ from typing import Dict, Tuple, List, Optional
 class MultimodalDataset(Dataset):
     """Base class for multimodal datasets."""
 
-    def __init__(self, modalities: List[str], split: str = 'train'):
+    def __init__(self, modalities: List[str], split: str = "train"):
         self.modalities = modalities
         self.split = split
         self.data = {}
@@ -41,16 +41,16 @@ class SplitCIFAR100(MultimodalDataset):
     Each task: 5 classes (100 classes / 20 tasks = 5 classes per task)
     """
 
-    def __init__(self, n_tasks: int = 20, task_id: int = 0, split: str = 'train'):
-        super().__init__(['vision'], split=split)
+    def __init__(self, n_tasks: int = 20, task_id: int = 0, split: str = "train"):
+        super().__init__(["vision"], split=split)
         self.n_tasks = n_tasks
         self.task_id = task_id
         self.classes_per_task = 100 // n_tasks
 
         # Load CIFAR-100
         cifar = CIFAR100(
-            root='/tmp/cifar100',
-            train=(split == 'train'),
+            root="/tmp/cifar100",
+            train=(split == "train"),
             download=True,
             transform=transforms.ToTensor(),
         )
@@ -59,35 +59,35 @@ class SplitCIFAR100(MultimodalDataset):
         start_class = task_id * self.classes_per_task
         end_class = start_class + self.classes_per_task
 
-        self.data['vision'] = []
+        self.data["vision"] = []
         self.labels = []
         for img, label in cifar:
             if start_class <= label < end_class:
                 # Normalize to [0, 1]
-                self.data['vision'].append(img)
+                self.data["vision"].append(img)
                 self.labels.append(label - start_class)
 
-        self.data['vision'] = torch.stack(self.data['vision'])
+        self.data["vision"] = torch.stack(self.data["vision"])
         self.labels = torch.tensor(self.labels)
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         sample = super().__getitem__(idx)
-        sample['label'] = self.labels[idx]
+        sample["label"] = self.labels[idx]
         return sample
 
 
 class PermutedMNIST(MultimodalDataset):
     """Continual learning: MNIST with random pixel permutations per task."""
 
-    def __init__(self, n_tasks: int = 20, task_id: int = 0, split: str = 'train'):
-        super().__init__(['vision'], split=split)
+    def __init__(self, n_tasks: int = 20, task_id: int = 0, split: str = "train"):
+        super().__init__(["vision"], split=split)
         self.n_tasks = n_tasks
         self.task_id = task_id
 
         # Load MNIST
         mnist = MNIST(
-            root='/tmp/mnist',
-            train=(split == 'train'),
+            root="/tmp/mnist",
+            train=(split == "train"),
             download=True,
             transform=transforms.ToTensor(),
         )
@@ -96,23 +96,61 @@ class PermutedMNIST(MultimodalDataset):
         self.perm = torch.randperm(28 * 28)
 
         # Apply permutation
-        self.data['vision'] = []
+        self.data["vision"] = []
         self.labels = []
         for img, label in mnist:
             # Flatten, permute, reshape
             flat = img.view(-1)
             perm_flat = flat[self.perm]
             perm_img = perm_flat.view(1, 28, 28)
-            self.data['vision'].append(perm_img)
+            self.data["vision"].append(perm_img)
             self.labels.append(label)
 
-        self.data['vision'] = torch.cat(self.data['vision'])
+        self.data["vision"] = torch.cat(self.data["vision"])
         self.labels = torch.tensor(self.labels)
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        sample = super().__getitem__(idx)
-        sample['label'] = self.labels[idx]
+        sample["label"] = self.labels[idx]
         return sample
+
+
+class AudioVisualProxyDataset(Dataset):
+    """Proxy for AudioSet / Ego4D multimodal benchmarking.
+
+    Generates paired vision (image frames) and audio (spectrograms)
+    to test the routing capabilities of multimodal models.
+    """
+
+    def __init__(
+        self,
+        n_sequences: int = 1000,
+        n_classes: int = 10,
+        vision_shape: Tuple[int, ...] = (3, 224, 224),
+        audio_shape: Tuple[int, ...] = (1, 128, 128),  # mel spectogram
+        seed: int = 42,
+    ):
+        super().__init__()
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+
+        self.n_sequences = n_sequences
+        self.n_classes = n_classes
+
+        # Pre-generate synthetic data to save time during dataloading
+        self.vision_data = torch.randn(n_sequences, *vision_shape)
+        self.audio_data = torch.randn(n_sequences, *audio_shape)
+
+        self.labels = torch.randint(0, n_classes, (n_sequences,))
+
+    def __len__(self):
+        return self.n_sequences
+
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        return {
+            "vision": self.vision_data[idx],
+            "audio": self.audio_data[idx],
+            "label": self.labels[idx],
+        }
 
 
 class SyntheticIOTStream(Dataset):
@@ -141,15 +179,27 @@ class SyntheticIOTStream(Dataset):
 
         # Generate synthetic data
         self.data = {
-            'smartwatch': torch.randn(n_sequences, sequence_length, 7),  # HR + acc(3) + GSR(1) + dummy(2)
-            'room_env': torch.randn(n_sequences, sequence_length, 4),    # temp, humidity, CO2, light
-            'robot_arm': torch.randn(n_sequences, sequence_length, 9),   # 6 joints + 3 F/T
+            "smartwatch": torch.randn(
+                n_sequences, sequence_length, 7
+            ),  # HR + acc(3) + GSR(1) + dummy(2)
+            "room_env": torch.randn(
+                n_sequences, sequence_length, 4
+            ),  # temp, humidity, CO2, light
+            "robot_arm": torch.randn(
+                n_sequences, sequence_length, 9
+            ),  # 6 joints + 3 F/T
         }
 
         # Normalize to reasonable ranges
-        self.data['smartwatch'][:, :, 0] = self.data['smartwatch'][:, :, 0] * 30 + 70  # HR: 70±30
-        self.data['room_env'][:, :, 0] = self.data['room_env'][:, :, 0] * 5 + 22      # Temp: 22±5°C
-        self.data['room_env'][:, :, 1] = torch.sigmoid(self.data['room_env'][:, :, 1]) * 100  # Humidity: 0-100%
+        self.data["smartwatch"][:, :, 0] = (
+            self.data["smartwatch"][:, :, 0] * 30 + 70
+        )  # HR: 70±30
+        self.data["room_env"][:, :, 0] = (
+            self.data["room_env"][:, :, 0] * 5 + 22
+        )  # Temp: 22±5°C
+        self.data["room_env"][:, :, 1] = (
+            torch.sigmoid(self.data["room_env"][:, :, 1]) * 100
+        )  # Humidity: 0-100%
 
         # Labels: activity classification
         self.labels = torch.randint(0, n_classes, (n_sequences,))
@@ -159,10 +209,10 @@ class SyntheticIOTStream(Dataset):
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         return {
-            'smartwatch': self.data['smartwatch'][idx],
-            'room_env': self.data['room_env'][idx],
-            'robot_arm': self.data['robot_arm'][idx],
-            'label': self.labels[idx],
+            "smartwatch": self.data["smartwatch"][idx],
+            "room_env": self.data["room_env"][idx],
+            "robot_arm": self.data["robot_arm"][idx],
+            "label": self.labels[idx],
         }
 
 
@@ -188,18 +238,18 @@ def create_dataloaders(
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    if experiment == 'continual':
-        if dataset_name == 'split_cifar':
+    if experiment == "continual":
+        if dataset_name == "split_cifar":
             # For continual learning, return single task loaders
             # In practice, iterate over tasks
-            train_ds = SplitCIFAR100(n_tasks=20, task_id=0, split='train')
-            val_ds = SplitCIFAR100(n_tasks=20, task_id=0, split='test')
+            train_ds = SplitCIFAR100(n_tasks=20, task_id=0, split="train")
+            val_ds = SplitCIFAR100(n_tasks=20, task_id=0, split="test")
 
-        elif dataset_name == 'permuted_mnist':
-            train_ds = PermutedMNIST(n_tasks=20, task_id=0, split='train')
-            val_ds = PermutedMNIST(n_tasks=20, task_id=0, split='test')
+        elif dataset_name == "permuted_mnist":
+            train_ds = PermutedMNIST(n_tasks=20, task_id=0, split="train")
+            val_ds = PermutedMNIST(n_tasks=20, task_id=0, split="test")
 
-    elif experiment == 'iot':
+    elif experiment == "iot":
         train_ds = SyntheticIOTStream(
             n_sequences=800,
             sequence_length=500,
@@ -212,6 +262,17 @@ def create_dataloaders(
             n_classes=5,
             seed=seed + 1,
         )
+
+    elif experiment == "multimodal":
+        if dataset_name == "audiovisual":
+            train_ds = AudioVisualProxyDataset(
+                n_sequences=1000, n_classes=10, seed=seed
+            )
+            val_ds = AudioVisualProxyDataset(
+                n_sequences=200, n_classes=10, seed=seed + 1
+            )
+        else:
+            raise ValueError(f"Unknown multimodal dataset: {dataset_name}")
 
     else:
         raise ValueError(f"Unknown experiment: {experiment}")

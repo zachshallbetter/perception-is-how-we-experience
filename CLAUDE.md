@@ -7,67 +7,70 @@ Zach. Sole author of this paper. Goal: refine, validate, and publish.
 | Term | Meaning |
 |------|---------|
 | **the paper** | "Perception Is How We Experience" — ML/NLP deep learning architecture proposal |
-| **the Perceiver** | The proposed architecture in the paper (naming conflict — see Issues) |
-| **the review** | Comprehensive Review Report in `Review/` — generated Feb 19 2026 |
-| **the review doc** | `Review/Perception - Comprehensive Review Report.docx` |
+| **Sensory Perceiver** | The proposed architecture (renamed from "Perceiver" to avoid conflict with Jaegle et al.) |
+| **the review** | Comprehensive Review Report in `review/` — generated Feb 19 2026 |
+| **the review doc** | `review/Perception - Comprehensive Review Report.docx` |
 
 ## Key Terms
 | Term | Meaning |
 |------|---------|
-| **CDP** | Composite Dot Product — the paper's attention formula (has bug: missing `1/√d_k`) |
+| **CDP** | Composite Dot Product — the paper's attention formula; corrected to include `1/√d_k` |
 | **MIME encoding** | Novel unified sensory encoding via MIME-Types — most original contribution |
-| **replay** | Biologically-inspired memory consolidation mechanism (see Recall vs Replay.md) |
-| **PerceiverTower** | Modality-specific processing module in the proposed architecture |
-| **Jaegle et al.** | DeepMind's published Perceiver (2021, ICML) — naming conflict with this paper |
+| **replay** | Experience replay phase for continual learning; uses NT-Xent contrastive loss |
+| **PerceiverTower** | Modality-specific processing module (Conv2d front-end → flatten → MLP → 768-d embedding) |
+| **Jaegle et al.** | DeepMind's published Perceiver (2021, ICML) — compared in Related Work section |
 | **sensory tokenization** | Token memory bank concept for storing sensory features |
 
-## Active Issues (from review)
+## Active Issues (from review — all CF/MJ/MN fixed Feb 20 2026)
 | # | Severity | Status | Issue |
 |---|----------|--------|-------|
-| C1 | CRITICAL | ✅ FIXED (Feb 19) | Architecture name "Perceiver" conflicts with Jaegle et al. (2021) — renamed to "Sensory Perceiver"; Related Work section added with comparison table; citations [2, 3] added |
-| C2 | CRITICAL | ✅ FIXED (Feb 19) | Abstract claims experimental results that don't exist — replaced with hypothesis/proposal language throughout |
-| C3 | CRITICAL | ✅ FIXED (Feb 19) | Paper says no convolutions; code uses `Conv2d` — Abstract and Introduction updated to accurately describe Conv2d front-end + attention-based global integration |
-| C4 | CRITICAL | ✅ FIXED (Feb 19) | CDP formula missing `1/√d_k` — corrected to `softmax(QKᵀ/√d_k)·V`; explanation and Vaswani [1] citation added; Dynamic Weighting.md pseudocode updated |
-| C5 | CRITICAL | ✅ FIXED (Feb 19) | Background placeholders filled: Perceptron (Rosenblatt 1958 [8], McCulloch & Pitts 1943 [20]) and CNN (LeCun et al. 1998 [6]) subsections written |
-| M1 | MAJOR | ⬜ OPEN | No experiments, no datasets, no benchmarks — needed for any publication |
-| M2 | MAJOR | ⬜ OPEN | `PerceiverTower.forward()` has incompatible tensor shapes (Conv2d 4D → MHA 3D) |
-| M3 | MAJOR | ✅ FIXED (Feb 19) | `DropPath` and `@register_model` — added `from timm.models.layers import DropPath` and `from timm.models.registry import register_model`; removed unused `BatchNorm2d` import |
-| M4 | MAJOR | ⬜ OPEN | Hebbian learning and contrastive loss conflated — pick one paradigm |
-| M5 | MAJOR | ⬜ OPEN | MIME-Type encoding is 1 paragraph with no implementation — needs full spec |
+| C1 | CRITICAL | ✅ FIXED | Architecture name — renamed to "Sensory Perceiver"; Related Work + comparison table added |
+| C2 | CRITICAL | ✅ FIXED | Abstract overclaimed results — replaced with hypothesis/proposal + synthetic validation language |
+| C3 | CRITICAL | ✅ FIXED | Conv2d contradiction — Abstract/Intro updated to accurately describe Conv2d front-end |
+| C4 | CRITICAL | ✅ FIXED | CDP missing `1/√d_k` — corrected; Hebbian/sleep conflation removed; committed to NT-Xent |
+| C5 | CRITICAL | ✅ FIXED | Background placeholders filled (Rosenblatt 1958, LeCun 1998, GWT) |
+| M1 | MAJOR | 🟡 PARTIAL | Real results: baseline (CIL 5.02%, BWT −53.6%) + tuned (CIL 5.16%, BWT −57.6%) on Split-CIFAR-100. Full benchmarking vs. EWC/GEM/PackNet on complete 50-task split required before submission |
+| M2 | MAJOR | ✅ FIXED | PerceiverTower tensor shape — added `flatten(start_dim=1)` before MLP |
+| M3 | MAJOR | ✅ FIXED | Missing imports (`DropPath`, `register_model`) added; unused imports removed |
+| M4 | MAJOR | ✅ FIXED | Hebbian/contrastive conflation resolved — committed to NT-Xent throughout |
+| M5 | MAJOR | ✅ FIXED | MIME-Type Extension Protocol specification added (3-step registration, conflict resolution) |
 
-## File Structure (after reorganization Feb 19 2026)
+## File Structure (after reorganization Feb 20 2026)
 ```
 perception-is-how-we-experience/
-├── Perception Is How We Experience.md  ← main paper
-├── Architecture.md
-├── Sensation.md
-├── Interpretation.md
-├── Paper Overview.md
-├── Protocols.md
-├── Reference.md
-├── Recall versus Replay.md
-├── Todo.md
-├── Sensor Types.md
-├── Code.md
-├── Examples.md
-├── Literature.md
-├── Code/
-│   └── Dynamic Weighting.md
-├── Examples/
-│   ├── Autonomous Driving in Heavy Traffic.md
-│   └── Patient Monitoring System.md
-├── Literature/
-│   ├── Attention Is All You Need (Vaswani et al., 2017).pdf
-│   ├── The Annotated Transformer.pdf
-│   └── The Ultimate Guide to Transformer Deep Learning.pdf
-├── Review/
+├── CLAUDE.md                     ← this file
+├── README.md
+├── paper/                        ← canonical paper
+│   ├── Perception Is How We Experience.md   ← main paper (105k chars)
+│   ├── Paper Overview.md
+│   ├── sections/                 ← section drafts (01–09)
+│   └── figures/                  ← figure generation scripts
+├── src/                          ← model implementation
+├── baselines/                    ← Perceiver IO baseline code
+├── results/                      ← synthetic results + figures
+│   └── figures/                  ← 10 generated figure PNGs
+├── supplementary/                ← supplementary papers
+│   ├── architecture-paper/
+│   ├── orchestrator-paper/
+│   └── applications/
+├── literature/                   ← reference PDFs + markdown summaries
+│   ├── *.pdf                     ← 22 papers
+│   └── markdown/                 ← converted summaries
+├── reference/                    ← supporting reference material
+│   ├── sensor-types/             ← 14 modality files
+│   │   └── Sensor References/   ← Auditory, Visual, Tactile, … (14 files)
+│   └── code-snippets/
+├── review/                       ← review documents
 │   └── Perception - Comprehensive Review Report.docx
-└── Sensor Types/
-    └── Sensor References/
-        └── [14 modality files: Auditory, Visual, Tactile, Olfactory,
-            Gustatory, Vestibular, Proprioception, Interoception,
-            Chronoception, Equilibrioception, Magnetoception,
-            Nociception, Thermoception, Sensor Overlap]
+├── memory/                       ← project memory
+│   ├── projects/perception-paper.md
+│   └── context/citations.md
+├── config/                       ← config + requirements
+├── scripts/                      ← utility scripts
+└── archive/                      ← all old versions + session artifacts
+    ├── session-files/            ← audit docs, progress files, etc.
+    ├── 00-START / 01-PLANNING / 02-PAPER / 03-RESEARCH / Code/
+    └── …
 ```
 
 ## Preferences

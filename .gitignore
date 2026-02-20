@@ -1,6 +1,6 @@
 .DS_Store
 __pycache__
 .env
-Literature
-Review
-config
+results
+reference
+archive

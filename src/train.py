@@ -22,12 +22,16 @@ from typing import Dict, Tuple, Optional
 import logging
 
 from src.models import SensoryPerceiver, ContrastiveLoss, PerceiverTower
-from src.data.loaders import create_dataloaders, SplitCIFAR100, PermutedMNIST, SyntheticIOTStream
+from src.data.loaders import (
+    create_dataloaders,
+    SplitCIFAR100,
+    PermutedMNIST,
+    SyntheticIOTStream,
+)
 
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -47,11 +51,18 @@ class Trainer:
         device: torch.device,
         output_dir: Path,
         config: Dict,
+        classifier: Optional[nn.Module] = None,
+        replay_mode: str = "er",
     ):
         self.model = model.to(device)
+        self.classifier = classifier
+        if self.classifier is not None:
+            self.classifier = self.classifier.to(device)
+
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.criterion = criterion
+        self.replay_mode = replay_mode
         self.replay_criterion = replay_criterion
         self.optimizer = optimizer
         self.scheduler = scheduler
@@ -61,7 +72,7 @@ class Trainer:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.best_val_acc = 0.0
-        self.train_history = {'loss': [], 'acc': [], 'val_loss': [], 'val_acc': []}
+        self.train_history = {"loss": [], "acc": [], "val_loss": [], "val_acc": []}
 
     def train_epoch(self, epoch: int) -> Tuple[float, float]:
         """Train for one epoch."""
@@ -70,27 +81,73 @@ class Trainer:
         total_correct = 0
         total_samples = 0
 
-        pbar = tqdm(self.train_loader, desc=f'Epoch {epoch+1}', leave=False)
+        pbar = tqdm(self.train_loader, desc=f"Epoch {epoch+1}", leave=False)
         for batch_idx, batch in enumerate(pbar):
             # Move batch to device
-            inputs = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v
-                      for k, v in batch.items()}
-            labels = inputs.pop('label')
+            inputs = {
+                k: v.to(self.device) if isinstance(v, torch.Tensor) else v
+                for k, v in batch.items()
+            }
+            labels = inputs.pop("label")
 
             # Forward pass
             self.optimizer.zero_grad()
-            outputs, embeddings = self.model(inputs, return_embeddings=True)
+            outputs, embeddings = self.model(
+                inputs, labels=labels, return_embeddings=True
+            )
 
             # Classification loss
-            logits = outputs.mean(dim=1)  # Pool over sequence dimension
+            pooled = outputs.mean(dim=1)  # Pool over sequence dimension
+            if self.classifier is not None:
+                logits = self.classifier(pooled)
+            else:
+                logits = pooled
             loss = self.criterion(logits, labels)
 
-            # Optional: Contrastive replay loss
-            if self.replay_criterion is not None and embeddings is not None:
-                replay_samples = self.model.get_replay_samples(logits.shape[0])
-                pooled_emb = torch.stack([emb.mean(dim=0) for emb in embeddings.values()])
-                replay_loss = self.replay_criterion(pooled_emb, replay_samples)
-                loss = loss + 0.1 * replay_loss  # Weight replay loss
+            # Replay loss (Catastrophic Forgetting Mitigation)
+            if self.replay_mode == "er":
+                replay_inputs, replay_labels = self.model.get_replay_samples(
+                    labels.shape[0]
+                )
+                if replay_inputs is not None:
+                    # Move replayed samples to device
+                    replay_inputs = {
+                        k: v.to(self.device) for k, v in replay_inputs.items()
+                    }
+                    replay_labels = replay_labels.to(self.device)
+
+                    # Forward pass for replayed samples through BOTH backbone and head
+                    rp_outputs, _ = self.model(replay_inputs, update_buffer=False)
+                    rp_pooled = rp_outputs.mean(dim=1)
+                    if self.classifier is not None:
+                        rp_logits = self.classifier(rp_pooled)
+                    else:
+                        rp_logits = rp_pooled
+
+                    replay_loss = self.criterion(rp_logits, replay_labels)
+                    loss = loss + 1.0 * replay_loss  # Weight replay 1:1 with new data
+            elif (
+                self.replay_mode == "contrastive"
+                and self.replay_criterion is not None
+                and embeddings is not None
+            ):
+                # Contrastive replay (NT-Xent)
+                replay_samples, _ = self.model.get_replay_samples(labels.shape[0])
+                if replay_samples is not None:
+                    # Move replayed samples to device
+                    replay_samples = {
+                        k: v.to(self.device) for k, v in replay_samples.items()
+                    }
+                    # Get features for replayed samples
+                    with torch.no_grad():
+                        rp_outputs, _ = self.model(replay_samples, update_buffer=False)
+                        rp_features = rp_outputs.mean(dim=1)
+
+                    pooled_emb = torch.stack(
+                        [emb.mean(dim=0) for emb in embeddings.values()]
+                    )
+                    replay_loss = self.replay_criterion(pooled_emb, rp_features)
+                    loss = loss + 0.1 * replay_loss
 
             # Backward pass
             loss.backward()
@@ -103,10 +160,12 @@ class Trainer:
             total_correct += predicted.eq(labels).sum().item()
             total_samples += labels.shape[0]
 
-            pbar.set_postfix({'loss': loss.item(), 'acc': 100.*total_correct/total_samples})
+            pbar.set_postfix(
+                {"loss": loss.item(), "acc": 100.0 * total_correct / total_samples}
+            )
 
         avg_loss = total_loss / total_samples
-        avg_acc = 100. * total_correct / total_samples
+        avg_acc = 100.0 * total_correct / total_samples
         return avg_loss, avg_acc
 
     @torch.no_grad()
@@ -118,12 +177,18 @@ class Trainer:
         total_samples = 0
 
         for batch in self.val_loader:
-            inputs = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v
-                      for k, v in batch.items()}
-            labels = inputs.pop('label')
+            inputs = {
+                k: v.to(self.device) if isinstance(v, torch.Tensor) else v
+                for k, v in batch.items()
+            }
+            labels = inputs.pop("label")
 
-            outputs, _ = self.model(inputs, return_embeddings=False)
-            logits = outputs.mean(dim=1)
+            outputs, _ = self.model(inputs, labels=None, return_embeddings=False)
+            pooled = outputs.mean(dim=1)
+            if self.classifier is not None:
+                logits = self.classifier(pooled)
+            else:
+                logits = pooled
             loss = self.criterion(logits, labels)
 
             total_loss += loss.item() * labels.shape[0]
@@ -132,7 +197,7 @@ class Trainer:
             total_samples += labels.shape[0]
 
         avg_loss = total_loss / total_samples
-        avg_acc = 100. * total_correct / total_samples
+        avg_acc = 100.0 * total_correct / total_samples
         return avg_loss, avg_acc
 
     def fit(self, epochs: int):
@@ -148,83 +213,100 @@ class Trainer:
                 self.scheduler.step()
 
             # Logging
-            self.train_history['loss'].append(train_loss)
-            self.train_history['acc'].append(train_acc)
-            self.train_history['val_loss'].append(val_loss)
-            self.train_history['val_acc'].append(val_acc)
+            self.train_history["loss"].append(train_loss)
+            self.train_history["acc"].append(train_acc)
+            self.train_history["val_loss"].append(val_loss)
+            self.train_history["val_acc"].append(val_acc)
 
             logger.info(
-                f'Epoch {epoch+1}/{epochs} | '
-                f'Loss: {train_loss:.4f} | Acc: {train_acc:.2f}% | '
-                f'Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.2f}%'
+                f"Epoch {epoch+1}/{epochs} | "
+                f"Loss: {train_loss:.4f} | Acc: {train_acc:.2f}% | "
+                f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.2f}%"
             )
 
             # Save best model
             if val_acc > self.best_val_acc:
                 self.best_val_acc = val_acc
-                self.save_checkpoint('best_model.pt')
-                logger.info(f'Saved best model with val_acc={val_acc:.2f}%')
+                self.save_checkpoint("best_model.pt")
+                logger.info(f"Saved best model with val_acc={val_acc:.2f}%")
 
         # Save final model and history
-        self.save_checkpoint('latest_model.pt')
+        self.save_checkpoint("latest_model.pt")
         self.save_history()
 
     def save_checkpoint(self, filename: str):
         """Save model checkpoint."""
         path = self.output_dir / filename
-        torch.save({
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'config': self.config,
-        }, path)
+        torch.save(
+            {
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "config": self.config,
+            },
+            path,
+        )
 
     def save_history(self):
         """Save training history."""
-        path = self.output_dir / 'train_log.csv'
+        path = self.output_dir / "train_log.csv"
         import csv
-        with open(path, 'w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=['epoch', 'loss', 'acc', 'val_loss', 'val_acc'])
+
+        with open(path, "w", newline="") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=["epoch", "loss", "acc", "val_loss", "val_acc"]
+            )
             writer.writeheader()
-            for i in range(len(self.train_history['loss'])):
-                writer.writerow({
-                    'epoch': i + 1,
-                    'loss': self.train_history['loss'][i],
-                    'acc': self.train_history['acc'][i],
-                    'val_loss': self.train_history['val_loss'][i],
-                    'val_acc': self.train_history['val_acc'][i],
-                })
+            for i in range(len(self.train_history["loss"])):
+                writer.writerow(
+                    {
+                        "epoch": i + 1,
+                        "loss": self.train_history["loss"][i],
+                        "acc": self.train_history["acc"][i],
+                        "val_loss": self.train_history["val_loss"][i],
+                        "val_acc": self.train_history["val_acc"][i],
+                    }
+                )
 
 
 def main():
     parser = ArgumentParser()
 
     # Experiment
-    parser.add_argument('--experiment', type=str, default='continual',
-                        choices=['multimodal', 'continual', 'mime_routing', 'iot'])
-    parser.add_argument('--dataset', type=str, default='split_cifar')
+    parser.add_argument(
+        "--experiment",
+        type=str,
+        default="continual",
+        choices=["multimodal", "continual", "mime_routing", "iot"],
+    )
+    parser.add_argument("--dataset", type=str, default="split_cifar")
 
     # Model
-    parser.add_argument('--d_model', type=int, default=768)
-    parser.add_argument('--num_heads', type=int, default=8)
-    parser.add_argument('--depth', type=int, default=6)
-    parser.add_argument('--mlp_dim', type=int, default=2048)
-    parser.add_argument('--dropout', type=float, default=0.1)
-    parser.add_argument('--replay_buffer_size', type=int, default=2000)
-    parser.add_argument('--contrastive_temp', type=float, default=0.07)
+    parser.add_argument("--d_model", type=int, default=768)
+    parser.add_argument("--num_heads", type=int, default=8)
+    parser.add_argument("--depth", type=int, default=6)
+    parser.add_argument("--mlp_dim", type=int, default=2048)
+    parser.add_argument("--dropout", type=float, default=0.1)
+    parser.add_argument("--replay_buffer_size", type=int, default=2000)
+    parser.add_argument("--contrastive_temp", type=float, default=0.07)
+    parser.add_argument(
+        "--replay_mode", type=str, default="er", choices=["er", "contrastive"]
+    )
 
     # Training
-    parser.add_argument('--batch_size', type=int, default=32)
-    parser.add_argument('--epochs', type=int, default=50)
-    parser.add_argument('--learning_rate', type=float, default=1e-4)
-    parser.add_argument('--warmup_steps', type=int, default=1000)
-    parser.add_argument('--num_workers', type=int, default=4)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--learning_rate", type=float, default=1e-4)
+    parser.add_argument("--warmup_steps", type=int, default=1000)
+    parser.add_argument("--num_workers", type=int, default=4)
 
     # Device
-    parser.add_argument('--device', type=str, default='cuda:0' if torch.cuda.is_available() else 'cpu')
-    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument(
+        "--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu"
+    )
+    parser.add_argument("--seed", type=int, default=42)
 
     # I/O
-    parser.add_argument('--output_dir', type=str, default='results/exp')
+    parser.add_argument("--output_dir", type=str, default="results/exp")
 
     args = parser.parse_args()
 
@@ -245,21 +327,21 @@ def main():
     )
 
     # Determine modality configs
-    if args.experiment == 'continual':
-        modality_configs = {'vision': {'input_dim': 3, 'use_conv': True}}
+    if args.experiment == "continual":
+        modality_configs = {"vision": {"input_dim": 3, "use_conv": True}}
         n_classes = 5
-    elif args.experiment == 'iot':
+    elif args.experiment == "iot":
         modality_configs = {
-            'smartwatch': {'input_dim': 7, 'use_conv': False},
-            'room_env': {'input_dim': 4, 'use_conv': False},
-            'robot_arm': {'input_dim': 9, 'use_conv': False},
+            "smartwatch": {"input_dim": 7, "use_conv": False},
+            "room_env": {"input_dim": 4, "use_conv": False},
+            "robot_arm": {"input_dim": 9, "use_conv": False},
         }
         n_classes = 5
     else:
         # Default multimodal
         modality_configs = {
-            'vision': {'input_dim': 3, 'use_conv': True},
-            'audio': {'input_dim': 128, 'use_conv': False},
+            "vision": {"input_dim": 3, "use_conv": True},
+            "audio": {"input_dim": 128, "use_conv": False},
         }
         n_classes = 10
 
@@ -275,31 +357,38 @@ def main():
         contrastive_temp=args.contrastive_temp,
     )
 
-    # Loss functions
+    # Loss functions and classifier
+    classifier = nn.Linear(args.d_model, n_classes).to(device)
     criterion = nn.CrossEntropyLoss()
     replay_criterion = ContrastiveLoss(temperature=args.contrastive_temp)
 
-    # Optimizer and scheduler
-    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=0.01)
+    # Optimizer and scheduler (include classifier params)
+    optimizer = optim.AdamW(
+        list(model.parameters()) + list(classifier.parameters()),
+        lr=args.learning_rate,
+        weight_decay=0.01,
+    )
     scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     # Save config
     config = vars(args)
-    config['modality_configs'] = modality_configs
-    config['n_classes'] = n_classes
+    config["modality_configs"] = modality_configs
+    config["n_classes"] = n_classes
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    with open(output_dir / 'config.yaml', 'w') as f:
+    with open(output_dir / "config.yaml", "w") as f:
         yaml.dump(config, f)
 
     # Train
     trainer = Trainer(
         model=model,
+        classifier=classifier,
         train_loader=train_loader,
         val_loader=val_loader,
         criterion=criterion,
+        replay_mode=args.replay_mode,
         replay_criterion=replay_criterion,
         optimizer=optimizer,
         scheduler=scheduler,
@@ -312,5 +401,5 @@ def main():
     logger.info(f"Training complete. Results saved to {output_dir}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

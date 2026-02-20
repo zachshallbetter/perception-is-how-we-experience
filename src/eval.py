@@ -1,282 +1,52 @@
-"""
-Evaluation harness for Sensory Perceiver experiments.
+"""CLI entrypoint for evaluating Sensory Perceiver checkpoints."""
 
-Generates:
-- Per-class accuracy
-- Confusion matrices
-- Embedding visualizations (t-SNE)
-- Latency measurements
-- Cross-modal mutual information
-"""
+import logging
+from argparse import ArgumentParser
 
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-import numpy as np
-from pathlib import Path
-from argparse import ArgumentParser
-import json
-import logging
-from typing import Dict, Tuple, Optional
 
-from src.models import SensoryPerceiver
-from src.data.loaders import create_dataloaders
-from src.runtime import AppError, EvalRuntimeConfig, ErrorCode, format_error
+from src.runtime import AppError, EvalRuntimeConfig, format_error
+from src.services import run_evaluation
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class Evaluator:
-    """Evaluation manager for Sensory Perceiver."""
-
-    def __init__(
-        self,
-        model: nn.Module,
-        classifier: Optional[nn.Module],
-        val_loader: DataLoader,
-        device: torch.device,
-        n_classes: int,
-        output_dir: Path,
-    ):
-        self.model = model.to(device)
-        self.classifier = classifier.to(device) if classifier is not None else None
-        self.val_loader = val_loader
-        self.device = device
-        self.n_classes = n_classes
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-
-    @torch.no_grad()
-    def evaluate(self) -> Dict:
-        """Run full evaluation suite."""
-        logger.info("Starting evaluation...")
-        self.model.eval()
-
-        all_preds = []
-        all_labels = []
-        all_embeddings = []
-        all_latencies = []
-
-        for batch_idx, batch in enumerate(self.val_loader):
-            inputs = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v
-                      for k, v in batch.items()}
-            labels = inputs.pop('label')
-
-            # Measure latency
-            torch.cuda.synchronize() if torch.cuda.is_available() else None
-            t_start = torch.cuda.Event(enable_timing=True) if torch.cuda.is_available() else None
-            t_end = torch.cuda.Event(enable_timing=True) if torch.cuda.is_available() else None
-
-            if torch.cuda.is_available():
-                t_start.record()
-            outputs, embeddings = self.model(inputs, return_embeddings=True)
-            if torch.cuda.is_available():
-                t_end.record()
-                torch.cuda.synchronize()
-                latency = t_start.elapsed_time(t_end)  # ms
-                all_latencies.append(latency)
-
-            # Get predictions
-            pooled = outputs.mean(dim=1)
-            if self.classifier is not None:
-                logits = self.classifier(pooled)
-            else:
-                if pooled.shape[1] < self.n_classes:
-                    raise ValueError(
-                        f"Backbone output dim {pooled.shape[1]} < n_classes {self.n_classes}"
-                    )
-                logits = pooled[:, : self.n_classes]
-            _, predicted = logits.max(1)
-
-            all_preds.append(predicted.cpu().numpy())
-            all_labels.append(labels.cpu().numpy())
-
-            # Store embeddings for visualization
-            if embeddings is not None:
-                pooled_emb = torch.stack([emb.mean(dim=0) for emb in embeddings.values()])
-                all_embeddings.append(pooled_emb.cpu().numpy())
-
-            if (batch_idx + 1) % 10 == 0:
-                logger.info(f"Processed {batch_idx + 1} batches")
-
-        # Aggregate predictions and labels
-        all_preds = np.concatenate(all_preds)
-        all_labels = np.concatenate(all_labels)
-
-        # Compute metrics
-        results = self._compute_metrics(all_preds, all_labels)
-
-        # Embeddings analysis
-        if all_embeddings:
-            all_embeddings = np.concatenate(all_embeddings, axis=0)
-            results['embeddings_shape'] = all_embeddings.shape
-            # Optionally save embeddings for t-SNE visualization
-            np.save(self.output_dir / 'embeddings.npy', all_embeddings)
-
-        # Latency analysis
-        if all_latencies:
-            results['latency_mean'] = float(np.mean(all_latencies))
-            results['latency_std'] = float(np.std(all_latencies))
-            results['latency_min'] = float(np.min(all_latencies))
-            results['latency_max'] = float(np.max(all_latencies))
-
-        return results
-
-    def _compute_metrics(self, preds: np.ndarray, labels: np.ndarray) -> Dict:
-        """Compute classification metrics."""
-        # Overall accuracy
-        accuracy = np.mean(preds == labels)
-
-        # Per-class accuracy
-        per_class_acc = {}
-        for c in range(self.n_classes):
-            mask = labels == c
-            if mask.sum() > 0:
-                per_class_acc[f'class_{c}'] = float(np.mean(preds[mask] == labels[mask]))
-            else:
-                per_class_acc[f'class_{c}'] = None
-
-        # Confusion matrix
-        confusion_matrix = np.zeros((self.n_classes, self.n_classes), dtype=int)
-        for pred, label in zip(preds, labels):
-            pred_idx = int(pred)
-            label_idx = int(label)
-            if 0 <= label_idx < self.n_classes and 0 <= pred_idx < self.n_classes:
-                confusion_matrix[label_idx, pred_idx] += 1
-
-        results = {
-            'overall_accuracy': float(accuracy),
-            'per_class_accuracy': per_class_acc,
-            'confusion_matrix': confusion_matrix.tolist(),
-            'n_samples': len(preds),
-        }
-
-        return results
-
-    def save_results(self, results: Dict):
-        """Save evaluation results."""
-        # JSON
-        with open(self.output_dir / 'eval_results.json', 'w') as f:
-            # Convert numpy arrays for JSON serialization
-            json_results = {}
-            for k, v in results.items():
-                if isinstance(v, np.ndarray):
-                    json_results[k] = v.tolist()
-                else:
-                    json_results[k] = v
-            json.dump(json_results, f, indent=2)
-
-        logger.info(f"Results saved to {self.output_dir}")
-        logger.info(f"Overall Accuracy: {results['overall_accuracy']:.4f}")
-        latency_mean = results.get("latency_mean")
-        if latency_mean is not None:
-            logger.info(f"Mean Latency: {latency_mean:.2f} ms")
-
-
-def load_checkpoint(checkpoint_path: str, device: torch.device):
-    """Load model from checkpoint."""
-    try:
-        checkpoint = torch.load(checkpoint_path, map_location=device)
-    except Exception as exc:
-        raise AppError(
-            ErrorCode.CHECKPOINT_LOAD_FAILED,
-            f"Failed to load checkpoint: {checkpoint_path}",
-            context={"checkpoint": checkpoint_path},
-        ) from exc
-
-    # Reconstruct config
-    config = checkpoint['config']
-
-    # Recreate model
-    model = SensoryPerceiver(
-        modality_configs=config['modality_configs'],
-        dim=config['d_model'],
-        num_heads=config['num_heads'],
-        mlp_dim=config['mlp_dim'],
-        depth=config['depth'],
-        dropout=config['dropout'],
-        replay_buffer_size=config['replay_buffer_size'],
-        contrastive_temp=config['contrastive_temp'],
+def build_parser() -> ArgumentParser:
+    """Build the evaluation CLI parser."""
+    parser = ArgumentParser()
+    parser.add_argument("--checkpoint", type=str, required=True, help="Path to model checkpoint")
+    parser.add_argument(
+        "--experiment",
+        type=str,
+        default="continual",
+        choices=["multimodal", "continual", "mime_routing", "iot"],
     )
-
-    try:
-        model.load_state_dict(checkpoint['model_state_dict'])
-    except Exception as exc:
-        raise AppError(
-            ErrorCode.CHECKPOINT_LOAD_FAILED,
-            "Model state dict does not match checkpoint metadata",
-            context={"checkpoint": checkpoint_path},
-        ) from exc
-    classifier = None
-    classifier_state_dict = checkpoint.get("classifier_state_dict")
-    if classifier_state_dict is not None:
-        classifier = nn.Linear(config['d_model'], config['n_classes'])
-        try:
-            classifier.load_state_dict(classifier_state_dict)
-        except Exception as exc:
-            raise AppError(
-                ErrorCode.CHECKPOINT_LOAD_FAILED,
-                "Classifier state dict does not match checkpoint metadata",
-                context={"checkpoint": checkpoint_path},
-            ) from exc
-
-    return model, classifier, config
+    parser.add_argument("--dataset", type=str, default="split_cifar")
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--num_workers", type=int, default=4)
+    parser.add_argument(
+        "--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu"
+    )
+    parser.add_argument("--output_file", type=str, default="eval_results.json")
+    parser.add_argument("--seed", type=int, default=42)
+    return parser
 
 
 def main():
-    parser = ArgumentParser()
-    parser.add_argument('--checkpoint', type=str, required=True,
-                        help='Path to model checkpoint')
-    parser.add_argument('--experiment', type=str, default='continual',
-                        choices=['multimodal', 'continual', 'mime_routing', 'iot'])
-    parser.add_argument('--dataset', type=str, default='split_cifar')
-    parser.add_argument('--batch_size', type=int, default=32)
-    parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--device', type=str, default='cuda:0' if torch.cuda.is_available() else 'cpu')
-    parser.add_argument('--output_file', type=str, default='eval_results.json')
-    parser.add_argument('--seed', type=int, default=42)
-
-    args = parser.parse_args()
-    runtime_config = EvalRuntimeConfig.from_namespace(args)
-
-    torch.manual_seed(runtime_config.seed)
-    np.random.seed(runtime_config.seed)
-
-    device = runtime_config.device
-    logger.info(f"Using device: {device}")
-
-    # Load model
+    """Validate runtime config and execute evaluation service."""
+    runtime_config = EvalRuntimeConfig.from_namespace(build_parser().parse_args())
+    logger.info(f"Using device: {runtime_config.device}")
     logger.info(f"Loading checkpoint from {runtime_config.checkpoint}")
-    model, classifier, config = load_checkpoint(str(runtime_config.checkpoint), device)
-
-    # Create dataloader
-    _, val_loader = create_dataloaders(
-        experiment=runtime_config.experiment,
-        dataset_name=runtime_config.dataset,
-        batch_size=runtime_config.batch_size,
-        num_workers=runtime_config.num_workers,
-        seed=runtime_config.seed,
-    )
-
-    n_classes = config['n_classes']
-
-    # Evaluate
-    output_dir = runtime_config.output_file.parent
-    evaluator = Evaluator(
-        model=model,
-        classifier=classifier,
-        val_loader=val_loader,
-        device=device,
-        n_classes=n_classes,
-        output_dir=output_dir,
-    )
-
-    results = evaluator.evaluate()
-    evaluator.save_results(results)
+    result = run_evaluation(runtime_config)
+    logger.info(f"Results saved to {result.output_file.parent}")
+    logger.info(f"Overall Accuracy: {result.results['overall_accuracy']:.4f}")
+    latency_mean = result.results.get("latency_mean")
+    if latency_mean is not None:
+        logger.info(f"Mean Latency: {latency_mean:.2f} ms")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         main()
     except AppError as error:

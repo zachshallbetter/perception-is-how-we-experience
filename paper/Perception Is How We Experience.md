@@ -1,1283 +1,506 @@
 # Perception Is How We Experience
 
-Redefining AI perception through the integration of multi-sensory input data.
+_Generated from canonical section sources in `paper/sections/`. Edit section files first._
 
-## **Abstract**
+# Abstract
 
-Traditional sequence transduction models heavily rely on complex recurrent or convolutional neural networks. These networks process inputs sequentially or through local receptive fields. Although attention mechanisms have been added to these models to enhance performance, they do not inherently capture the holistic and integrated nature of human perception. In this work, we propose a new neural network architecture called the Sensory Perceiver. Unlike traditional models, the Perceiver does not use recurrence or convolution-based global integration. Lightweight convolutional layers are used within each modality-specific PerceiverTower for initial feature extraction, while cross-modal integration is achieved entirely through attention mechanisms. The architecture leverages these perception mechanisms to interpret and assign meaning to multi-sensory data. This architecture directly models how perception occurs across different modalities, enabling a unified and scalable approach to diverse data types.
+We present **Sensory Perceiver**, a multimodal architecture that combines modality-specific towers with shared cross-modal attention for continual learning settings. The system uses explicit modality identity and canonical MIME-style input case definitions for routing semantics, with a runtime registry for `sensor_streaming` modalities.
 
-The Perceiver achieves this by employing a global understanding of the input space, similar to human perceptual systems. It interprets complex scenes in a contextually rich manner. We hypothesize that the Perceiver can perform competitively on tasks traditionally handled by attention-based models, given its architectural design around holistic sensory integration. Furthermore, the architecture is designed to be inherently generalizable to different sensory domains. This work opens up new possibilities for designing perception-centric models and lays the foundation for more generalized AI systems.
+We evaluate continual learning behavior on Split-CIFAR-100 using a phase-based replay analysis. In **Phase 1** (feature-only replay), the model exhibits severe forgetting (CIL 4.86%, BWT −53.80%). In **Phase 2** (raw-input replay with Reservoir Sampling), retention improves substantially (CIL 19.54%, BWT −34.91%), including Task 0 retention recovery from 0.6% to 33.0%. These results indicate that replay signals must reach shared feature extractors, not only task heads.
 
-We propose that the Sensory Perceiver architecture is positioned to exceed traditional neural network architectures in handling multimodal sensory data — offering improved scalability and generalizability across diverse datasets. Preliminary synthetic validation results supporting these hypotheses are presented in the Results section, with full empirical evaluation on established benchmarks as future work.
+The implementation includes a modernized runtime/service architecture with typed contracts, structured observability, and explicit modality registries. MIME semantics are enforced at runtime-contract boundaries for modality validation and setup derivation, while model forward dispatch remains modality-key based.
 
-<aside>
-💡 The Sensory Perceiver is a proposed neural network architecture that models perception across modalities without recurrence. It interprets multi-sensory data in a holistic manner, inspired by human perceptual systems. The architecture is designed to target improved scalability and generalizability across diverse multimodal datasets — preliminary synthetic validation results are presented; full empirical validation is ongoing.
+Parameter-isolation primitives (task adapters with freeze/rollover APIs) are implemented in the model and validated in targeted tests, but full sequential activation in the default service training loop remains partial.
 
-</aside>
+Current multimodal support includes proxy audiovisual and sensor_streaming datasets. Real benchmark ingestion (for example AudioSet/Ego4D) and additional modality towers remain future-stage work.
 
-## **Introduction**
+**Keywords:** multimodal perception, continual learning, catastrophic forgetting, reservoir sampling, MIME-type routing, parameter isolation
+
+
+# Introduction
 
 In the field of artificial intelligence (AI), interpreting complex, high-dimensional data has traditionally been done using recurrent neural networks (RNNs) and convolutional neural networks (CNNs). These architectures have been successful in applications like speech recognition and image classification. However, they have limitations in capturing the global, integrative nature of human perceptual experience due to their sequential data processing nature (in the case of RNNs) and localized receptive fields (in the case of CNNs).
 
-Integrating attention mechanisms has been a significant advancement [4], allowing models to selectively focus on parts of the input data and improve performance in tasks like machine translation and object recognition. Despite their success, attention-based models still view perception as a byproduct of focused attention rather than a distinct process involving holistic sensory information integration.
+Integrating attention mechanisms has been a significant advancement, allowing models to selectively focus on parts of the input data and improve performance in tasks like machine translation and object recognition. Despite their success, attention-based models still view perception as a byproduct of focused attention rather than a distinct process involving holistic sensory information integration.
 
 In contrast, human perception operates differently. It involves parallel processing of multimodal sensory information, rapidly integrating it into a coherent perceptual whole. This process is not purely sequential or solely based on local features; it is a dynamic synthesis of sensory inputs guided by both bottom-up sensory data and top-down cognitive processes.
 
-Traditional neural network models face challenges in modeling human-like perception, particularly in scalability, generalizability, and integration of multimodal data. Current architectures struggle to process diverse sensory inputs simultaneously, often requiring extensive data pre-processing or model specialization. Our Sensory Perceiver addresses these challenges by introducing a novel approach to neural network design.
+Traditional neural network models face challenges in modeling human-like perception, particularly in scalability, generalizability, and integration of multimodal data. Current architectures struggle to process diverse sensory inputs simultaneously, often requiring extensive data pre-processing or model specialization. Our Sensory Perceiver addresses these challenges by introducing **MIME-style modality semantics** as a routing primitive with runtime-contract validation and setup derivation.
 
-```python
-# Traditional Neural Network Models
-def TraditionalNeuralNetworkModel(inputData):
-    """
-    Traditional models are specialized - different architectures for different data types.
-    CNNs are efficient for image data due to their spatial hierarchy.
-    RNNs handle sequential text data effectively.
-    """
-    if inputData['type'] == 'image':
-        # Process image data with Convolutional Neural Network (CNN)
-        return processWithCNN(inputData['data'])  # Output: Features specific to image patterns
-    elif inputData['type'] == 'text':
-        # Process text data with Recurrent Neural Network (RNN)
-        return processWithRNN(inputData['data'])  # Output: Features capturing textual sequence
-    else:
-        raise ValueError("Unsupported data type")
+## Continual Learning and Catastrophic Forgetting
 
-# The Sensory Perceiver
-def PerceiverModel(inputData):
-    """
-    The Perceiver is designed to handle diverse data types uniformly.
-    It processes data in a format-agnostic way, enabling broader interpretations.
-    The architecture is scalable and adapts to various data types.
-    """
-    # Convert all types of data into a universal format
-    universalData = convertToUniversalFormat(inputData['data'])
-    # Process data using the Perceiver's architecture
-    return processWithPerceiverArchitecture(universalData)  # Output: Generalized features
+Beyond the challenge of multimodal integration, real-world AI systems must handle **continual learning**—the ability to learn new tasks sequentially without losing performance on previously learned tasks. A fundamental problem in continual learning is **catastrophic forgetting**, where neural networks lose previously learned representations when trained on new data. This phenomenon, first documented in neural networks by McCloskey and Cohen (1989), represents a critical barrier to deploying learning systems in dynamic environments where new sensory streams or tasks arrive over time.
 
-# Example Usage
-imageData = {'type': 'image', 'data': loadImage("example_image.jpg")}
-textData = {'type': 'text', 'data': loadText("example_text.txt")}
+Human perception, by contrast, exhibits remarkable resistance to catastrophic forgetting. The hippocampus and associated memory consolidation mechanisms enable humans to integrate new sensory experiences while preserving prior knowledge. In particular, hippocampal **replay** during sleep—where previously learned patterns are reactivated and strengthened—is thought to be crucial for preventing forgetting and consolidating memories.
 
-# Using traditional neural network models for data type-specific processing
-imageOutputTraditional = TraditionalNeuralNetworkModel(imageData)  # e.g., edges, textures in images
-textOutputTraditional = TraditionalNeuralNetworkModel(textData)  # e.g., word order, sentence structure
+The Sensory Perceiver addresses catastrophic forgetting through replay-centric mechanisms in the current runtime:
 
-# Using the Sensory Perceiver for its versatility and unified approach
-imageOutputPerceiver = PerceiverModel(imageData)  # e.g., abstract features representing 'image-ness'
-textOutputPerceiver = PerceiverModel(textData)  # e.g., abstract features representing 'text-ness'
+1. **Experience Replay with Reservoir Sampling**: We employ a bounded replay buffer with reservoir updates, so early and late task samples remain represented over long training horizons.
 
-# Comparison of Outputs
-"""
-Traditional models yield outputs closely tied to the specific nature of input data, 
-like spatial features for images and sequential patterns for text.
-The Perceiver, conversely, provides a more generalized and versatile interpretation of the data, 
-capable of handling diverse input types with a single unified approach.
-"""
+2. **Replay Mode Variants**: The training pipeline supports (a) standard replay with cross-entropy on replayed samples and (b) contrastive replay based on NT-Xent-style feature alignment.
 
-# Note to Reader:
-"""
-This pseudo-code will be referenced throughout the paper to illustrate the practical 
-applications and theoretical implications of the Sensory Perceiver as compared to 
-traditional neural network models.
-"""
-```
+Task-adapter parameter-isolation APIs are implemented in the model and tested in isolated benchmarks, but end-to-end activation in the default service loop remains partial.
 
-To better capture the essence of human perception, we propose the Sensory Perceiver, a neural network architecture that rethinks the role of perception in AI. **Naming note:** We acknowledge that the name "Perceiver" was independently used by Jaegle et al. (2021) [2] for a different architecture (and extended to "Perceiver IO" in Jaegle et al. 2022 [3]). While both architectures share the goal of general-purpose, multimodal perception, our proposed architecture differs significantly in motivation, design, and scope — a full comparison is provided in the Related Work section below. Unlike its predecessors, the proposed Sensory Perceiver does not use recurrence or convolution-based global integration. While lightweight convolutional layers are employed within each PerceiverTower for initial modality-specific feature extraction, the architecture's core innovation is its attention-based global processing mechanism — which directly models perceptual tasks as a holistic integration of multisensory data. This allows the Perceiver to approximate the human capacity to perceive complex scenes and patterns in a contextually rich and integrated manner.
+## Contributions and Scope
 
-Our contributions in this paper are twofold: First, we introduce a new conceptual framework for AI that places perception at the core of the model's architecture. Second, we propose that the Perceiver is architecturally suited to handle various tasks that traditionally rely on attention mechanisms, providing a more generalized and versatile approach to AI design.
+Our contributions in this paper are fourfold:
 
-<aside>
-💡 The Sensory Perceiver transforms AI by directly modeling perception through multi-sensory integration. It interprets complex scenes holistically, enabling a unified and scalable approach to AI design.
+1. **Architectural Innovation**: We introduce a modular PerceiverTower + cross-modal attention design with explicit modality identity and MIME-style routing semantics.
 
-</aside>
+2. **Replay Mechanism Analysis**: We empirically characterize feature-only replay failure versus raw-input replay with reservoir sampling on Split-CIFAR-100 (Phase 1 → Phase 2).
 
-## **Background**
+3. **Modern Runtime Implementation**: We provide typed runtime contracts, structured errors, service-layer orchestration, and observability instrumentation suitable for reproducible experimentation.
 
-The quest to replicate human-like perception in artificial intelligence has led to the development of many neural network architectures. Each of these architectures attempts to model different aspects of perception, often drawing inspiration from the neurobiological processes observed in humans and other animals.
+4. **Canonical `sensor_streaming` MIME Registry**: We formalize sensor_streaming input cases (modality, MIME type, feature dimensionality) as a single runtime source of truth.
 
-### **Traditional Models of Perception**
+The remainder of this paper is organized as follows: §3 provides related work. §4 details architecture and implementation-aligned methods. §5 describes experimental setup and implementation status. §6 presents phase-based empirical results. §7 discusses implications, gaps, and next-stage roadmap. §8 concludes.
 
-Early models of neural networks, such as Perceptrons and early CNNs, laid the groundwork by modeling visual perception. These networks were designed to recognize patterns and features in visual data inspired by the hierarchical processing of visual information in the visual cortex. CNNs, in particular, with their layered approach and shared weights, became the de facto standard for tasks requiring the analysis of grid-like data, such as images and videos. They were adept at capturing local patterns through their convolutional filters but were limited in capturing global, integrative aspects of perception.
+**Scope Note**: We acknowledge that the name "Perceiver" was independently used by Jaegle et al. (2021) for a different architecture. While both architectures share the goal of general-purpose multimodal perception, our current implementation focuses on continual-learning behavior, MIME-style modality semantics, and service-oriented runtime architecture. A detailed comparison is provided in §3 (Related Work).
 
-**Perceptron:** The perceptron, introduced by Rosenblatt (1958) [8] building on the logical neuron model of McCulloch and Pitts (1943) [20], was the first trainable neural network model. It operates as a linear binary classifier: given an input vector **x**, the perceptron computes ŷ = σ(**w**ᵀ**x** + b), where **w** is a learned weight vector, b is a bias term, and σ is a threshold activation function. The perceptron learning rule updates weights proportionally to prediction error, forming the conceptual precursor to modern gradient-based optimization. However, single-layer perceptrons are limited to linearly separable problems and cannot represent non-linear decision boundaries — a fundamental constraint that motivated the development of multi-layer networks and backpropagation, and ultimately the deep architectures that followed.
 
-**CNN:** Convolutional Neural Networks (CNNs), formalized by LeCun et al. (1998) [6], addressed the challenge of processing grid-structured data such as images by introducing spatially-shared convolutional filters applied through a hierarchical sequence of layers. Each convolutional layer applies learned filters across local receptive fields, capturing increasingly abstract spatial features as depth increases. CNNs achieved landmark performance on visual recognition benchmarks and remain central to computer vision. However, their reliance on local receptive fields and fixed-size kernels limits their capacity to capture long-range spatial dependencies or integrate information across heterogeneous modalities without significant architectural modification — limitations that motivate the global, attention-based processing approach of the architecture proposed here.
+# Related Work
 
-### **Recurrent Neural Networks and Sequential Perception**
+The Sensory Perceiver builds on and extends several lines of research. We organize the relevant literature around four themes: the Perceiver family, efficient convolution, temporal and multimodal perception, and continual learning.
 
-With the advent of RNNs, including Long Short-Term Memory (LSTM) networks [5], the focus shifted to sequential data and the temporal aspects of perception. These networks could maintain a memory of previous inputs, allowing them to perform well on tasks like speech recognition and time-series prediction. However, RNNs often struggle with long-term dependencies due to issues like vanishing or exploding gradients [7].
+## 3.1 Transformer Foundations
 
-### **The Emergence of Attention Mechanisms**
+The Transformer [1] introduced scaled dot-product attention — softmax(QKᵀ/√d_k)V — as a general-purpose sequence modeling primitive. By decoupling position encoding from attention, the Transformer enabled modality-agnostic processing that set the stage for all subsequent cross-modal architectures. Earlier alignment-based attention [4] and RNN-based sequence models [5, 7] established learned query-context alignment as the core mechanism for sequence understanding. Sensory Perceiver inherits the CDP formulation from [1], with 1/√d_k scaling critical to numerical stability at the dimension sizes used.
 
-Attention mechanisms revolutionized the field by allowing models to dynamically focus on specific parts of the input data. This selective focus enabled models to process inputs more effectively, especially in tasks that required understanding the relationships between distant elements in the data, such as language translation.
+## 3.2 The Perceiver Family
 
-### **Beyond Attention: Towards Holistic Perception**
+**Perceiver** [2] addressed the quadratic attention cost of Transformers by introducing a cross-attention bottleneck: a small latent array (256–2048 latents) attends to a high-dimensional byte array of arbitrary size, decoupling input dimensionality from compute. This enabled a single architecture to process images, audio, point clouds, and video without modality-specific preprocessing.
 
-Despite the successes of attention-based models, they often require substantial computational resources and can still fall short in tasks requiring a global understanding of the input data. Integrating sensory information in human perception is about selective focus and constructing a unified perceptual experience from myriad sensory inputs.
+**Perceiver IO** [3] extended this to arbitrary structured outputs via query-based output decoding: task-specific query arrays attend to the latent output, enabling dense predictions (optical flow, language, game playing) from the same backbone. Perceiver IO's modality embedding approach — concatenating learned Fourier position features with modality tokens — is the closest published precedent to MIME-Type encoding. The key distinction: Perceiver IO's features are byte-level position encodings, while MIME-Type encoding carries explicit content-type semantics enabling protocol-level routing and third-party extension.
 
-<aside>
-💡 The concept of holistic perception in neural networks has been less explored. Some models, like Capsule Networks [9], have attempted to account for the spatial hierarchies in visual data, representing a step toward a more integrated approach to perception grounded in Gestalt principles [17]. Global Workspace Theory (Baars, 1988) [18] proposes that consciousness arises from a cognitive workspace where specialized processors broadcast information globally — the Sensory Perceiver's cross-modal attention is inspired by this broadcasting principle, making attended features available across all modality-specific towers. A model that can seamlessly combine multiple types of sensory data into a coherent whole has remained an open challenge until architectures such as the one proposed here.
+**HiP (Hierarchical Perceiver)** [hip2022] introduced hierarchical kernel sharing and grouped cross-attention, partitioning inputs into local groups and attending hierarchically. Where Perceiver applies global cross-attention from all inputs to all latents, HiP scales to millions of inputs with near-linear complexity. For Sensory Perceiver, HiP-style hierarchical grouping represents the natural scaling path beyond the current ≤16 modality design.
 
-</aside>
+**Perceiver AR** [perceiverar2022] added causal masking into Perceiver cross-attention, enabling autoregressive generation over sequences of 100k+ tokens by identifying each latent with a single output position. This is directly relevant to continual learning over temporal sensory streams — a Perceiver AR-style extension to Sensory Perceiver's replay mechanism could improve temporal coherence in online settings.
+
+**Comparison**: Sensory Perceiver differs from the Jaegle et al. family in primary design goal: Jaegle et al. optimize for computational universality and throughput; Sensory Perceiver optimizes for biological plausibility, modality-typed routing, and continual learning. The PerceiverTower design — modality-specific front-ends feeding into shared cross-modal attention — preserves modality identity explicitly through the processing stack, unlike the single cross-attention bottleneck of [2, 3]. MIME-Type routing has no counterpart in any of [2], [3], or [hip2022].
+
+## 3.3 Efficient and Dynamic Convolutions
+
+PerceiverTower uses Conv2d front-ends for spatial modalities. The dynamic convolution literature is directly applicable to improving parameter efficiency across towers.
+
+**Dynamic Convolution** [dynconv2019] replaced static Conv kernels with an input-dependent linear mixture of n kernels: W = α₁W₁ + … + αₙWₙ, where attention weights αᵢ are computed from the input. This allows the effective kernel to adapt per input without changing inference-time cost, at the expense of n× more parameters.
+
+**SD-Conv** [sdconv2020] added L0 sparsity regularization to dynamic convolution, learning which kernel dimensions are truly input-dependent and collapsing the rest to static. This recovers parameter savings while preserving the accuracy gains of kernel mixture.
+
+**ODConv** [odconv2022] extended dynamic convolution to four attention axes simultaneously: spatial size, input channel, output channel, and kernel number — capturing richer contextual variation than single-axis approaches at lower parameter count.
+
+**KernelWarehouse** [kernelwarehouse2023] is the most parameter-efficient formulation: it partitions each kernel into m smaller cells, assembles a shared warehouse of cells, and allows each layer to linearly combine cells from the shared warehouse. This enables n > 100 kernels per layer with 10× fewer parameters than vanilla dynamic convolution. Shared warehouses across neighboring layers provide additional efficiency. For Sensory Perceiver's PerceiverTowers, adopting KernelWarehouse-style cell partitioning and cross-tower warehouse sharing would reduce per-tower parameter cost substantially, enabling more modalities without proportional parameter growth.
+
+## 3.4 Temporal Modeling
+
+Sensory Perceiver's current design treats temporal context through the experience replay buffer. The temporal modeling literature suggests several complementary approaches.
+
+**TEA (Temporal Excitation and Aggregation)** [tea2020] proposed two complementary modules for video understanding: Motion Excitation (ME) for short-range temporal patterns via inter-frame feature comparison, and Multiple Temporal Aggregation (MTA) for long-range pooling. The two-scale design — distinguishing short-range motion signals from long-range context — informs replay buffer design, where recent episodes and distant episodes may warrant different weighting strategies.
+
+**2D-TAN** [tan2019] introduced 2D temporal adjacent networks for language-guided moment localization. Mapping start-time × end-time onto a 2D adjacency map enables joint reasoning about temporal boundaries — relevant to Sensory Perceiver's potential extension to streaming temporal boundary detection.
+
+**Temporal Perceiver** [temporalperceiver2022] applied Perceiver's latent compression to temporal boundary detection: a small set of latent queries attend to full video features and decode precise boundary positions. This query-to-boundary architecture is the most compatible design for extending Sensory Perceiver to streaming applications, and represents a direct future integration target.
+
+## 3.5 Multimodal Fusion and Language Grounding
+
+**FROMAGe** [fromage2021] demonstrated that frozen LLM representations can be extended to new modalities by adding a visual encoder that projects image features into the LLM's embedding space, with a special [RET] token for image retrieval. This freeze-and-extend strategy — adding new modalities without retraining existing representations — is philosophically aligned with the MIME-Type extension protocol, which adds new PerceiverTowers without retraining the shared attention mechanism.
+
+## 3.6 Continual Learning
+
+Continual learning — learning sequential tasks without catastrophic forgetting — is the primary use case for Sensory Perceiver's replay mechanism. The established baselines provide direct comparison targets for the experiments in §5–6.
+
+**EWC (Elastic Weight Consolidation)** [kirkpatrick2017] applies parameter-level regularization using the Fisher information matrix to identify and protect task-critical weights. It requires no replay buffer but stores one Fisher matrix per task, scaling poorly to long sequences.
+
+**GEM** [lopezmanzanares2017] and **A-GEM** [chaudhry2019] constrain gradient updates to not increase loss on episodic memory examples from prior tasks. A-GEM reduces GEM's computational cost by projecting onto the average gradient constraint rather than all individual constraints. Both represent the episodic memory class of continual learning, where Sensory Perceiver's NT-Xent replay buffer is an improvement: rather than treating the buffer as a constraint set, NT-Xent optimizes embedding alignment, providing a softer and more informative consolidation signal.
+
+**DER++** [buzzega2020] showed that replaying network logits rather than labels provides a richer consolidation signal — logits encode the full soft probability distribution over all classes, preserving more information about earlier task structure. DER++ outperforms standard experience replay and EWC on most CIL benchmarks. The principle extends to Sensory Perceiver: replaying embedding logits (rather than contrastive pair embeddings) could strengthen the replay signal beyond the current NT-Xent formulation.
+
+**NT-Xent** [cite15] — used as Sensory Perceiver's replay loss — was introduced in SimCLR as a self-supervised objective maximizing agreement between augmented views of the same sample. In the replay context, NT-Xent aligns current embeddings with replayed embeddings from the buffer, providing a soft constraint that preserves the geometry of earlier task representations. The experience replay sensitivity analysis of [chaudhry2019] and [buzzega2020] directly applies: as established in §6.1, the weight of the replay loss relative to the current-task CE loss is a first-order hyperparameter, with insufficient weighting (replay_weight = 0.1) producing near-total catastrophic forgetting.
+
+## 3.6b Parameter Isolation and Structural Continual Learning
+
+While replay and gradient constraints address forgetting through training mechanics, parameter isolation methods prevent forgetting structurally by restricting which weights can change per task. This class of approaches is orthogonal to replay-based methods and has complementary strengths: it eliminates forgetting by design at the cost of consuming task-specific capacity.
+
+**PackNet** (Mallya & Lazebnik, 2018) learns a binary pruning mask per task using a learnable sparsity criterion. After training on task T, weights marked as critical (via gradient magnitude or Fisher information) are frozen; subsequent tasks train only on unpruned weights. This enforces strict parameter isolation without adding new capacity. The key trade-off: after K tasks, at most fraction (1 − ε)^K of the network remains trainable, where ε is the prune ratio per task. For Sensory Perceiver with modular PerceiverTowers, per-tower pruning masks would naturally partition the parameter space by modality, aligning with the architecture's design intent.
+
+**SupSup** (Wen et al., 2020) learns a shared binary supermask over a fixed backbone, where each task activates a different subset of parameters. Rather than pruning (destructive) or growing (parameter-hungry), SupSup discovers task-specific submasks that maximize performance. This is parameter-efficient and maintains capacity, but requires that all tasks' optimal subnetworks fit within a single fixed backbone — a constraint that becomes tight as the number of tasks grows.
+
+**HAT (Hard Attention to Task)** (Rusu et al., 2018) extends SupSup with task-specific "hard attention" masks applied to convolutional filters. Each task learns its mask during training; at test time, only the task-relevant subset of parameters is active. Unlike SupSup's binary discrete masks, HAT uses soft masks that are binarized at test time, enabling gradient-based learning during training.
+
+**Progressive Neural Networks** (Rusu et al., 2016) take a fundamentally different approach: rather than sharing parameters across tasks, they allocate new columns per task with lateral connections to prior task columns. This guarantees no forgetting (new parameters can't affect old ones) but scales quadratically with the number of tasks — prohibitive for 50+ task sequences.
+
+**Positioning parameter isolation for Sensory Perceiver**: The modular PerceiverTower design naturally aligns with per-tower parameter masks (a PackNet variant) or task-specific adapters (a lightweight alternative). After task T, freezing task-critical weights in the shared cross-modal attention and allocating new adapter parameters for task T+1 would combine the benefits of both architectures: PerceiverTowers remain task-agnostic feature extractors, while adapters provide task-specific fusion weights. This hybrid approach is more parameter-efficient than full isolation (task-specific PerceiverTowers) and more robust than pure replay.
+
+## 3.7 Positioning
+
+The Sensory Perceiver occupies a distinct position in this landscape. In this implementation, content-type (MIME-Type) metadata is treated as a first-class runtime primitive for modality-case validation and setup, alongside replay mechanisms that include an NT-Xent contrastive mode for continual learning across heterogeneous sensory streams. The closest work — Perceiver IO [3] — uses modality embeddings for a different goal (arbitrary input-output routing) without addressing continual-learning replay behavior in this manner. The architectural opportunities identified by this literature — query-based output decoding [3], Fourier position encodings [2, 3], KernelWarehouse efficiency [kernelwarehouse2023], and hierarchical scaling [hip2022] — are well-characterized future extensions, discussed in §7.9.
+
+
+# Methods (Code-Aligned)
+
+## 4.1 System Architecture
+
+The implemented architecture consists of:
+
+1. **Modality-specific PerceiverTowers** for local feature extraction.
+2. **Shared cross-modal attention** over concatenated modality embeddings.
+3. **Optional task adapters** for parameter isolation primitives.
+4. **Replay buffer** with reservoir updates for continual learning.
+
+Core model implementation: `src/models/core.py`.
+
+## 4.2 MIME-Style Input Cases and Routing Semantics
+
+The runtime formalizes `sensor_streaming` modality cases as a canonical registry:
+
+- `smartwatch` → `application/vnd.sensory.smartwatch.timeseries+tensor` (7 features)
+- `room_env` → `application/vnd.sensory.environment.timeseries+tensor` (4 features)
+- `robot_arm` → `application/vnd.sensory.robot-arm.timeseries+tensor` (9 features)
+
+Registry implementation: `src/runtime/mime_cases.py`.
+
+Important implementation detail: MIME semantics are enforced at runtime-contract boundaries for modality validation and setup derivation, while the model forward path dispatches by **modality keys** in the input dictionary.
+
+## 4.3 Continual Learning Replay
+
+### 4.3.1 Reservoir Sampling Buffer Management
+
+For each sample index \(t\) with buffer capacity \(B\):
+- if buffer not full, append;
+- else replace a random slot with probability \(B/(t+1)\).
+
+This ensures each observed sample has equal retention probability over time.
+
+### 4.3.2 Replay Modes
+
+The training service exposes two replay modes:
+
+- `er`: cross-entropy on replayed raw samples.
+- `contrastive`: NT-Xent-style feature alignment between current and replayed features.
+
+Replay is computed from raw modality inputs, so gradients can traverse the backbone when replayed batches are processed.
+
+## 4.4 Parameter Isolation: Implemented API vs Active Pipeline
+
+Implemented model capabilities:
+- `TaskAdapter.freeze()`
+- `SensoryPerceiver.freeze_task()` (freeze current adapter + allocate next)
+- `get_trainable_parameters()`, `get_task_coverage()`
+
+Current status:
+- APIs are implemented and test-validated.
+- Full sequential activation of adapter rollover in the default service training loop remains partial.
+
+## 4.5 Runtime and Services
+
+The codebase uses a service-oriented runtime:
+
+- `training_service.py`
+- `evaluation_service.py`
+- `orchestration_service.py`
+
+with:
+- typed runtime contracts (`TrainRuntimeConfig`, `EvalRuntimeConfig`, `OrchestratorRuntimeConfig`),
+- typed error codes (`AppError`, `ErrorCode`),
+- schema validation for persisted training config,
+- structured JSON events + metrics snapshots.
+
+## 4.6 Datasets in Current Implementation
+
+Implemented in dataloader factory:
+- `continual` (Split-CIFAR / Permuted-MNIST)
+- `sensor_streaming` (generated multistream sensor dataset)
+- `multimodal` (audio-visual proxy dataset)
+
+Real benchmark ingestion pipelines (e.g., AudioSet/Ego4D) remain future-stage work and are not yet in the active runtime path.
+
+
+# Experiments
+
+## 5.1 Experimental Scope
+
+This paper’s empirical claims are grounded in **Split-CIFAR-100 continual learning** with phase-based replay analysis:
+
+- **Phase 1**: feature-only replay (insufficient).
+- **Phase 2**: raw-input replay + reservoir sampling (improved stability).
+
+## 5.2 Runtime and Reproducibility Setup
+
+- Runtime entrypoints: `src.train`, `src.eval`, `src.experiments.experiment_orchestrator`
+- Service layer: `src/services/*`
+- Runtime contracts + typed errors: `src/runtime/*`
+- Observability: structured JSON events and metrics snapshots in `src/observability/*`
+
+Primary reproducibility controls:
+- fixed seed configuration,
+- persisted training config schema,
+- deterministic experiment/dataset validation via runtime contracts.
+
+## 5.3 Datasets and Modalities
+
+### Active benchmark path (used for reported quantitative CL results)
+- Split-CIFAR-100 (`experiment=continual`, `dataset=split_cifar`)
+
+### Implemented but not the primary source of the reported CL table
+- `sensor_streaming` generated dataset (`experiment=sensor_streaming`, `dataset=sensor_streaming`)
+- Audio-visual proxy dataset (`experiment=multimodal`, `dataset=audiovisual`)
+
+## 5.4 Evaluation Metrics
+
+Primary continual-learning metrics:
+- **CIL** (final mean accuracy across tasks)
+- **BWT** (backward transfer / forgetting)
+- Task-retention traces (e.g., Task 0 retention after final task)
+
+## 5.5 Implementation Status Constraints
+
+To avoid over-claiming:
+
+1. Task-adapter isolation APIs are implemented in the model, but full sequential adapter rollover is not yet the default service training path.
+2. MIME routing is implemented as canonical modality-case registry + validation, while model dispatch uses modality keys in input dicts.
+3. Real multimodal ingestion pipelines (AudioSet/Ego4D-scale training integration) remain future work.
+
+These constraints are intentional and reflected in the Results/Discussion interpretation.
+
+
+# Results
+
+We report a phase-based continual-learning result profile on Split-CIFAR-100.
+
+## 6.1 Phase 1: Feature-Only Replay (Failure Mode)
+
+Observed metrics:
+- CIL: **4.86%**
+- BWT: **−53.80%**
+- Task 0 retention after final task: **0.6%**
+
+Interpretation:
+- Replay signals constrained to higher layers are insufficient to preserve stable backbone representations.
+- The result is near-total forgetting for early tasks.
+
+## 6.2 Phase 2: Raw-Input Replay + Reservoir Sampling
+
+Observed metrics:
+- CIL: **19.54%**
+- BWT: **−34.91%**
+- Task 0 retention after final task: **33.0%**
+
+Relative change from Phase 1:
+- CIL: +14.68 pp
+- BWT: +18.89 pp (less negative)
+- Task 0 retention: +32.4 pp
+
+Interpretation:
+- Replaying raw inputs restores gradient flow through shared feature extractors and reduces representation drift.
+- Reservoir sampling improves long-horizon retention fairness across earlier and later tasks.
+
+## 6.3 Consolidated Table
+
+| Phase | Replay design | CIL | BWT | Task 0 retention |
+|---|---|---:|---:|---:|
+| 1 | Feature-only replay | 4.86% | −53.80% | 0.6% |
+| 2 | Raw-input + reservoir sampling | 19.54% | −34.91% | 33.0% |
+
+## 6.4 Implementation-Alignment Notes
+
+The reported phase contrast is aligned with current code capabilities:
+
+- Reservoir sampling and replay modes are implemented in model/service code.
+- Raw-input replay path is present in active training logic.
+- Task-adapter isolation APIs are implemented, but full sequential adapter-rollover integration in default service training remains future integration work.
+
+Therefore, this section claims a robust replay result, not a full replay+isolation combined benchmark result.
+
+## 6.5 Limits of Current Evidence
+
+1. Current quantitative claim is based on a narrow benchmark setting (Split-CIFAR-100 phase analysis).
+2. Multiseed confidence intervals are still needed for stronger statistical reporting.
+3. Real multimodal dataset ingestion (AudioSet/Ego4D-scale) is not yet an active training/eval path in this code branch.
+
+
+# Discussion
+
+## 7.1 Core Mechanistic Insight
+
+The phase comparison supports a practical mechanism-level conclusion:
+
+- Feature-only replay under-constrains shared representation layers.
+- Raw-input replay forces replay gradients through the full feature stack.
+- Reservoir sampling improves long-horizon sample retention fairness.
+
+This explains the observed transition from near-total forgetting (Phase 1) to materially reduced forgetting (Phase 2).
+
+## 7.2 What Is Implemented vs What Is Not
+
+Implemented now:
+- replay buffer with reservoir updates,
+- replay mode control (`er`, `contrastive`),
+- typed runtime/service orchestration,
+- canonical `sensor_streaming` MIME case registry and validation.
+
+Partially integrated:
+- parameter-isolation primitives (task adapters with freeze/rollover APIs) exist in model code and tests, but are not yet the dominant default service training flow.
+
+Planned:
+- combined replay + full sequential adapter isolation benchmarks in the standard service path,
+- real multimodal ingestion benchmarks at scale.
+
+## 7.3 Naming and Protocol Semantics
+
+The codebase now standardizes on `sensor_streaming` as canonical experiment/dataset identity. This reduces ambiguity and aligns runtime contracts, scripts, and documentation with a single term.
+
+MIME semantics are formalized as a registry with explicit modality definitions and feature dimensions. At present this is used for contract-level validation and modality setup derivation; model forward dispatch remains modality-key based.
+
+## 7.4 Research Consequences
+
+1. **Replay quality and gradient path design matter as much as replay existence.**
+2. **Protocolized modality definitions reduce hidden interface drift.**
+3. **Parameter isolation is promising but should be presented as partially integrated until service-path activation is complete.**
+
+## 7.5 Next Experimental Priorities
+
+1. Activate and benchmark sequential adapter rollover in the default service training pipeline.
+2. Run multiseed evaluation and confidence intervals for phase metrics.
+3. Add real multimodal ingestion/evaluation paths and report results separately from proxy datasets.
+
+
+# Conclusion
+
+This work establishes a code-aligned continual-learning result for Sensory Perceiver:
+
+- Phase 1 feature-only replay fails with severe forgetting.
+- Phase 2 raw-input replay with reservoir sampling materially improves retention.
+
+Beyond model behavior, the codebase now provides a production-style research runtime: typed contracts, explicit error semantics, service-layer training/evaluation/orchestration, and structured observability.
+
+We also formalize modality protocol semantics through canonical sensor_streaming MIME input cases and runtime-contract validation for modality setup derivation, while model forward dispatch remains modality-key based.
+
+At the same time, two boundaries remain explicit:
+
+1. Parameter-isolation APIs are implemented but default sequential service-path activation remains partial.
+2. Real multimodal benchmark ingestion (beyond proxy datasets) remains future-stage work.
+
+The immediate path forward is therefore clear: complete service-path adapter-rollover integration, run multiseed continual-learning validation, and extend from proxy multimodal data to real large-scale multimodal datasets.
+
 
 ---
 
-## **Related Work**
+# Annex A: Implementation Status Matrix
 
-### Perceiver and Perceiver IO (Jaegle et al., 2021, 2022)
+# Implementation Status Matrix (Code-Aligned)
 
-The closest architectural prior to the model proposed here is the Perceiver [2] and its successor Perceiver IO [3], both developed at DeepMind. Jaegle et al. (2021) introduced the Perceiver as a general-purpose architecture that uses iterative cross-attention between a fixed-size latent array and a high-dimensional input byte array, enabling it to process arbitrary modalities (image, audio, point cloud) without modality-specific inductive biases. Perceiver IO (2022) extended this by supporting arbitrary structured outputs in addition to structured inputs, enabling tasks such as optical flow, language modeling, and StarCraft II game playing within a single framework.
+This matrix maps paper claims to current implementation status in the codebase.
 
-While both architectures share the broad goal of multimodal, general-purpose perception, the architecture proposed in this paper — which we designate hereafter as the **Sensory Perceiver** to avoid ambiguity — differs from Jaegle et al.'s work in the following key respects:
+## Status Legend
+- **Implemented**: Present in production path and testable from current code.
+- **Partial**: Present as scaffolding/proxy, but not complete for paper-level claim.
+- **Planned**: Not yet implemented in active runtime/training path.
 
-| Dimension | Jaegle et al. Perceiver / IO [2, 3] | This Work (Sensory Perceiver) |
-|-----------|--------------------------------------|-------------------------------|
-| **Core mechanism** | Iterative cross-attention between latent array and input byte array | PerceiverTower modules per modality + cross-modal attention |
-| **Biological motivation** | Primarily computational (efficiency through latent bottleneck) | Explicitly biological: REM sleep replay, hippocampal memory consolidation |
-| **Sensory scope** | Vision, audio, video, point cloud, language | 8+ modalities including proprioception, interoception, vestibular, olfactory, gustatory, chronoception |
-| **Input encoding** | Fourier positional encodings | Novel MIME-Type unified sensory encoding (this work's primary contribution) |
-| **Memory / forgetting** | No explicit forgetting prevention mechanism | Biologically-inspired replay mechanism for continual learning |
-| **Integration target** | Research benchmark tasks | Real-world IoT sensor streams and embodied systems |
+## Architecture and Runtime
 
-This work's primary novel contribution — MIME-Type unified encoding — has no counterpart in either Jaegle et al. paper. The Sensory Perceiver is complementary to rather than derivative of the DeepMind line of work.
+| Claim | Status | Evidence | Notes |
+|---|---|---|---|
+| Package refactor (`models`, `runtime`, `services`, `observability`) | Implemented | `src/models/core.py`, `src/runtime/`, `src/services/`, `src/observability/` | Replaces monolithic structure. |
+| Typed runtime contracts + error codes + schema validation | Implemented | `src/runtime/contracts.py`, `src/runtime/errors.py`, `src/runtime/schema.py` | Includes config/dataclass validation and typed error classification. |
+| Service-layer training/evaluation/orchestration | Implemented | `src/services/training_service.py`, `src/services/evaluation_service.py`, `src/services/orchestration_service.py` | Active entrypoints call services. |
+| Structured observability and metrics snapshots | Implemented | `src/observability/structured.py`, `src/observability/metrics.py` | JSON events + metric snapshots. |
 
-### Foundational Vision-Language Models (ViLT, CLIP, FLAVA)
+## Continual Learning Mechanics
 
-Recent advances in multimodal representation learning have been dominated by dual-modality (vision-language) foundation models. 
+| Claim | Status | Evidence | Notes |
+|---|---|---|---|
+| TaskAdapter module exists | Implemented | `src/models/core.py` (`class TaskAdapter`) | Includes `freeze()` method. |
+| Adapter rollover per task (`freeze_task`) | Implemented (model API) | `src/models/core.py` (`freeze_task`) | Freezes current adapter and allocates next adapter. |
+| Parameter-isolation telemetry (`get_trainable_parameters`, `get_task_coverage`) | Implemented | `src/models/core.py` | Available for reporting/analysis. |
+| Parameter isolation active in default training pipeline | **Partial** | `src/services/training_service.py` | Model supports isolation; service loop does not call `freeze_task()` across tasks. |
+| Reservoir sampling replay buffer | Implemented | `src/models/core.py` (`_update_replay_buffer`) | Integrated in model buffer updates. |
+| Two replay modes (`er`, `contrastive`) | Implemented | `src/services/training_service.py` | Both wired through runtime config. |
+| External classifier head (separate from backbone) | Implemented | `src/services/training_service.py` | Head is `nn.Linear` outside `SensoryPerceiver`. |
 
-**CLIP (Radford et al., 2021)** [4] popularized contrastive pre-training across image-text pairs, using separate dual-encoder towers that only fuse late via dot-product similarity. While highly effective for zero-shot retrieval, CLIP's late-fusion is sub-optimal for tasks requiring deep cross-modal reasoning. 
+## MIME and Modality Routing
 
-**ViLT (Kim et al., 2021)** [5] addressed this by proposing a Vision-and-Language Transformer that discards heavy unimodal feature extractors (like ResNets) entirely, feeding linear embeddings of image patches and text tokens directly into a shared Transformer. While computationally efficient, ViLT remains strictly limited to text and images.
+| Claim | Status | Evidence | Notes |
+|---|---|---|---|
+| Canonical `sensor_streaming` experiment ID | Implemented | `src/runtime/mime_cases.py` (`SENSOR_STREAMING_EXPERIMENT_ID`) | Canonical ID is `sensor_streaming`. |
+| Canonical `sensor_streaming` MIME input cases | Implemented | `src/runtime/mime_cases.py` (`SENSOR_STREAMING_INPUT_CASES`) | Cases for `smartwatch`, `room_env`, `robot_arm`. |
+| Runtime modality setup derived from MIME registry | Implemented | `src/runtime/contracts.py` + `get_sensor_streaming_modality_setup()` | Single source of truth for dims/config. |
+| MIME validation function for `sensor_streaming` bindings | Implemented | `validate_sensor_streaming_mime_bindings()` | Validates modality↔MIME pairs. |
+| Runtime forward pass dispatches towers by MIME strings directly | **Partial** | `src/models/core.py` (`forward`) | Routing is by modality keys in input dict; MIME metadata is validated at runtime boundary, not parsed inside model forward. |
 
-**FLAVA (Singh et al., 2022)** [6] attempts a foundational alignment by training a single model to excel at unimodal vision, unimodal language, and multimodal tasks simultaneously via a complex stack of unimodal and multimodal encoders. 
+## Dataset/Benchmark Coverage
 
-The **Sensory Perceiver** distinguishes itself from these architectures through its theoretical scaling limit. ViLT, CLIP, and FLAVA explicitly hard-code architectural pathways for two modalities (Vision and Language). Scaling these models to include olfaction, proprioception, or arbitrary IoT schemas requires non-trivial architectural redesigns. Conversely, the Sensory Perceiver's `MIME-Type` routing protocol allows for modular addition of $N$ modalities dynamically, mapping all inputs to a shared $768$-d latent space fused by cross-attention without bespoke architectural pathways.
+| Claim | Status | Evidence | Notes |
+|---|---|---|---|
+| Sensor streaming dataset in dataloader factory | Implemented | `src/data/loaders.py` (`SensorStreamingDataset`, `create_dataloaders`) | Uses generated streams. |
+| Audio-visual multimodal support in dataloader factory | Implemented (proxy) | `src/data/loaders.py` (`AudioVisualProxyDataset`) | Proxy dataset, not production ingestion. |
+| Real AudioSet/Ego4D training pipeline integration | Planned | N/A in active runtime code | Not present in current loaders/services. |
+| Additional IMU/text towers in active model config | Planned | N/A in `resolve_modality_setup` | Current multimodal setup includes vision + audio only. |
 
----
+## Paper Alignment Notes
 
-### Comparison vs. Traditional Models
+1. **Accurate to claim now**:
+   - Phase-structured replay narrative and reservoir mechanism are reflected in model/service code.
+   - Runtime modernization and typed contract system are present.
 
-The Sensory Perceiver marks a significant advancement in artificial intelligence by addressing key limitations inherent in traditional models such as Recurrent Neural Networks (RNNs) and Convolutional Neural Networks (CNNs). This comparison highlights the innovative strides made by the Sensory Perceiver, especially in terms of memory processing and adaptability.
+2. **Must be phrased carefully in paper**:
+   - Parameter isolation is **implemented in model APIs** but **not yet fully exercised in the main training service loop** across sequential tasks.
+   - MIME routing is currently a **canonical registry + boundary validation** plus modality-key dispatch, not raw MIME parsing inside `forward()`.
+   - Multimodal real-benchmark ingestion (AudioSet/Ego4D) remains future/ongoing work.
 
-### Limitations of RNNs and CNNs
+3. **Canonical naming**:
+   - Use `sensor_streaming` consistently (experiment ID, dataset ID, docs, scripts).
 
-RNNs, while adept at handling sequential data, often encounter the vanishing gradient problem [7], which severely restricts their capacity for long-term memory retention. CNNs, on the other hand, are primarily structured for spatial data processing and lack the mechanism to remember past inputs, limiting their applicability in tasks requiring sequential data interpretation.
-
-### The Sensory Perceiver's Replay Mechanism
-
-To surmount these challenges, the Sensory Perceiver incorporates a biologically-inspired experience replay mechanism [11, 12, 13]. This mechanism selectively reactivates stored token representations using contrastive learning, akin to memory consolidation processes observed in the hippocampus during REM sleep [11, 12]. This approach not only improves memory retention but also enhances adaptability in learning from both supervised and unsupervised data, a feature less prevalent in traditional models.
-
-### Continuous Learning and Data Efficiency
-
-A standout feature of the Sensory Perceiver is its proficiency in continuous learning, reducing reliance on extensive labeled datasets. This contrasts sharply with the data-intensive requirements of RNNs and CNNs, positioning the Sensory Perceiver as more practical and efficient, especially in scenarios where labeled data is scarce or difficult to procure.
-
-### Comparative Analysis: Scalability and Contextual Awareness
-
-The replay mechanism not only contributes to the model's scalability but also imbues it with superior contextual awareness. This is particularly beneficial in complex, real-world applications where data variability and unpredictability are common.
-
-### Integration of Multimodal Data
-
-Unlike RNNs and CNNs, which may require specialized architectures for multimodal data integration, the Sensory Perceiver seamlessly processes and combines information from various sensory inputs. This integration is facilitated by the model's versatile architecture and replay mechanism.
-
-### Cognitive Mimicry and Biological Inspiration
-
-Drawing inspiration from biological memory consolidation processes, the Sensory Perceiver aligns with inspiration from research on human cognitive functions. This biologically inspired approach to learning and memory processing is a step towards achieving more human-like cognition in AI systems.
-
-### Generalizability Across Tasks
-
-The Sensory Perceiver's design allows it to generalize across different tasks without the need for task-specific modifications. This feature sets it apart from many traditional RNNs and CNNs, which often require significant adjustments to adapt to new tasks.
-
-### Ethical and Practical Considerations
-
-While the Sensory Perceiver offers numerous advantages, it's also essential to consider the ethical implications of its learning approach, particularly in terms of data privacy and responsible AI practices.
-
-### Summary
-
-In summary, the Sensory Perceiver's experience replay mechanism offers a groundbreaking, biologically inspired solution to learning and memory processing in AI. Its advantages over traditional models include enhanced memory retention, adaptability, efficiency in unsupervised learning environments, and a more holistic approach to multimodal data processing. These attributes position the Sensory Perceiver as a significant leap forward in the quest for AI systems that closely mimic human cognitive processes.
-
-<aside>
-💡 The Sensory Perceiver improves upon traditional models like RNNs and CNNs, with its replay mechanism representing a significant advancement. This progress highlights the dynamic nature of AI research, gradually moving us closer to developing more efficient AI systems for learning and memory.
-
-</aside>
 
 ---
 
-## **Method**
+# Annex B: Concept-Implementation Audit
 
-### **Sensory Perceiver Architecture**
+# 10. Concept-Implementation Audit
 
-The Sensory Perceiver is predicated on the idea that a neural network can directly interpret sensory inputs from various modalities without the constraints imposed by traditional architectures. It is designed to process inputs, extracting and integrating features to form a comprehensive data representation. It is designed to approximate how human perception synthesizes information from different senses to form a unified understanding of the world related to associative information and context.
+This section compares core paper concepts against current implementation behavior and evidentiary strength.
 
-### **Key Elements and Functionalities:**
+## 10.1 Concept Integrity Matrix
 
-1. **Perceiver Tower**:
-    - The model consists of multiple 'towers', each specialized in processing different types of sensory data, such as vision, audio, and touch.
-    - This modularity allows for effective handling of a variety of sensory inputs.
-2. **Dynamic Weighting Mechanism**:
-    - Inputs within each tower are dynamically weighted, with these weights being learnable and contextually adaptable.
-    - This feature enables the model to prioritize significant features for specific tasks or environments.
-3. **Cross-Modal Integration via Self-Attention over Modality Sequence**:
-    - Tower outputs are concatenated into a sequence [tower₁ || tower₂ || ... || towerₙ], and multi-head self-attention is applied over this sequence — where Q, K, V are all learned projections from the concatenated modality embeddings.
-    - This self-attention over the modality sequence enables each modality to attend to all others, producing learned cross-modal relationships without requiring explicit cross-attention queries between modality pairs.
-4. **Adaptive Weight Updating During Training**:
-    - Dynamic weights are continuously updated during training, based on the model's performance across various tasks.
-    - This allows for adaptation to the importance of different inputs in different contexts.
-5. **Efficient Processing of Large Data**:
-    - The architecture supports incremental computing, enabling processing of inputs in smaller chunks, thereby increasing efficiency and reducing computational load.
-6. **Scalability and Flexibility**:
-    - Its modular design allows for easy expansion to include new modalities or additional towers.
-7. **Adaptive Learning for New Modalities**:
-    - The model adapts to new types of sensory data through established machine learning techniques like back propagation and gradient descent.
-8. **Learning Cross-Modal Relationships**:
-    - The shared attention mechanism is crucial for learning relationships between different modalities, enhancing performance on multimodal tasks.
+| Concept | Paper Position | Code Evidence | Status | Risk |
+|---|---|---|---|---|
+| Multimodal tower architecture with shared cross-modal integration | Core architecture supports modality-specific processing + shared integration | `src/models/core.py` (`PerceiverTower`, `SensoryPerceiver`) | Implemented | Low |
+| Replay must reach shared feature extractors | Mechanistic claim from Phase 1 → Phase 2 | Phase-based results in `06-results.md`; replay applied in model/service (`_update_replay_buffer`, replay branches in `training_service.py`) | Implemented + evidenced (Split-CIFAR-100 scope) | Low |
+| Reservoir sampling for long-horizon buffer fairness | Required buffer policy for continual learning | `src/models/core.py` (`_update_replay_buffer`) | Implemented | Low |
+| Dual replay modes (`er`, `contrastive`) | Current runtime supports two replay objectives | `src/services/training_service.py` (`replay_mode` branches, `ContrastiveLoss`) | Implemented | Low |
+| Parameter isolation via task adapters | API exists for freeze/rollover and trainable-coverage controls | `src/models/core.py` (`TaskAdapter.freeze`, `freeze_task`, `get_task_coverage`, `get_trainable_parameters`) | Implemented in model API | Medium |
+| Parameter isolation as default sequential service behavior | Presented as near-term integration target, not completed default | No `freeze_task()` usage in `src/services/*`, `src/train.py` | Partial | Medium |
+| MIME-style modality semantics as runtime source of truth | Canonical modality-case registry and validation at boundaries | `src/runtime/mime_cases.py`, `src/runtime/contracts.py` | Implemented | Low |
+| MIME-string-driven dispatch inside model forward | Architectural ideal of semantic routing in-model | `src/models/core.py` forward dispatches by modality keys in input dict, not MIME strings | Partial by design | Medium |
+| Modern runtime/service/observability architecture | Typed contracts + services + structured metrics/logging | `src/runtime/*`, `src/services/*`, `src/observability/*` | Implemented | Low |
+| Real multimodal benchmark ingestion (AudioSet/Ego4D scale) | Future work, not claimed as active benchmark path | Absent from active loaders/services; status already constrained in `05-experiments.md` and status matrix | Planned | Medium |
 
-```python
-# Pseudo-Code for Section 4: Sensory Perceiver Architecture
-def PerceiverModel(inputData):
-    """
-    The Sensory Perceiver architecture is designed to handle diverse data types uniformly.
-    It can process data in a format-agnostic way, enabling broader interpretations.
-    The architecture integrates various components for scalability and adaptability.
-    """
+## 10.2 Concept-to-Concept Tensions
 
-    # Convert all types of data into a universal format
-    universalData = convertToUniversalFormat(inputData['data'])
+1. **MIME as routing primitive vs modality-key forward dispatch**
+   - Current system uses MIME as canonical registry/validation at runtime boundaries.
+   - Model execution still routes by modality dictionary keys.
+   - Interpretation: semantic routing exists at the contract layer, not as direct MIME parsing in forward.
 
-    # Process data using the Perceiver's architecture
-    # The Perceiver uses a unique combination of layers and mechanisms:
-    # 1. Input Encoding: Transforms any input type into a uniform representation
-    encodedData = encodeInput(universalData)
+2. **Parameter isolation promise vs service-path activation**
+   - Isolation APIs are present and functional in the model.
+   - Default training service does not yet execute per-task freeze/rollover lifecycle.
+   - Interpretation: concept is implemented as capability, not yet integrated as default experiment path.
 
-    # 2. Cross-Attention Mechanism: Allows the model to focus on different aspects of the input
-    attendedData = crossAttentionMechanism(encodedData)
+3. **Multimodal architecture claims vs benchmark evidence scope**
+   - Architecture and proxy multimodal datasets exist.
+   - Reported quantitative CL outcomes are still centered on Split-CIFAR-100.
+   - Interpretation: capability breadth exceeds currently published evidence breadth.
 
-    # 3. Latent Transformer: Processes the attended data through a series of transformer layers
-    transformedData = latentTransformer(attendedData)
+## 10.3 Normalized Claim Language (Recommended)
 
-    # 4. Output Projection: Converts the transformed data into a suitable output format
-    output = outputProjection(transformedData)
+Use these canonical phrasings in the main paper to keep claims defensible:
 
-    # Return the processed data as output
-    return output  # Output: Generalized features suitable for various applications
-```
+- **Replay claim**: “Raw-input replay with reservoir sampling materially improves retention in the current Split-CIFAR-100 continual-learning setting.”
+- **Isolation claim**: “Task-adapter isolation APIs are implemented in the model; full sequential service-path activation remains ongoing integration work.”
+- **MIME claim**: “MIME semantics are canonicalized at runtime-contract boundaries and drive modality validation/setup; model forward dispatch currently uses modality keys.”
+- **Multimodal claim**: “Proxy multimodal support is implemented; real large-scale multimodal ingestion (e.g., AudioSet/Ego4D) remains future-stage work.”
 
-### **Example Applications:**
+## 10.4 Immediate Paper Synchronization Actions
 
-The Sensory Perceiver's ability to handle diverse and multimodal data types makes it suitable for complex tasks, such as:
-
-1. **Scene Understanding**: Integrating visual, auditory, and textual data to provide a comprehensive understanding of scenes.
-2. **Object Detection and Identification**: Labeling and locating objects in visual input.
-3. **Sentiment Analysis or Mood Prediction**: Deriving sentiment or mood from combined auditory and visual cues.
-4. **Contextual Response or Action Suggestion**: Recommending actions based on an integrated understanding of the scene.
-5. **Audio-Visual Event Correlation**: Mapping between audio and visual elements to identify sound sources in visual data.
-
-This updated Sensory Perceiver is designed to offer a versatile, efficient, and scalable solution for AI-driven applications requiring advanced sensory data processing and integration.
-
-### Global Feature Extraction and Multimodal Input Processing
-
-The Sensory Perceiver's approach to feature extraction marks a significant departure from traditional methods like those employed in CNNs and RNNs. Unlike CNNs, which utilize convolutional filters for local feature extraction, and RNNs, which process data sequentially, the Sensory Perceiver adopts a global feature extraction strategy. This strategy analyzes the entire input space as a whole, capturing comprehensive patterns and contextual relationships across the full extent of the data. This holistic approach allows the model to understand the broader context, which is often missed in localized feature analysis.
-
-The Global Feature Extraction (GFE) layer operates distinctly from the Local Feature Extraction (LFE) approach seen in conventional convolutional models — terms coined here to describe the architectural contrast between whole-input attention and patch-level convolution:
-
-1. **Holistic Pattern Identification**:
-    - GFE analyzes the entire input space, identifying patterns and features across the full data spectrum. This holistic view is critical for detecting global features and understanding the overall context of the input.
-2. **Self-Attention Mechanism**:
-    - The model employs self-attention mechanisms within GFE, using a Composite Dot Product (CDP) to assess the importance and relevance of different features. The CDP is calculated as `CDP(Q, K, V) = softmax(QKᵀ / √d_k) · V`, where `Q` (queries), `K` (keys), and `V` (values) are learned projections of the input data, and `d_k` is the dimensionality of the key vectors. The scaling factor `1/√d_k` prevents dot-product magnitudes from growing excessively large as dimensionality increases, which would push the softmax into regions of extremely small gradients and destabilize training — a technique introduced by Vaswani et al. (2017) [1].
-3. **Dynamic Weighting and Integration**:
-    - GFE dynamically integrates features based on their contextual significance, producing a weighted sum of input features with learned weights. This enables the model to discern global features and their interrelations effectively.
-
-### **Multimodal Input Processing: Enhanced Versatility**
-
-The Sensory Perceiver excels in processing multimodal inputs, a capability that sets it apart from traditional models:
-
-1. **Handling Diverse Data Types**:
-    - The model processes various modalities simultaneously in a unified framework. This is pivotal for applications requiring cross-modal integration, such as speech recognition or medical diagnostics.
-2. **Example Applications**:
-    - In speech recognition, the model integrates audio inputs with visual cues for enhanced accuracy. In medical diagnostics, it combines imaging data with textual symptom descriptions for a more holistic analysis.
-
-### **Scalability and Flexibility: Adapting to Complexity**
-
-The Sensory Perceiver is inherently scalable and flexible, making it well-suited to modern AI challenges:
-
-1. **Adapting to Diverse Tasks**:
-    - Its transformer-based architecture allows for easy scaling and adaptation to larger datasets and complex tasks without significant structural changes.
-2. **Flexibility Across Modalities**:
-    - The model efficiently processes concatenated inputs from different sources, enhancing its applicability in a wide range of AI scenarios.
-
-<aside>
-💡 This section provides a detailed view of the Sensory Perceiver's unique architectural features, emphasizing its advanced approach to data processing and interpretation. The model's ability to process diverse sensory inputs and adapt to multiple tasks highlights its versatility and efficiency in the field of AI.
-
-</aside>
-
----
-
-### **Dynamic Weighting and Integration**
-
-The Sensory Perceiver represents a significant advancement in handling multimodal sensory data, thanks to its unique approach to dynamic weighting and integration. This method extends beyond traditional attention mechanisms, offering a holistic analysis and integration of input data across various modalities. This section provides an in-depth look at this aspect of the Sensory Perceiver, including its theoretical underpinnings, practical implementation through pseudocode, and examples of input and output.
-
-### **Python Implementation:**
-
-**Perceiver Tower** (**`PerceiverTower`** class):
-
-- Handles initialization, convolutional layers, multi-layer perceptrons, attention mechanisms, fully connected output layers, and layer normalization.
-- The forward pass processes input data through the tower's modules.
-
-```python
-class PerceiverTower:
-    """
-    Represents a single Perceiver Tower within the Sensory Perceiver.
-    This tower includes convolutional layers, multi-layer perceptrons, attention mechanisms,
-    fully connected output layers, and layer normalization.
-    """
-    def __init__(self):
-        # Initialize tower components
-        self.convLayers = initializeConvolutionalLayers()
-        self.mlp = initializeMultilayerPerceptrons()
-        self.attentionMechanism = initializeAttentionMechanism()
-        self.outputLayer = initializeFullyConnectedLayer()
-        self.layerNormalization = initializeLayerNormalization()
-
-    def forward(self, inputData):
-        """
-        Forward pass of the Perceiver Tower.
-        Processes the input data through each module of the tower.
-        inputData: (batch, channels, H, W) for image/vision modalities
-        """
-        convOutput = self.convLayers(inputData)       # (batch, dim, H', W')
-        # Flatten spatial dimensions to create sequence: (batch, dim, H'*W')
-        seqOutput = convOutput.flatten(2)
-        # Permute for PyTorch attention expectation: (seq_len, batch, dim)
-        seqOutput = seqOutput.permute(2, 0, 1)
-
-        mlpOutput = self.mlp(seqOutput)
-        # Self-attention requires Query, Key, Value
-        attentionOutput, _ = self.attentionMechanism(mlpOutput, mlpOutput, mlpOutput)
-        
-        normalizedOutput = self.layerNormalization(attentionOutput)
-        finalOutput = self.outputLayer(normalizedOutput)
-        return finalOutput
-```
-
-**Perceiver Model** (**`PerceiverModel`** class):
-
-- Registers multiple Perceiver Towers and integrates their outputs.
-- The forward pass combines outputs from all towers for a unified output.
-
-```python
-class PerceiverModel:
-    """
-    The complete Perceiver Model that integrates multiple Perceiver Towers.
-    This model manages the aggregation of outputs from all towers for a unified final output.
-    """
-    def __init__(self, numTowers):
-        # Register multiple Perceiver Towers
-        self.towers = [PerceiverTower() for _ in range(numTowers)]
-
-    def forward(self, inputData):
-        """
-        Forward pass of the Sensory Perceiver.
-        Combines outputs from all Perceiver Towers for a unified output.
-        """
-        towerOutputs = [tower.forward(inputData) for tower in self.towers]
-        unifiedOutput = aggregateTowerOutputs(towerOutputs)
-        return unifiedOutput
-```
-
-### How the Tower and Model relate:
-
-1. **Modularity and Process Flow:**
-    - The **`PerceiverTower`** class can be seen as encapsulating the processes outlined in the functions **`encode_input`**, **`create_latent_array`**, **`cross_attention`**, **`process_with_transformers`**, and **`decode_output`**.
-    - Each step in the **`dynamic_weighting_and_integration`** function corresponds to a component or a series of components within the **`PerceiverTower`**.
-2. **Integration and Aggregation:**
-    - The **`PerceiverModel`** class, which manages multiple **`PerceiverTowers`**, aligns with the idea of integrating and aggregating various processing steps.
-    - It could be considered as the orchestrator that utilizes the process outlined in **`dynamic_weighting_and_integration`** across multiple towers, combining their outputs for a unified result.
-3. **Functionality and Hierarchy:**
-    - The detailed functions (A-E, G) provide a clear hierarchical breakdown of the processes within a single **`PerceiverTower`**.
-    - The **`PerceiverModel`**, through its **`forward`** method, could leverage the **`dynamic_weighting_and_integration`** function, applying it across multiple towers.
-4. **Example Usage:**
-    - The example usage of the Sensory Perceiver at the end of your code snippet can be directly associated with how an instance of the **`PerceiverModel`** class would be used in practice.
-    - The **`load_data`** and **`model_output`** align with the data input and output handling in the **`PerceiverModel`**.
-
-### Theoretical Framework
-
-The dynamic weighting and integration process in the Sensory Perceiver involves several key components, each contributing to the model's ability to process and synthesize complex, high-dimensional data:
-
-1. **Perceiver Towers**: Each tower within the model is dedicated to a specific modality (e.g., vision, audio, touch), ensuring specialized processing of diverse sensory inputs.
-2. **Dynamic Weighting**: The model assigns adaptable weights to inputs within each tower based on their relevance in the given context. This adaptability allows the model to focus on the most pertinent features at any given moment.
-3. **Cross-Modal Integration**: Tower outputs are concatenated as a sequence and processed by shared multi-head self-attention (Q, K, V all from the concatenated modality sequence), enabling each modality embedding to attend to all others and producing a unified cross-modal representation.
-4. **Adaptive Learning and Weight Update**: During training, the model continually adjusts the weights assigned to different inputs, enhancing its ability to discern the most relevant features for varied tasks.
-
-### Full Tower Pseudocode Implementation
-
-To illustrate the Sensory Perceiver's functionality, we present a high-level pseudocode overview:
-
-```python
-# G: Dynamic Weighting and Integration
-def dynamic_weighting_and_integration(input_data):
-    # Uniformly encodes various data types (images, audio, text, etc.)
-    encoded_data = encode_input(input_data)
-
-    # Initialize a latent array to hold encoded data for processing
-    latent_array = create_latent_array(encoded_data)
-
-    # Applies attention mechanism to focus on relevant parts of input
-    attended_data = cross_attention(encoded_data, latent_array)
-
-    # Transformer layers process the attended data
-    processed_data = process_with_transformers(attended_data)
-
-    # Decodes the processed data to produce final output
-    output = decode_output(processed_data)
-    return output
-
-# A: Input Encoding
-def encode_input(input_data):
-    encoded_data = input_encoder(input_data)
-    return encoded_data
-
-# B: Latent Array Creation
-def create_latent_array(encoded_data):
-    latent_array = initialize_array(encoded_data)
-    return latent_array
-
-# C: Cross-Attention Mechanism
-def cross_attention(encoded_data, latent_array):
-    attended_data = attention_layer(encoded_data, latent_array)
-    return attended_data
-
-# D: Transformer Layers Processing
-def process_with_transformers(attended_data):
-    for layer in transformer_layers:
-        attended_data = layer(attended_data)
-    return attended_data
-
-# E: Output Decoding
-def decode_output(processed_data):
-    output = output_decoder(processed_data)
-    return output
-
-# Example usage of the Perceiver model
-input_data = load_data()
-model_output = dynamic_weighting_and_integration(input_data)
-```
-
-This pseudocode abstracts the specific functionalities of the Sensory Perceiver, focusing on the sequential processing of data through various layers and the integration of outputs from multiple towers.
-
-In this pseudocode:
-
-- **Dynamic Weighting and Integration (G)**: This function represents the core of the Sensory Perceiver, where various components are integrated to process the input data.
-- **Input Encoding (A)**: This step involves encoding different types of input data into a uniform format.
-- **Latent Array Creation (B)**: A latent array is created to hold and process the encoded data.
-- **Cross-Attention Mechanism (C)**: The cross-attention mechanism applies attention to focus on relevant parts of the encoded input.
-- **Transformer Layers Processing (D)**: This involves processing the attended data through a series of transformer layers.
-- **Output Decoding (E)**: The final step decodes the processed data to produce the output.
-
-### Example Input and Output
-
-**Example Input**:
-
-- **Visual**: An image of a city street scene.
-- **Auditory**: Corresponding street sounds.
-- **Textual**: Descriptive text, like "busy city street at midday."
-
-**Example Output**:
-
-- **Integrated Scene Description**: "A bustling urban street with active traffic and pedestrians, accompanied by the typical sounds of a city at midday."
-
-Dynamic weighting and integration are pivotal to the Sensory Perceiver's ability to handle diverse data types, mirroring human-like sensory processing. This approach allows the model to focus on relevant features in various contexts and combine them effectively for decision-making or predictions. The model's adaptability in processing and integrating large volumes of multimodal data positions it as a versatile tool for real-world applications where complex data synthesis is key.
-
-### **Multimodal Input Processing**
-
-One of the key innovations of the Perceiver is its ability to handle multimodal inputs. The architecture does not require separate pathways or preprocessing for different data types, such as images, audio, and text. Instead, it treats all input data as part of a unified perceptual field, enabling it to perform cross-modal integration and interpretation in a way that has been challenging for previous models.
-
-### **Scalability and Flexibility**
-
-The Sensory Perceiver is inherently scalable and flexible. Its architecture allows it to handle inputs of varying sizes and complexities without significant changes to the network structure. This contrasts with existing models, which often require extensive architecture adjustments or hyperparameter tuning to deal with different data types or tasks.
-
-### **Perceptual Depth and Contextual Interpretation**
-
-### Overview
-
-- **Purpose**: This section discusses the Sensory Perceiver's ability to achieve perceptual depth, meaning its capacity to extract and interpret deep, nuanced features from data.
-- **Contextual Interpretation**: It also explores how the model integrates context into its processing, enabling a more comprehensive understanding of the input data.
-
-### Theoretical Framework
-
-- **Deep Feature Extraction**: Describe how the Sensory Perceiver extracts complex features from data, leveraging its cross-attention and transformer layers.
-- **Contextual Data Processing**: Explain how the model integrates contextual information, enhancing its interpretative capabilities.
-
-### Python Implementation (Pseudocode)
-
-- **Contextual Interpretation Module**: Include pseudocode for a hypothetical module within the Sensory Perceiver that handles contextual interpretation.
-    
-    ```python
-    def contextual_interpretation_module(encoded_data, context_data):
-        """
-        This module integrates encoded input data with additional context data
-        for deeper interpretation.
-        """
-        combined_data = combine_encoded_data_with_context(encoded_data, context_data)
-        interpreted_data = interpret_context(combined_data)
-        return interpreted_data
-    
-    ```
-    
-- **Example Usage**: Demonstrate how this module would be used within the Sensory Perceiver's processing pipeline.
-
-### Application Examples
-
-- **Case Studies**: Provide examples or case studies where the Sensory Perceiver's perceptual depth and contextual interpretation capabilities are applied. For instance, image recognition with contextual clues, or language understanding with cultural nuances.
-
-### Comparison with Human Perception
-
-- **Cognitive Parallels**: Draw parallels between the Sensory Perceiver's approach and human cognitive processes, emphasizing how the model mimics aspects of human perception and context processing.
-
-### Implications for AI and Machine Learning
-
-- **Advancements in AI**: Discuss how the Sensory Perceiver's approach to perceptual depth and contextual interpretation represents an advancement in AI, particularly in fields requiring complex data interpretation.
-- **Challenges and Opportunities**: Highlight the challenges in achieving human-like perception in AI and the opportunities this model opens for future research and applications.
-
-With its advanced sensory data representation capabilities, the Sensory Perceiver delves deep into the realm of AI perception, approximating human-like understanding and responsiveness. This section elaborates on the mechanisms and layers involved in processing, interpreting, and utilizing sensory data for various applications and tasks
-
-### Data Processing and Interpretation
-
-1. **Pattern Recognition and Analysis**:
-    - The model leverages its integrated sensory data to discern and analyze patterns, a fundamental aspect of cognition. This includes recognizing objects or features in visual input, detecting environmental anomalies, or decoding complex auditory signals.
-2. **Contextual Understanding and Decision-Making**:
-    - The model acquires a comprehensive contextual understanding by synthesizing information from multiple sensory inputs. This holistic perspective aids in making informed decisions, and ensuring relevant and situationally appropriate responses.
-3. **Predictive Analysis**:
-    - Utilizing historical data alongside current sensory inputs, the Sensory Perceiver engages in predictive analysis. It anticipates future scenarios or states, like weather forecasting based on environmental sensors or predicting user behaviors in smart systems.
-
-### Applications and Functionalities
-
-1. **Automated Response and Control Systems**:
-    - The model autonomously adjusts and controls systems in smart homes and industrial settings, optimizing for efficiency and user comfort based on the sensory data it processes.
-2. **Navigation and Robotics**:
-    - The model provides crucial navigation capabilities for robotics and autonomous vehicles, enabling obstacle avoidance and dynamic interaction with diverse environments.
-3. **Health Monitoring and Diagnostics**:
-    - In the healthcare sector, the Sensory Perceiver interprets medical sensor data for patient monitoring, diagnostic processes, and even in surgical assistance, showcasing its potential in precision medicine.
-4. **Interactive and Immersive Experiences**:
-    - In virtual reality and gaming, the model enhances user experiences by dynamically adapting to user movements and changes in the virtual environment.
-
-### Advanced Capabilities
-
-1. **Continuous Learning and Adaptation**:
-    - Central to the Sensory Perceiver is its ability to learn continuously from incoming sensory data, thereby refining its interpretative algorithms for enhanced precision and effectiveness.
-2. **Real-Time Processing and Feedback**:
-    - The model's proficiency in real-time data processing ensures immediate feedback and adjustments, a critical feature for applications requiring swift responses, such as in dynamic, ever-changing environments.
-3. **Human-Machine Interaction**:
-    - The model significantly advances human-machine interactions, understanding nuanced human inputs like gestures, voice commands, and physical movements, facilitating a more natural and intuitive interface.
-
-### **Key Components**
-
-1. **Input Encoder**: Encodes diverse input data into a uniform format.
-2. **Latent Array**: Acts as an intermediary processing step, holding encoded data.
-3. **Cross-Attention Mechanism**: Allows the model to focus on relevant parts of the input.
-4. **Transformer Layers**: Provide the ability to process and interpret the latent array.
-5. **Output Decoder**: Decodes the processed data to produce the final output.
-
-### **Pseudocode Representation**
-
-Below is a practical example of how the Sensory Perceiver achieves deep and contextually-informed interpretations of various types of sensory data.
-
-```python
-# A: Input Encoding
-def encode_input(input_data):
-    # Uniformly encodes various data types (images, audio, text, etc.)
-    encoded_data = input_encoder(input_data)
-    return encoded_data
-
-# B: Latent Array Creation
-latent_array = create_latent_array()
-
-def create_latent_array():
-    # Initialize a latent array to hold encoded data for processing
-    latent_array = initialize_array()
-    return latent_array
-
-# C: Cross-Attention Mechanism
-def cross_attention(encoded_data, latent_array):
-    # Applies attention mechanism to focus on relevant parts of input
-    attended_data = attention_layer(encoded_data, latent_array)
-    return attended_data
-
-# D: Transformer Layers Processing
-def process_with_transformers(attended_data):
-    # Transformer layers process the data
-    for layer in transformer_layers:
-        attended_data = layer(attended_data)
-    return attended_data
-
-# E: Output Decoding
-def decode_output(processed_data):
-    # Decodes the processed data to produce final output
-    output = output_decoder(processed_data)
-    return output
-
-# F: Perceiver Model Integration
-def perceiver_model(input_data):
-    encoded_data = encode_input(input_data)
-    latent_array = create_latent_array()
-    attended_data = cross_attention(encoded_data, latent_array)
-    processed_data = process_with_transformers(attended_data)
-    output = decode_output(processed_data)
-    return output
-
-# Example usage of the Perceiver model
-input_data = load_data()
-model_output = perceiver_model(input_data)
-```
-
-<aside>
-💡 The **`encode_input`** function (Label A) transforms diverse input data into a standardized format.
-
-- **`create_latent_array`** (Label B) initializes a latent array for holding and processing the encoded data.
-- The **`cross_attention`** function (Label C) applies an attention mechanism to selectively focus on important aspects of the input data.
-- **`process_with_transformers`** (Label D) represents the series of transformer layers that further process the data.
-- Finally, **`decode_output`** (Label E) decodes the processed data to produce the final output.
-</aside>
-
-**Here's how each part of the code relates to the concepts in this section:**
-
-### A: Input Encoding
-
-- **Relevance**: This step, where various data types are uniformly encoded, is fundamental to achieving perceptual depth. By converting different types of inputs into a common format, the Sensory Perceiver can process them with a consistent approach, enabling deeper and more uniform feature extraction.
-- **Contextual Interpretation**: The uniform encoding also lays the groundwork for integrating contextual data, as it allows for easier combination of primary input with additional contextual information.
-
-### B: Latent Array Creation
-
-- **Latent Array as a Conceptual Tool**: The latent array serves as a versatile tool for holding and processing the encoded data. Its role in the model's architecture supports the idea of deep data processing, as it can store and handle complex, high-dimensional data.
-
-### C: Cross-Attention Mechanism
-
-- **Focus on Relevant Parts of Input**: The cross-attention mechanism is crucial for perceptual depth. It allows the model to dynamically focus on the most relevant aspects of the input data, integrating these focused areas into a broader context. This is akin to how human perception often focuses on certain aspects of a sensory input based on context.
-
-### D: Transformer Layers Processing
-
-- **Deep Processing of Data**: Transformer layers process the attended data, enabling the extraction and interpretation of complex features. This is essential for achieving perceptual depth, as it allows the model to uncover subtle patterns and relationships in the data.
-
-### E: Output Decoding
-
-- **Final Interpretation and Output**: Decoding the processed data into a final output is where the model's perceptual depth is realized. This step translates the deep, contextually-rich processing into actionable insights or understandable results.
-
-### F: Perceiver Model Integration
-
-- **End-to-End Process**: This function integrates all the previous steps, showcasing how the Sensory Perceiver processes input data from encoding to output generation. It exemplifies the model's capability to handle complex, multimodal data in a unified manner, which is at the heart of achieving perceptual depth and contextual interpretation.
-
-### Example Usage
-
-- **Practical Demonstration**: The example usage demonstrates how the entire model operates on real-world data, providing a practical context to the theoretical concepts discussed in the "Perceptual Depth and Contextual Interpretation" section.
-
-Each sensory modality has its own corresponding human experience and data representation. For example, visual data involves perceiving light, colors, shapes, motion, and depth, which can be captured by cameras and sensors. Auditory data encompasses the perception of sounds, which can be captured by microphones and audio sensors. Tactile data involves sensing pressure, texture, vibration, and temperature, which can be captured by haptic, pressure, and temperature sensors. Other sensory modalities like olfactory, gustatory, vestibular, proprioception, and interoception have unique human experiences and data representations.
-
-### **Sensory Data Representation**
-
-The Sensory Perceiver aims to handle diverse sensory inputs and integrate them into a unified perceptual experience, similar to human sensory perception. This model can analyze and comprehend integrated sensory data in the appropriate context, enabling the transition from raw perception to intelligent understanding. It can draw meaningful conclusions and recognize patterns within the data. The model achieves a deep and nuanced understanding of complex sensory inputs by emulating higher-order cognitive functions. This enables it to perform tasks that require contextual awareness and situational understanding.
-
-When combined with attention mechanisms, the Sensory Perceiver can effectively focus on specific parts of the input data and improve its performance on tasks that involve understanding relationships between different elements. Integrating attention mechanisms allows the model to selectively attend to relevant information and enhance its ability to process and interpret complex, multimodal data. By combining the holistic processing of the Sensory Perceiver with the focused attention of attention mechanisms, the model achieves a balance between global perception and local analysis. This results in a more comprehensive and nuanced understanding of the input data.
-
-### **Representative Inputs**
-
-The representative inputs for the Sensory Perceiver encompass a broad spectrum of sensory data, each contributing to its comprehensive perceptual capabilities:
-
-1. **Visual (Sight)**:
-    - **Human Experience**: Vision involves perceiving light, colors, shapes, motion, and depth.
-    - **Data Representation**: Captured through cameras and sensors, visual data includes images, videos, and spatial data. In IoT, devices like surveillance cameras, drones, and environmental sensors capture visual data for monitoring and analysis.
-2. **Auditory (Hearing)**:
-    - **Human Experience**: Hearing encompasses the perception of sounds, ranging from speech to noise.
-    - **Data Representation**: Sound data is captured through microphones and audio sensors. This includes voice recordings, ambient sounds, and acoustic signals. IoT applications involve smart speakers, environmental noise monitoring, and voice-activated devices.
-3. **Tactile (Touch)**:
-    - **Human Experience**: Touch involves sensing pressure, texture, vibration, and temperature.
-    - **Data Representation**: Haptic sensors, pressure sensors, and temperature sensors in IoT devices capture tactile data. Applications include touch-sensitive interfaces, wearables for health monitoring, and industrial automation systems.
-4. **Olfactory (Smell)**:
-    - **Human Experience**: Smell is the detection of airborne chemicals or particles.
-    - **Data Representation**: Electronic noses and gas sensors mimic this sense, capturing data on air quality, detecting hazardous gases, or even assessing food freshness in smart appliances.
-5. **Gustatory (Taste)**:
-    - **Human Experience**: Taste discerns flavors and is closely linked with smell.
-    - **Data Representation**: While challenging to replicate, electronic tongues or taste sensors are in development for applications like food quality analysis and chemical detection.
-6. **Vestibular (Balance and Spatial Orientation)**:
-    - **Human Experience**: This sense helps maintain balance and understand spatial orientation.
-    - **Data Representation**: Gyroscopes and accelerometers in IoT devices capture motion and orientation data, used in smartphones, drones, and wearable fitness trackers.
-7. **Proprioception (Body Position and Movement)**:
-    
-    Proprioception is the body's ability to perceive its own position and movement in space. It is a distinct mechanosensory modality, crucial for movement and balance, allowing us to know the position of our limbs without looking at them. Representing proprioceptive data in a computational model involves several key considerations:
-    
-    - **Human Experience**: The sense of body position and movement, knowing where each part of the body is.
-    - **Data Representation**: Motion sensors and wearable technology track body movements and positions, applicable in virtual reality systems, sports performance monitoring, and physical therapy.
-8. **Interoception (Internal Body Sensation)**:
-    - **Human Experience**: This includes sensing internal body states like hunger, thirst, and heart rate.
-    - **Data Representation**: Wearable health monitors and medical IoT devices track heart rate, hydration levels, and other vital signs for health and fitness applications.
-
-### **Expanding the Sensor Spectrum**
-
-In addition to the aforementioned sensory modalities, the Sensory Perceiver integrates and interprets data from an expanded array of sensors, enhancing its ability to approximate key principles of human perception:
-
-1. **Chemical Sensors**:
-    - **Human Experience**: Detection and analysis of chemical compositions and interactions.
-    - **Data Representation**: Utilized in biomedical and environmental monitoring, these sensors can detect specific chemicals or changes in chemical compositions, crucial for medical diagnostics or environmental safety.
-2. **Magnetic Sensors**:
-    - **Human Experience**: Perception of magnetic fields and spatial orientation.
-    - **Data Representation**: Used in navigation systems and security applications, these sensors detect magnetic field strengths and variations, aiding in orientation and detection tasks.
-3. **Ultrasonic Sensors**:
-    - **Human Experience**: Echo-location and distance estimation, similar to certain animal perceptions.
-    - **Data Representation**: These sensors measure distances using sound waves, beneficial in robotic navigation, object detection, and industrial automation.
-4. **Lidar Sensors**:
-    - **Human Experience**: Depth perception and high-resolution mapping.
-    - **Data Representation**: Employing laser light for high-resolution mapping, Lidar sensors are instrumental in autonomous vehicles, geographical mapping, and archaeology.
-
-### **Error Detection and Adaptation**
-
-Incorporating error detection mechanisms, the Sensory Perceiver ensures data accuracy and reliability. It identifies and corrects common sensor faults, adapting its processing strategies dynamically. This capability is pivotal in maintaining the model's efficiency and effectiveness across varying environments and applications.
-
-### **Application-Specific Interfaces**
-
-The model’s sensor interface is tailored to specific applications, optimizing its performance in diverse scenarios like smart home automation, healthcare monitoring, industrial control systems, and interactive media. This customization allows the model to effectively process and interpret the most relevant sensory data for each specific use case.
-
-### **Unified Sensory Encoding**
-
-In the context of the Sensory Perceiver, sensory data is encoded and transformed into various modalities in a high-dimensional space, regardless of its modality. This embedding process captures the data's temporal, spatial, and meta-specific characteristics and can influence subsequent processing steps. The unified sensory encoding captures the intrinsic properties of the input and integrates contextual information from other modalities, reflecting the integrated nature of human sensory processing.
-
-The Sensory Perceiver handles these diverse data types by treating all inputs uniformly and applying a unified sensory encoding without relying on distinct preprocessing methods for each modality. This approach allows the model to capture the essential features of each modality while converting them into a uniform representation. This integration of modalities is crucial for tasks that require a holistic understanding of multimodal data.
-
-### **Process of Encoding**
-
-The encoding process in the Sensory Perceiver begins by transforming raw sensory inputs, such as images, audio, and text, into a high-dimensional, unified format. This is achieved through a series of embedding layers explicitly designed for a particular sensory modality. These embedding layers convert the input data into a consistent representation suitable for the model's global processing layers.
-
-By applying modality-specific preprocessing steps within the embedding layers, the Sensory Perceiver can capture the unique features of each sensory modality while ensuring that all types of input data are represented in a uniform format. For example, a convolutional layer may capture spatial relationships in image data, while a Fourier transform layer could extract temporal features from audio data.
-
-Instead of building these sensory models independently, we propose a global approach using MIME-Types. MIME-Types provide a standardized way to categorize and identify the data type, regardless of the sensory modality to which it belongs. By leveraging MIME-Types, we can handle diverse sensory inputs in a unified manner, facilitating seamless integration and interpretation of multimodal data within the Sensory Perceiver. This approach allows for a more efficient and scalable processing of sensory information, promoting a holistic understanding of the input data.
-
-Once the raw sensory inputs have been encoded into a high-dimensional, unified format, they are ready for further processing and integration within the Sensory Perceiver's architecture. This encoding step enables the model to handle diverse data types and facilitate a holistic understanding of multimodal information.
-
-### **MIME-Type Unified Encoding (Core Contribution)**
-
-**MIME-Type Extension Protocol**
-
-Registering a new sensory modality requires three steps:
-
-1. **Define the MIME type string** following the convention `<category>/<format>` (e.g., `thermal/ir`, `depth/lidar`, `biosignal/eeg`). Use established IANA media types where applicable; use a project-specific namespace (`x-sensory/<name>`) for novel modalities without an IANA counterpart.
-
-2. **Implement a PerceiverTower** for the new modality: a `nn.Module` that maps raw sensor data to the shared embedding dimension (768-d). The tower must accept inputs of the modality's native shape and output `(batch, 768)`.
-
-3. **Register the encoder** in the MIME router:
-   ```python
-   mime_router['thermal/ir'] = ThermalIREncoder(embed_dim=768)
-   ```
-
-**Conflict resolution**: If two sensors share the same MIME type (e.g., two RGB cameras both sending `image/rgb`), disambiguate with a fragment identifier: `image/rgb#camera0` and `image/rgb#camera1`. Each fragment maps to its own PerceiverTower instance, enabling independent feature extraction before cross-modal attention.
-
-**Schema versioning**: MIME type strings are treated as stable identifiers. Changing a type string (e.g., renaming `audio/pcm` to `audio/wav`) constitutes a breaking change and requires a migration in `normalizeLegacyModalities()`.
-
-
-The MIME-Type (Multipurpose Internet Mail Extensions) unified encoding scheme is the novel contribution of this work, enabling a standardized yet flexible routing and encoding mechanism for heterogeneous sensory modalities. Rather than hand-crafting separate processing pipelines for each modality, MIME-Types provide a content-aware tagging system that directs inputs to modality-specific encoders while preserving a unified downstream architecture.
-
-**Mechanism Formulation:**
-Let $x_m$ represent a raw sensory input with an assigned MIME-Type identifier $\tau_m \in \mathcal{T}$, where $\mathcal{T}$ is the set of all supported types (e.g., `image/png`, `audio/wav`, `interoception/heart-rate`). Let $E_{\tau_m}$ be the modality-specific PerceiverTower encoder registered to the MIME router for type $\tau_m$. 
-
-The encoding process maps each heterogeneous input to a unified latent space of dimension $d$ (where $d=768$ by default):
-$$ z_m = E_{\tau_m}(x_m) \quad \text{where} \quad z_m \in \mathbb{R}^{N_m \times d} $$
-Here, $N_m$ represents the resulting sequence length for the modality (e.g., number of image patches or audio windows). The global sensory representation matrix $Z$ is constructed by concatenating the embeddings across all $M$ active modalities:
-$$ Z = [z_1 \parallel z_2 \parallel \dots \parallel z_M] \quad \text{where} \quad Z \in \mathbb{R}^{(\sum N_m) \times d} $$
-This unified matrix $Z$ is then processed by the shared cross-modal attention layers.
-
-**MIME-Type Mapping Table:**
-
-| Modality | MIME-Type | Encoder | Output Dim | Example Input |
-|----------|-----------|---------|-----------|----------------|
-| Vision | `image/rgb`, `image/grayscale` | Conv2d + FC | 768 | 224×224 image |
-| Audio | `audio/wav`, `audio/mel-spectrogram` | STFT/MelScale + Linear | 768 | 16 kHz audio chunk |
-| Touch (Tactile) | `haptic/pressure`, `haptic/texture` | Linear projection | 768 | 12-element pressure vector |
-| Proprioception | `proprioception/joint-angles` | Linear projection | 768 | 7-DOF joint angles |
-| Olfactory | `chemical/gas-sensor` | Linear projection | 768 | 8-channel gas sensor readings |
-| Gustatory | `chemical/taste-sensor` | Linear projection | 768 | 5-channel taste sensor readings |
-| Vestibular | `vestibular/acceleration` | Linear projection | 768 | 3D acceleration + 3D gyro |
-| Interoception | `interoception/heart-rate`, `interoception/respiration` | Linear projection | 768 | Continuous vital signs |
-| Temporal | `time/clock` | Positional encoding | 768 | Unix timestamp |
-| Language | `text/utf-8` | Tokenizer + Embedding | 768 | Natural language tokens |
-
-**Pseudocode (MIME-Type Router):**
-```python
-def mime_type_encode(sensory_inputs: dict) -> torch.Tensor:
-    """
-    Route inputs by MIME-Type to modality-specific encoders.
-    sensory_inputs: dict mapping mime_type → raw_data
-    returns: unified embeddings (batch, total_seq_len, 768)
-    """
-    embeddings = []
-    for mime_type, raw_data in sensory_inputs.items():
-        encoder = mime_router.get(mime_type, mime_router.get('default', None))
-        
-        if encoder is None:
-            raise KeyError(
-                f"No encoder registered for MIME type '{mime_type}'. "
-                f"Register via mime_router['{mime_type}'] = YourEncoder "
-                f"or provide a 'default' fallback encoder."
-            )
-            
-        embedding = encoder(raw_data)  # Maps to (batch, seq_len, 768)
-        embeddings.append(embedding)
-
-    # Concatenate sequence dimensions over the unified 768-d space
-    unified_Z = torch.cat(embeddings, dim=1)
-    return unified_Z
-```
-
-This approach scales naturally to new modalities: adding a sensor only requires (a) defining a MIME-Type, (b) implementing a modality-specific encoder, and (c) registering it in `mime_router`. The existing cross-modal attention layer may benefit from brief fine-tuning (~1-2% of original training time) to learn interactions with the new modality, but global retraining from scratch is not required.
-
-### **Handling Different Modalities**
-
-A unique challenge in designing the Unified Sensory Encoding is the accommodation of different sensory modalities. Each type of sensory data has its inherent characteristics - for instance, images have spatial correlations, while audio data has temporal dynamics. The Sensory Perceiver addresses this by implementing modality-specific preprocessing steps within the embedding layers. These steps are designed to capture the essential features of each modality while converting them into a uniform representation. For example, a convolutional layer might be used for image data to capture spatial relationships, while a Fourier transform layer could be employed for audio data to capture temporal features.
-
-### **Integration of Modalities**
-
-Once the sensory data has been encoded into a high-dimensional, unified format, the next step is the integration of these modalities. This integration is crucial for tasks that require a holistic understanding of multimodal data. The Sensory Perceiver achieves this through a specialized integration layer that combines the encoded representations from different modalities. This layer identifies and leverages the interdependencies and correlations between modalities, forming a composite representation that encapsulates the sensory experience. This process mirrors the human brain's ability to integrate information from different senses to form a coherent perception of the world.
-
-<aside>
-💡 The Unified Sensory Encoding section thus provides a detailed overview of how the Sensory Perceiver processes and integrates various forms of sensory data. This approach is foundational to the model's ability to approximate key principles of human perception, allowing it to handle complex, multimodal tasks in a way that traditional AI models cannot.
-
-</aside>
-
-### **Sensor Overlap**
-
-The Sensory Perceiver excels in integrating and processing data from various sensory modalities, leading to a nuanced understanding of complex scenarios. This document updates the original sensor overlap content with detailed definitions and pseudocode.
-
-### **Overlaps and Integration**
-
-### **Visual and Auditory Overlap**
-
-- Integrated in multimedia and security systems (e.g., CCTV with audio) and virtual reality.
-- Pseudocode for processing: **`encoded_visual`** and **`encoded_auditory`** data integration.
-
-### **Tactile and Proprioceptive Overlap**
-
-- Crucial in robotics and prosthetics for accurate object manipulation and navigation.
-- Code example: Integration of tactile feedback with proprioceptive data.
-
-### **Olfactory and Gustatory Overlap**
-
-- Important in flavor analysis in the food and beverage industries.
-- Implementation: Chemical sensors mimic these senses for quality assessment.
-
-### **Visual and Tactile Overlap**
-
-- Useful in remote operations like surgery or exploration (e.g., Mars rovers).
-- Code snippet: Combining visual input with tactile feedback.
-
-### **Auditory and Vestibular Overlap**
-
-- Key in applications requiring balance and spatial orientation alongside sound perception.
-- Example: User interfaces and navigation systems for the visually impaired.
-
-### **Proprioceptive and Vestibular Overlap**
-
-- Essential in autonomous systems like drones or self-driving cars for stabilization.
-- Pseudocode: Data fusion for balance and spatial orientation.
-
-### **Environmental Sensory Overlap**
-
-- Integrated in smart building systems and environmental monitoring.
-- Example: Simultaneous monitoring of temperature, light, and humidity.
-
-### **Chemical and Environmental Sensory Overlap**
-
-- Used in pollution monitoring and agricultural systems.
-- Code Implementation: Soil and crop analysis using chemical sensors.
-
-### **Interoceptive and Health Sensor Overlap**
-
-- In healthcare, combining internal and external health sensors for comprehensive assessments.
-- Code Example: Integration of heart rate monitors with external health sensors.
-
-### **Perceiver Model Components**
-
-### **InputProcessor**
-
-- Encodes raw data for processing.
-- Example: Encoding visual, auditory, tactile, proprioceptive, and chemical data.
-
-### **CrossModalIntegration**
-
-- Integrates features from all sensory inputs.
-- Pseudocode: Combination strategies (concatenation, fusion, contextual blending).
-
-### **DynamicWeighting**
-
-- Adjusts the weights of inputs based on relevance.
-- Code snippet: Learning contextual relevance and adjusting weights dynamically.
-
-### **SelfAttentionMechanism**
-
-- Applies selective focus on parts of the input data.
-- Implementation: Calculating and applying attention scores for input enhancement.
-
-### **OutputGenerator**
-
-- Generates the final output based on processed inputs.
-- Example: Transforming data into classifications, predictions, or decisions.
-
-### **Example Usage**
-
-```python
-perceiver_model = PerceiverModel()
-output = perceiver_model.process_inputs(visual_data, auditory_data, tactile_data, proprioceptive_data, chemical_data)
-
-```
-
-This updated content provides a more comprehensive view of how the Sensory Perceiver processes and integrates various sensory modalities, aligning with the complexities of real-world sensory processing.
-
-### **Global Feature Extraction Layer**
-
-At the core of the Sensory Perceiver is the global feature extraction layer. This layer operates over the entire input space, unlike the localized operations of convolutional layers or the sequential processing of RNNs. It employs a set of global filters that scan the entire input field, extracting patterns and features indicative of the underlying structure of the data. This global processing is crucial for tasks that require understanding the entire input scene, such as image recognition or multimodal integration.
-
-The Global Feature Extraction Layer forms the heart of the Sensory Perceiver, representing a departure from traditional localized or sequential processing methods. It's designed to capture and interpret patterns across the entire spectrum of input data, facilitating a more comprehensive and integrated approach to perception.
-
-### The f**unction of the Global Feature Extraction Layer**
-
-This layer operates on the Unified Sensory Encoding's high-dimensional, unified sensory data. Unlike convolutional layers that focus on local receptive fields or RNNs that process data sequentially, the Global Feature Extraction Layer simultaneously applies a set of filters across the entire input space. These filters are designed to detect patterns and features that span across different regions and modalities of the input data. The layer thus captures global characteristics of the input, such as overarching themes or structures that are not confined to specific localities.
-
-### **Significance in the Architecture**
-
-The significance of the Global Feature Extraction Layer in the Perceiver architecture cannot be overstated. This layer enables the model to perceive input data in a manner akin to human perception - holistically and contextually. By extracting features globally, the model can form a more complete and integrated understanding of the input, crucial for tasks that require a broad view of the data, such as scene understanding in vision or thematic interpretation in language processing.
-
-### **Underlying Principles**
-
-The design of this layer is guided by principles drawn from cognitive science and neuroscience, particularly those related to global perceptual processes. Just as the human brain is able to perceive a scene in its entirety and not just as a collection of localized views, the Global Feature Extraction Layer is engineered to capture the 'big picture' of the input data. This approach contrasts with the 'divide and conquer' strategy employed by many traditional neural network architectures, offering a more unified and holistic method of data interpretation.
-
-### **Review**
-
-In summary, the Global Feature Extraction Layer is a cornerstone of the Sensory Perceiver, enabling it to process and interpret data in a comprehensive, integrated manner. This layer's global approach to feature extraction is crucial for the model's ability to approximate key principles of human perception, setting it apart from conventional neural network architectures.
-
-### **Replay Mechanism**
-
-The replay mechanism in the Sensory Perceiver enables continual learning. It achieves this by selectively revisiting previously-stored tokens based on their relevance to new inputs. Using contrastive learning, the mechanism aligns replayed tokens with current inputs to reinforce relevant patterns. This process enhances memory retention and reduces catastrophic forgetting, especially in multi-task sequential learning scenarios.
-
-By replaying past experiences, the model can refine its knowledge and improve its ability to handle complex sensory inputs. The algorithmic representation of this mechanism involves encoding inputs, storing them in a replay buffer, selectively revisiting tokens based on their cosine similarity to current input, and updating weights via NT-Xent contrastive loss [15] that optimizes alignment between current and replayed token representations.
-
-This approach is inspired by hippocampal memory consolidation observed during sleep in biological systems [11, 12] — a process in which previously-encountered patterns are reactivated and consolidated. The Sensory Perceiver's replay mechanism operationalizes this principle computationally through contrastive learning, without claiming mechanistic equivalence to biological processes.
-
-Further research into this process could lead to more advanced memory consolidation techniques, bringing AI models closer to human-like cognition.
-
-### Mechanism Functionality
-
-During the experience replay phase, the model reactivates and reassesses stored token representations, selecting those most relevant to current inputs via cosine similarity. This process updates the model's weights to maintain alignment between replayed and current representations, enabling continual learning without catastrophic forgetting of prior tasks.
-
-### Algorithmic Representation
-
-The replay mechanism can be algorithmically represented as follows, where each step is denoted by a letter:
-
-- **`encode_inputs`** (Label A) and **`store_in_memory`** (Label B) represent the initial steps of encoding input data into tokens and storing them.
-- **`is_similar`** (Label C) functions as the attention mechanism, determining the relevance of tokens for replay.
-- **`replay_tokens`** (Label D) is where tokens are selectively reactivated.
-- **`update_weights`** (Label E) adjusts weights using contrastive loss to maximize alignment between replayed and current tokens.
-- **`decode`** (Label F) is responsible for reconstructing the original input from the replayed tokens.
-- **`contrastive_loss`** (Label G) calculates the loss to guide the model's updating process.
-
-```python
-# A: Encode inputs into fixed-length sequences
-def encode_inputs(input_data):
-    # Encoding logic using the encoder network
-    encoded_tokens = encoder_network(input_data)
-    return encoded_tokens
-
-# B: Store encoded tokens in a memory buffer
-memory_buffer = []
-
-def store_in_memory(encoded_tokens):
-    memory_buffer.append(encoded_tokens)
-
-# C: Attention mechanism chooses relevant tokens for replay
-def is_similar(token, current_input):
-    # Implement logic to determine similarity
-    similarity_score = calculate_similarity(token, current_input)
-    return similarity_score > similarity_threshold
-
-# D: Selectively reactivate tokens during experience replay phase
-def replay_tokens(current_input):
-    replayed_tokens = []
-    for token in memory_buffer:
-        if is_similar(token, current_input):
-            replayed_tokens.append(token)
-    return replayed_tokens
-
-# E: Update weights using NT-Xent contrastive loss during training (experience replay phase)
-def update_weights(token, current_input):
-    # Adjust weights using contrastive loss: maximize similarity of aligned tokens, minimize others
-    loss = contrastive_loss_update(token, current_input)
-    return loss
-
-# F: Decoder reconstructs the original input from replayed tokens
-def decode(replayed_tokens):
-    reconstructed_input = decoder_network(replayed_tokens)
-    return reconstructed_input
-
-# G: Contrastive loss function to update weights
-def contrastive_loss(reconstructed_input, original_input):
-    # Implement contrastive loss calculation
-    loss = calculate_loss(reconstructed_input, original_input)
-    return loss
-
-# Main loop for continuous learning and replay mechanism
-def continuous_learning_loop(input_stream):
-    for input_data in input_stream:
-        encoded_tokens = encode_inputs(input_data)
-        store_in_memory(encoded_tokens)
-        replayed_tokens = replay_tokens(input_data)
-        reconstructed_input = decode(replayed_tokens)
-        loss = contrastive_loss(reconstructed_input, input_data)
-        # Update model based on the loss
-        model_update(loss)
-
-# Start the continuous learning process
-continuous_learning_loop(data_stream)
-```
-
-### Impact on Learning and Memory
-
-The replay mechanism's impact is multifaceted:
-
-- It enables the model to maintain a robust and up-to-date memory by consolidating new and relevant information while discarding outdated or irrelevant data.
-- The model's ability to integrate past knowledge with current inputs is enhanced through contrastive replay, leading to more accurate and contextually-aware responses.
-- The replay mechanism promotes adaptability to changing environments and tasks by continuously updating weights via contrastive loss, allowing the model to incorporate new experiences while retaining prior knowledge.
-
-<aside>
-💡 Further research into the replay mechanism could explore more complex forms of memory consolidation and its integration with other learning techniques. This ongoing exploration has the potential to bring AI models closer to human-like cognition and adaptability.
-
-</aside>
-
-### **Dynamic Integration Process**
-
-Following feature extraction, the Perceiver dynamically integrates the extracted features. This integration is key to forming a cohesive perceptual representation of the input data. It involves combining the global features in a manner that preserves their contextual relationships, ensuring that the resulting representation reflects the composite nature of the input. This process is designed to be flexible, adapting to the specific requirements of the task at hand.
-
-After the Global Feature Extraction Layer has captured a holistic view of the input data, the Dynamic Integration Process is responsible for synthesizing these features into a cohesive and meaningful representation. This process is crucial for the Sensory Perceiver's ability to generate a unified perception from diverse sensory inputs.
-
-### **Functionality of the Dynamic Integration Process**
-
-The primary function of this process is to amalgamate the globally extracted features in a manner that respects and utilizes their interrelations. This involves not only combining these features but also interpreting them in a contextually relevant way. The Dynamic Integration Process employs a series of neural network layers that are specifically designed to weigh and merge the features based on their significance and relevance to the task at hand. This is akin to forming a synthesized view from disparate pieces of information, similar to how the human mind integrates sensory inputs to form a comprehensive understanding of its surroundings.
-
-### **Role in the Architecture**
-
-In the architecture of the Perceiver, the Dynamic Integration Process serves as a bridge between the raw, high-dimensional sensory inputs and the model's output. It ensures that the features extracted globally are not just processed in isolation but are brought together to form a coherent whole. This integrated processing is essential for tasks that require a nuanced understanding of complex, multimodal data, such as interpreting a scene or understanding a conversation that involves both verbal and non-verbal cues.
-
-### **Guiding Principles**
-
-The design of the Dynamic Integration Process is guided by principles of cognitive integration and contextual interpretation. Just as human perception is not merely about sensing but also about integrating and making sense of those sensations, this process aims to approximate a similar level of synthesis in the model. It takes cues from how the brain consolidates information from different sensory organs, considering both the content and context of the input, to form a unified perception.
-
-### **Contextual Interpretation Layers**
-
-The layers in the Sensory Perceiver are responsible for interpreting the integrated perceptual representation within its context. These layers perform similar functions to the higher cognitive processes in human perception, such as recognizing the emotions conveyed in a piece of music or understanding the spatial relationships in a scene. They combine the raw sensory data and the higher-level features extracted by the previous layers, forming a deep and nuanced understanding of the input.
-
-After the global extraction of features, the Contextual Interpretation Layers play a crucial role in analyzing and comprehending the synthesized data within its appropriate context. This stage of the Sensory Perceiver is where the complex task of making sense of the integrated sensory inputs occurs, similar to higher-order cognitive functions in human perception.
-
-### **Functionality of the Contextual Interpretation Layers**
-
-The primary function of these layers is to interpret the unified data representation formed by the Dynamic Integration Process. This involves understanding the relationships and dependencies between different data elements and drawing meaningful conclusions based on these relationships. The layers utilize advanced neural network techniques, potentially including elements of deep learning, to decipher patterns, trends, and anomalies within the data. This is essential for tasks that require a deep understanding of the input, such as semantic analysis in natural language processing or situational awareness in autonomous systems.
-
-### **Role in the Architecture**
-
-In the architecture of the Perceiver, the Contextual Interpretation Layers are critical for transitioning from a raw, integrated perception of sensory data to a refined, intelligent understanding. They serve as the cognitive center of the model, where the raw sensory inputs are not only recognized but also understood in a meaningful way. This is where the model goes beyond mere data processing to actual 'perception' in the true sense, making sense of the world in a way that is contextually and situationally aware.
-
-### **Guiding Principles**
-
-Principles of contextual awareness and cognitive interpretation guide the design of these layers. Drawing inspiration from how the human brain processes and understands sensory information, these layers are engineered to process and interpret sensory data in light of its context. This involves understanding the broader scenario in which the data is presented, including temporal, spatial, and relational aspects, and using this understanding to inform the model's output.
-
-### **Output Projection**
-
-The final stage of the Sensory Perceiver involves projecting the processed data to the output space. This projection translates the model's internal representation into a form suitable for the specific task, whether classification, regression, or any other AI application. It ensures that the insights gained through the model's perceptual processing can be effectively classified and applied to real-world problems.
-
-After the data has been extensively processed and interpreted through the earlier stages of the Sensory Perceiver, the Output Projection serves as the conduit through which the internal representations are transformed into specific outputs, tailored to the task at hand.
-
-### **Functionality of the Output Projection**
-
-The primary function of this component is to translate the high-level, contextually rich internal representations formed by the Contextual Interpretation Layers into a format suitable for the specific application. This could involve classifying data, generating textual output, making predictions, or other tasks. The Output Projection utilizes a series of neural network layers designed to map the complex internal representations onto the desired output space. This mapping is crucial as it ensures that the insights and understanding gleaned from the model's perceptual processing are effectively applied to solve practical problems.
-
-### **Role in the Architecture**
-
-In the architecture of the Sensory Perceiver, the Output Projection is the final step that connects the model's internal cognitive processes with the external world. It serves as the bridge between the model's sophisticated perception capabilities and practical applications. Without this component, the complex internal representations would remain abstract and unapplied; the Output Projection makes these representations actionable and relevant.
-
-### **Guiding Principles**
-
-Principles of applicability and flexibility guide the design of the Output Projection. It is tailored to ensure that the model can be applied to a wide range of tasks without requiring extensive re-engineering for each new application. This flexibility is crucial for the Sensory Perceiver's goal of generalizing across different domains and tasks. Moreover, the Output Projection's design considers the need for accuracy and reliability in the model's outputs, ensuring that the results are relevant but also dependable, and consistent.
-
-### **Feedback Loops**
-
-The Sensory Perceiver includes feedback loops, incorporating a concept from human cognitive processing. These loops allow the output or intermediate representations to inform and refine earlier processing stages. Such feedback mechanisms enable the model to adapt and learn from its outputs, mimicking how human perception is refined over time through experience and learning.
-
-Incorporating Feedback Loops into the Sensory Perceiver introduces an element of adaptability and continuous learning, akin to the iterative processes observed in human cognition and perception.
-
-### **Functionality of the Feedback Loops**
-
-Feedback Loops in the Sensory Perceiver function by allowing the output or intermediate representations of the model to inform and refine earlier stages of processing. This feedback mechanism can take various forms, such as adjusting the weights of neural network layers based on output performance or modifying the feature extraction process in light of new insights. By incorporating feedback, the model can adapt its processing strategy dynamically, learning from its successes and failures, and continuously improving its performance over time. This is especially crucial in tasks where the context or the nature of the data evolves, requiring the model to adjust its perception and interpretation strategies.
-
-### **Role in the Architecture**
-
-Within the Perceiver's architecture, Feedback Loops serve a dual purpose. First, they enable the model to refine its processing in real-time, enhancing its accuracy and efficiency. Second, they facilitate a form of learning and adaptation that is more organic and continuous compared to traditional static training methods. This makes the model not just a passive processor of data but an active learner, capable of evolving and improving with experience, much like human perceptual systems.
-
-### **Guiding Principles**
-
-The design of the Feedback Loops is guided by principles of adaptability, learning, and continuous improvement. Drawing inspiration from the way human perception is refined over time through experience, these loops are engineered to enable the model to self-adjust and optimize. This involves a balance between maintaining a stable perception strategy and being flexible enough to incorporate new information and insights. The goal is to create a model that is not only effective in its initial tasks but also capable of growing and adapting to new challenges and environments.
-
-### Contextual Identification
-
-Integrating the Sensory Perceiver with existing attention mechanisms in AI to process various inputs and form a unified context is a promising approach. This could lead to the development of more sophisticated and human-like AI systems that can intuitively understand and interact with the world, similar to human perception and cognition. By combining different inputs, the model can reference associated data without the need for a relational identifier. This approach aims to create a more comprehensive and efficient model for interpreting data, similar to human cognitive processes. Further exploration of the implications and potential applications of this approach can shed more light on how it can be used to revolutionize the field of AI.
-
-1. **Unified Contextual Understanding**: By combining diverse sensory inputs into a single context, the Sensory Perceiver could potentially interpret complex scenarios without needing explicit relational identifiers. This approximates human cognition, where different sensory inputs are integrated to form a comprehensive understanding of the environment.
-2. **Enhancing Attention Models**: Attention mechanisms in AI, such as those used in transformers, are adept at focusing on relevant parts of the input data. Integrating these with the Sensory Perceiver's ability to process diverse inputs could enhance the model's focus and relevance determination, leading to more accurate and contextually aware outputs.
-3. **Reducing Dependency on Pre-Defined Relationships**: Traditional models often rely on pre-defined relationships or labels to make connections between different data types. The combined approach could reduce this dependency, allowing the model to infer relationships and contextual relevance more dynamically and intuitively.
-4. **Applications in Complex Environments**: This approach could be particularly beneficial in environments where data comes from multiple sources and types, such as autonomous vehicles, healthcare diagnostics, and integrated smart systems. The model could provide a more nuanced understanding by synthesizing information from visual, auditory, and other sensory inputs.
-5. **Improved Natural Language Processing (NLP)**: In NLP, this approach could lead to better context understanding in conversations, sentiment analysis, and language translation by integrating verbal and non-verbal cues more effectively.
-6. **Enhanced Learning and Adaptability**: The combined model could potentially learn and adapt more efficiently, using feedback from its integrated approach to refine its understanding and predictions.
-7. **Challenges and Considerations**: Integrating these systems would require careful consideration of how different data types are weighted and combined. Balancing the influence of each sensory input to avoid bias or overemphasis on certain data types would be crucial.
-8. **Computational Efficiency**: Merging the Sensory Perceiver with attention mechanisms may pose challenges in computational efficiency and resource usage. Optimizing the model for practical applications would be an essential aspect of development.
-
-### Sensory Distinction
-
-Our human memory tends to remember unique and distinct experiences more vividly. To improve the ability of AI systems to identify and prioritize significant sensory events, this principle can be incorporated into them. Incorporating these aspects of human memory into AI models, particularly in perception-related domains such as the Sensory Perceiver, can result in more efficient and nuanced AI systems that resemble human perception and memory. This approach emphasizes that processing vast amounts of sensory data alone is not sufficient, but it should be done in a way that mirrors the intricacies of human perception and memory.
-
-1. **Encoding Distinctiveness in AI Memory Models**: Just as human memory is more likely to retain distinct events or experiences, AI models can be designed to give higher priority or weight to unique or unusual sensory inputs. This approach would involve developing algorithms that can identify and emphasize events that deviate from the norm or are statistically rare in the dataset.
-2. **Sensory Event Significance**: In human cognition, significant sensory events often lead to stronger and more lasting memories. Similarly, AI models can be programmed to assess the significance of sensory events based on certain criteria like rarity, emotional impact (in the context of human-AI interaction), or relevance to a specific task or goal.
-3. **Contextual Memory Formation**: Humans contextualize memories based on a combination of sensory inputs and cognitive processes. AI models can mimic this by integrating sensory data from multiple sources (like visual, auditory, etc.) and forming 'memories' or data associations that are contextually rich and multi-dimensional.
-4. **Memory Triggers and Retrieval**: Just as certain sensory cues can trigger memory recall in humans, AI systems can be designed to use specific sensory inputs as triggers for retrieving relevant information or past learning experiences.
-5. **Adaptive Learning Based on Sensory Distinction**: AI models can be trained to adapt and learn more effectively from distinctive sensory events. For example, encountering a novel object in a vision-based system could trigger more intense analysis and data recording, enhancing the model’s ability to recognize similar objects in the future.
-6. **Handling Ambiguity in Sensory Data**: Humans often rely on distinctive features to resolve ambiguity in sensory information. AI models can employ a similar strategy, using unique aspects of sensory data to disambiguate and make more accurate predictions or decisions.
-7. **Temporal Aspects of Memory**: In human memory, the temporal sequence of events plays a crucial role. AI models can incorporate temporal dynamics in processing sensory events, and understanding the sequence and timing of events to form a coherent memory or data representation.
-
-### Sensory Data Tokenization
-
-Treating sensory information as stored tokens within an AI model can offer a structured yet flexible framework for processing and learning from diverse sensory inputs. This approach can contribute to the development of AI systems that are more proficient at recognizing patterns, understanding context, and adapting to new information in a manner that is similar to humans.
-
-Considering sensory information as stored tokens in the context of AI models like the Perceiver can be highly effective. This approach aligns with how certain neural network architectures, particularly those that use attention mechanisms, manage information. Here's an example of how this approach could be implemented:
-
-1. **Tokenization of Sensory Inputs**: Each piece of sensory data (from visual, auditory, tactile, etc., inputs) is converted into a series of tokens. These tokens represent distilled, fundamental units of the sensory input. For example, an image is broken down into pixel-level tokens, and an audio clip into waveform or spectral tokens.
-2. **Encoding Distinctiveness in Tokens**: Tokens that represent distinctive or unique sensory events are encoded with certain features that highlight their uniqueness. This can be achieved through specialized encoding techniques that amplify aspects of the data which are rare, unusual, or particularly significant.
-3. **Memory as a Token Bank**: The AI model can have a 'memory bank' where these tokens are stored. This memory doesn't just store the tokens but also their context – how they relate to other tokens, their significance, temporal aspects, etc.
-4. **Retrieval and Relevance Assessment**: When the model encounters new sensory input, it processes and tokenizes this input and then compares these new tokens with those in the memory bank. This comparison isn't just a direct match but involves assessing the relevance and context of the stored tokens in relation to the new input.
-5. **Dynamic Memory Update**: The memory bank is dynamic. When new tokens are deemed significant or distinctive, they are added to the memory. Conversely, tokens that become less relevant over time or through repeated, non-distinctive occurrences could be deprioritized or removed.
-6. **Learning from Token Interaction**: The model learns not just from individual tokens but also from the interaction of different tokens over time. This can involve understanding sequences, patterns, or anomalies in how certain tokens appear and relate to each other.
-7. **Handling Multimodal Inputs**: For multimodal inputs, tokens from different sensory sources can be stored together, allowing the model to draw connections and insights across modalities. For instance, a visual token related to a word (like an image of a dog) can be linked to auditory tokens representing the word “dog.”
-8. **Temporal and Spatial Relationships**: The model maintains temporal and spatial relationships between tokens. This is particularly important for sensory data where the sequence or placement of events carries significant meaning.
-9. **Feedback Loops for Memory Refinement**: The model includes feedback mechanisms to refine its memory bank continually. This involves adjusting the significance, relevance, and context of stored tokens based on new data and learning experiences.
-10. **Adaptive Learning from Sensory Data**: The model learns adaptively by continuously updating its memory bank based on new sensory inputs. This allows the system to learn more effectively over time as it encounters a wider range of sensory events.
-
-## **Experiments**
-
-### **Experimental Validation**
-
-The Sensory Perceiver architecture is designed to handle heterogeneous multimodal sensory data with unified attention-based integration and contrastive replay mechanisms. This section outlines the experimental methodology to validate the paper's core claims: (1) the architecture generalizes across modalities without modality-specific tuning, (2) the replay mechanism improves continual learning, and (3) MIME-Type routing enables efficient scaling to new sensory streams.
-
-### **Experimental Design**
-
-We propose four benchmark suites testing distinct architectural claims. Experiments 1 (Multimodal Classification), 3 (MIME-Type Routing), and 4 (IoT Streaming) represent planned future validation on real-world datasets. Synthetic benchmark results supporting architectural design choices are reported in the Results section for Experiment 2 variants (continual learning on Split-CIFAR-100) and three application domain evaluations (robotics, medical, smart home).
-
-**Experiment 1: Multimodal Classification (Perceiver Generalization)**
-- *Hypothesis*: A single Sensory Perceiver instance trained on multimodal data outperforms modality-specific baselines in zero-shot transfer to unseen modalities.
-- *Datasets*: AudioSet (audio), MSCOCO (vision), AV-MNIST (audio-visual synchronized pairs), Flickr30K (image-text).
-- *Baselines*: Perceiver IO [3] (the reference architecture), CLIP [vision-language], ViLBERT [multimodal], SpecAugment+CNN (audio baseline).
-- *Metrics*: Top-1 and Top-5 accuracy, F1 score (weighted), macro-averaged precision/recall, cross-modal alignment score (cosine similarity of shared latent).
-- *Success criteria*: ≥95% of Perceiver IO baseline performance with <50% parameters.
-
-**Experiment 2: Continual Learning with Replay (Memory Consolidation)**
-- *Hypothesis*: The contrastive replay mechanism reduces catastrophic forgetting compared to experience replay (EWC, GEM, PackNet).
-- *Datasets*: Split-CIFAR-100 (100 sequential tasks), Permuted MNIST (20 sequential tasks with pixel permutations), Incremental ImageNet-Subset (new class streams).
-- *Baselines*: EWC (Elastic Weight Consolidation), GEM (Gradient Episodic Memory), PackNet (progressive networks), naive experience replay.
-- *Metrics*: Average accuracy, backward transfer (BWT), forward transfer (FWT), forgetting measure, training time per task.
-- *Success criteria*: ≥10% improvement in BWT over best baseline; stable performance after 10+ task sequences.
-
-**Experiment 3: Sensory Modality Scaling (MIME-Type Routing)**
-- *Hypothesis*: Adding new sensory modalities via MIME-Type routing requires no architectural retraining; encoders compose modularly.
-- *Setup*: Train base Perceiver on vision + audio. Sequentially add: tactile (haptic pressure vectors), proprioception (joint angles), olfactory (gas sensor readings), vestibular (accelerometer+gyro).
-- *Metrics*: Parameter efficiency (new params per modality), inference latency per modality, cross-modal interaction strength (mutual information between modality embeddings).
-- *Success criteria*: <5% latency increase per new modality; cross-modal MI remains >0.2 nats.
-
-**Experiment 4: Real-World IoT Stream Processing (End-to-End System)**
-- *Hypothesis*: Sensory Perceiver processes live sensor streams from wearables, environmental IoT, and autonomous systems with online continual learning.
-- *Dataset*: Smartwatch (heart rate, accelerometer, skin conductance), room sensors (temperature, humidity, CO2, light), robot proprioception (6-DOF arm angles, force/torque).
-- *Task*: Online activity classification (sitting, walking, running, sleeping) + anomaly detection (unusual vital signs or environmental conditions).
-- *Metrics*: Online accuracy (macro F1), latency (ms per 100-sample window), memory overhead (MB for replay buffer), cold-start accuracy (first 10 samples).
-- *Success criteria*: ≥85% F1 on activity classification; latency <50ms on edge device (Raspberry Pi 4).
-
-### **Hyperparameters and Training Protocol**
-
-**Model Configuration:**
-- Embedding dimension (d_model): 768
-- Number of attention heads: 8
-- Depth (layers in PerceiverTower): 6
-- MLP hidden dimension: 2048
-- Dropout: 0.1, DropPath: 0.1
-- Replay buffer size: 2000 tokens
-- Contrastive loss temperature: 0.07 (from [15])
-
-**Optimization:**
-- Optimizer: AdamW (learning rate 1e-4, weight decay 1e-5)
-- Batch size: 32 (multimodal), 128 (single-modality baseline)
-- Warmup steps: 1000, cosine annealing schedule
-- Loss: Contrastive loss (NT-Xent, [15]) + replay reconstruction loss (MSE)
-- Training duration: 50 epochs (or early stopping at validation plateau)
-
-**Evaluation Protocol:**
-- 80/10/10 train/val/test split (stratified by class)
-- 5-fold cross-validation for continual learning experiments
-- Confidence intervals reported as ±1 std dev over 3 random seeds
-- Statistical significance: paired t-test (p<0.05) vs. baselines
-
-### **Computational Requirements**
-
-- **GPU**: NVIDIA A100 (40GB) or equivalent; most experiments fit in 24GB (A10/RTX 3090)
-- **CPU**: 16+ cores for data loading parallelism
-- **Time**: ~12 hours per experiment suite on single GPU; ~48 hours for full validation
-- **Total compute estimate**: ~200 GPU-hours for all four experiments
-
-### **Expected Outcomes**
-
-We hypothesize the Sensory Perceiver will demonstrate:
-1. **≥95% Perceiver IO parity** on multimodal classification with fewer parameters
-2. **≥10% improvement in backward transfer** on continual learning vs. EWC/GEM
-3. **Modular composability**: New modalities integrate without retraining global attention
-4. **Real-time edge deployment**: <50ms latency on modest hardware with online learning
-
-## **Discussion and Future Work**
-
-If these thresholds are met, the architecture advances toward human-like multimodal perception. Detailed ablation results (impact of replay, MIME-Type tokens, and attention), efficiency analysis, and application domain evaluations are presented in the Results section. Full experimental validation on real-world benchmarks (AudioSet, MSCOCO, AV-MNIST, IoT streams) remains as future work.
-
-### Limitations: The Plasticity-Stability Dilemma
-
-While the Reservoir Sampling-based Experience Replay mechanism successfully mitigates catastrophic forgetting—preserving historical representations (e.g., Task 0 accuracy remaining stable at ~33.0% after 10 sequential tasks)—the Sensory Perceiver exhibits a capacity bottleneck on later datasets. Specifically, the model struggles to acquire robust new representations during the final stages of a long continual learning sequence (e.g., Task 9 achieving ~0.0% accuracy on Split-CIFAR-100). This highlights a classic plasticity-stability dilemma: the strong stabilization of the backbone towers and unified subspace to protect early tasks inadvertently restricts the plasticity required to aggressively learn entirely novel class distributions later in the sequence. Future iterations will investigate dynamic per-parameter learning rate scaling strategies, capacity expansion mechanisms, or the formalization of task-specific classification heads to alleviate this bottleneck in extended Task-Incremental scenarios.
-
----
-
-## References
-
-[1] Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., ... & Polosukhin, I. (2017). Attention is all you need. *Advances in neural information processing systems*, 30.
-
-[2] Jaegle, A., Gimeno, F., Brock, A., Vinyals, O., Zisserman, A., & Carreira, J. (2021). Perceiver: General perception with iterative attention. *International conference on machine learning*, 4651-4664. PMLR.
-
-[3] Jaegle, A., Borgeaud, S., Alayrac, J. B., Doersch, C., Ionescu, C., Ding, D., ... & Carreira, J. (2022). Perceiver IO: A general architecture for structured inputs & outputs. *International Conference on Learning Representations*.
-
-[4] Radford, A., Kim, J. W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S., ... & Sutskever, I. (2021). Learning transferable visual models from natural language supervision. *International conference on machine learning*, 8748-8763. PMLR.
-
-[5] Kim, W., Son, B., & Kim, I. (2021). ViLT: Vision-and-Language Transformer Without Convolution or Region Supervision. *International Conference on Machine Learning*, 5583-5594. PMLR.
-
-[6] Singh, A., Hu, R., Goswami, V., Couairon, G., Galuba, W., Rohrbach, M., & Kiela, D. (2022). FLAVA: A foundational language and vision alignment model. *Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition*, 15638-15650.
-
-[7] Hochreiter, S., & Schmidhuber, J. (1997). Long short-term memory. *Neural computation*, 9(8), 1735-1780.
-
-[8] LeCun, Y., Bottou, L., Bengio, Y., & Haffner, P. (1998). Gradient-based learning applied to document recognition. *Proceedings of the IEEE*, 86(11), 2278-2324.
-
-[9] Rosenblatt, F. (1958). The perceptron: a probabilistic model for information storage and organization in the brain. *Psychological review*, 65(6), 386.
-
-[10] McCulloch, W. S., & Pitts, W. (1943). A logical calculus of the ideas immanent in nervous activity. *The bulletin of mathematical biophysics*, 5(4), 115-133.
-
-[11] McClelland, J. L., McNaughton, B. L., & O'Reilly, R. C. (1995). Why there are complementary learning systems in the hippocampus and neocortex: insights from the successes and failures of connectionist models of learning and memory. *Psychological review*, 102(3), 419.
-
-[12] Stickgold, R. (2005). Sleep-dependent memory consolidation. *Nature, 437*(7063), 1272-1278.
-
-[13] Mnih, V., Kavukcuoglu, K., Silver, D., Rusu, A. A., Veness, J., Bellemare, M. G., ... & Hassabis, D. (2015). Human-level control through deep reinforcement learning. *Nature*, 518(7540), 529-533.
-
-[14] Kirkpatrick, J., Pascanu, R., Rabinowitz, N., Veness, J., Desjardins, G., Rusu, A. A., ... & Hadsell, R. (2017). Overcoming catastrophic forgetting in neural networks. *Proceedings of the national academy of sciences*, 114(13), 3521-3526.
-
-[15] Chen, T., Kornblith, S., Norouzi, M., & Hinton, G. (2020). A simple framework for contrastive learning of visual representations. *International conference on machine learning*, 1597-1607. PMLR.
-
-[16] Oord, A. V. D., Li, Y., & Vinyals, O. (2018). Representation learning with contrastive predictive coding. *arXiv preprint arXiv:1807.03748*.
-
-[17] Bubeck, S., Chandrasekaran, V., Eldan, R., Gehrke, J., Horvitz, E., Kamar, E., ... & Zhang, Y. (2023). Sparks of artificial general intelligence: Early experiments with GPT-4. *arXiv preprint arXiv:2303.12712*.
-
-[18] Hassabis, D., Kumaran, D., Summerfield, C., & Botvinick, M. (2017). Neuroscience-inspired artificial intelligence. *Neuron*, 95(2), 245-258.
+1. Keep `00-implementation-status-matrix.md` and this section synchronized whenever implementation status changes.
+2. Avoid unsupported novelty claims unless backed by explicit comparative evidence in-scope.
+3. Keep benchmark evidence statements scoped to datasets actually exercised in current code paths.

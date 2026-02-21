@@ -1,56 +1,43 @@
-# Supplementary Paper 2: Multi-GPU Orchestration & Distributed Learning
+# Supplementary Paper 2: Orchestration and Distributed Learning
 
-**Status**: 📋 Planned (Post-M1)
-**Target Venue**: MLSys / EuroSys / ATC
-**Timeline**: Week 4-6
+## Positioning
+
+This track documents systems and orchestration concerns around training/evaluation workflows. It is intended to make runtime behavior, reproducibility controls, and scaling constraints auditable.
+
+Canonical implementation status remains governed by the main paper section corpus.
+
+## Document Set
+
+- `paper.md`: systems analysis and operational validation framing.
+- This README: scope, constraints, and execution checklist.
 
 ## Scope
 
-Technical systems paper on the experiment orchestrator and distributed training framework:
+Included:
+- Scheduling and resource-allocation strategy framing.
+- Distributed synchronization and failure-mode analysis.
+- Reproducibility controls (seed discipline, logging semantics, run provenance).
+- Observability and operational risk posture.
 
-- GPU allocation strategies across multiple GPUs
-- Distributed training coordination patterns
-- Load balancing and memory management
-- Reproducibility & logging in distributed settings
-- Performance profiling and optimization
+Excluded:
+- Unqualified throughput superiority claims.
+- Hardware-generalized guarantees without controlled replication.
+- Any contradiction of canonical runtime status.
 
-## Key Sections
+## Core Questions
 
-1. **Orchestration Framework** - Design and implementation
-2. **GPU Memory Management** - Allocation strategies, limits
-3. **Synchronization Patterns** - Data & gradient synchronization
-4. **Load Balancing** - Work distribution across GPUs
-5. **Scaling Analysis** - 1-8 GPU performance curves
-6. **Reproducibility** - Seeding, logging, checkpointing
+1. What orchestration invariants are required for reproducible continual-learning studies?
+2. Which operational metrics are mandatory for confidence in distributed runs?
+3. How do we separate infrastructure limitations from model-quality limitations?
 
-## Data Sources
+## Method Expectations
 
-- Use orchestrator.py implementation
-- M1 experiment runs (timing, memory data)
-- Scaling experiments: Week 5
-- Profiling data: Week 5
+- Every systems claim must specify environment assumptions.
+- Operational failure modes must map to explicit detection/mitigation controls.
+- Reproducibility section must include run identity, config identity, and artifact identity expectations.
 
-## Submission Timeline
+## Deliverables
 
-- **Week 4**: Draft architecture description
-- **Week 5**: Scaling experiments & results
-- **Week 6**: Writing & revision
-- **Week 7**: Submission
-
-## Success Criteria
-
-- Novel insights into distributed ML systems
-- Comprehensive benchmarking
-- Reproducible results
-- 3-4 performance figures
-- 10-14 pages
-
-## Related Code
-
-- `src/experiments/experiment_orchestrator.py`
-- `src/experiments/configs/`
-- `scripts/aggregate_results.py`
-
----
-
-See `../README.md` for overall portfolio strategy.
+1. Systems-oriented supplementary paper (`paper.md`).
+2. Operational validation checklist for distributed runs.
+3. Promotion criteria for moving orchestration findings into canonical methods/discussion sections.

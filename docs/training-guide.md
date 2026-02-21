@@ -26,6 +26,7 @@ python -m src.train --experiment multimodal --dataset audiovisual --d_model 768 
 ```
 
 For sensor-streaming runs, use experiment ID `sensor_streaming`.  
+For a lighter smoke run on bare metal, set `--dataset sensor_streaming_smoke` (smaller sequence length and fewer sequences).
 Canonical modality MIME cases are documented in `docs/sensor-streaming-mime-cases.md`.
 
 ### C. Baselines (`train_perceiver_io.py`)

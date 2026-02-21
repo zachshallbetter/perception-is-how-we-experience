@@ -1,49 +1,43 @@
-# Supplementary Paper 1: Architecture Design & Scalability
+# Supplementary Paper 1: Architecture Design and Scalability
 
-**Status**: 📋 Planned (Post-M1)
-**Target Venue**: NeurIPS / ICLR
-**Timeline**: Week 3-5
+## Positioning
+
+This track is the architecture-deepening companion to the main paper. It explains *why* specific model decomposition choices were made and how those choices should be evaluated without overstepping canonical evidence boundaries.
+
+Canonical claim source for benchmark-level conclusions remains the main section corpus.
+
+## Document Set
+
+- `paper.md`: architecture argument, experiment blueprint, and evidence gating.
+- This README: scope, protocol, and execution checklist.
 
 ## Scope
 
-Deep dive into the Sensory Perceiver architecture design principles and scalability analysis:
+Included:
+- PerceiverTower decomposition rationale.
+- Cross-modal fusion behavior and design tradeoffs.
+- Replay interaction with backbone stability.
+- Scaling hypotheses for modality count, memory, and compute.
 
-- Modality-specific tower design rationale
-- Cross-modal attention mechanism variants
-- Scalability analysis to 10+ modalities
-- Performance trade-offs and design choices
-- Comparison with alternative architectures
+Excluded:
+- New canonical benchmark claims.
+- Production deployment guarantees.
+- Dataset-scale claims not represented in canonical results.
 
-## Key Sections
+## Core Questions
 
-1. **Architecture Motivation** - Why modality-specific towers?
-2. **PerceiverTower Design** - Layer composition, learned positional encodings
-3. **Cross-Modal Attention** - Information fusion mechanisms
-4. **Scalability Analysis** - Computational & memory scaling laws
-5. **Ablation Studies** - Component importance analysis
-6. **Comparison Study** - Multi-Head vs. Modality-Specific approaches
+1. Which architectural components are structurally necessary versus optional?
+2. Which ablations best isolate replay, fusion, and modality-identity effects?
+3. How should scaling behavior be reported without conflating proxy and large-scale ingestion paths?
 
-## Data Sources
+## Method Expectations
 
-- Use M1 experiment results from main paper
-- Additional ablation studies: Week 4
-- Scaling experiments: Week 5
+- Define explicit ablation matrices before running experiments.
+- Use identical metric definitions to canonical sections for any overlapping tasks.
+- Tag each finding as one of: `observed`, `hypothesis`, `future experiment`.
 
-## Submission Timeline
+## Deliverables
 
-- **Week 3**: Initial draft outline
-- **Week 4**: Complete experimental results
-- **Week 5**: Writing & revision
-- **Week 6**: Final submission
-
-## Success Criteria
-
-- Novel insights into architecture design
-- Comprehensive ablation study
-- Clear scalability analysis
-- 2-3 novel figures
-- 8-12 pages
-
----
-
-See `../README.md` for overall portfolio strategy.
+1. Architecture-focused narrative paper (`paper.md`).
+2. Ablation matrix template for future runs.
+3. Decision log for promotion candidates to canonical sections.

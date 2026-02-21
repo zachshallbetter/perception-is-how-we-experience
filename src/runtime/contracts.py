@@ -15,7 +15,11 @@ from .mime_cases import (
 
 EXPERIMENT_DATASETS = {
     "continual": {"split_cifar", "permuted_mnist"},
-    SENSOR_STREAMING_EXPERIMENT_ID: {"sensor_streaming"},
+    SENSOR_STREAMING_EXPERIMENT_ID: {
+        "sensor_streaming",
+        "sensor_streaming_smoke",
+        "sensor_streaming_small",
+    },
     "multimodal": {"audiovisual"},
 }
 

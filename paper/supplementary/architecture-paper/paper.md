@@ -2,48 +2,116 @@
 
 ## Scope and Claim Boundaries
 
-This supplementary document analyzes architectural design choices and scaling behavior hypotheses.
-It is not the canonical source for benchmark metrics. Canonical empirical claims are defined in:
+This supplementary paper expands architectural reasoning and experiment design. It does not redefine canonical benchmark claims.
+
+Canonical authority for benchmark-level statements remains:
 - `paper/sections/06-results.md`
 - `paper/sections/00-implementation-status-matrix.md`
+- `paper/sections/10-concept-implementation-audit.md`
 
 ## Abstract
 
-This document provides architecture-centered analysis of modality-specific towers, shared fusion, replay integration, and extensibility constraints. The intent is to explain design tradeoffs and evaluation templates rather than introduce canonical benchmark numbers.
+We present a structured architecture analysis of Sensory Perceiver centered on modular modality towers, shared fusion, replay interaction, and scaling constraints. The goal is to provide decision-ready evaluation protocols for future studies while maintaining strict alignment with currently supported implementation evidence.
 
-## Architecture Focus Areas
+## 1. Architectural Intent
 
-### 1) Modality-Specific Front Ends
+The architecture is designed around three separations of concern:
+1. **Modality extraction**: modality-specific front-end towers.
+2. **Cross-modal integration**: shared fusion stage.
+3. **Learning stability controls**: replay mechanisms and optional isolation APIs.
 
-- Per-modality feature extraction remains a core design pattern.
-- Tower composition is expected to vary by modality shape and signal semantics.
+This decomposition supports clear instrumentation and controlled ablations.
 
-### 2) Cross-Modal Fusion
+## 2. Component Decomposition
 
-- Shared fusion is evaluated as a central integration mechanism.
-- Analysis prioritizes representation stability and interoperability across modalities.
+### 2.1 Modality Towers
 
-### 3) Continual Learning Interaction
+Questions this section should answer:
+- Which tower adaptations are required for each modality class?
+- What invariants must hold across all towers (embedding interface, normalization, shape contracts)?
 
-- Replay strategy is analyzed as a backbone-stability mechanism.
-- Interpretation is aligned with canonical phase-based findings (feature-only replay failure vs raw-input replay improvement).
+Expected outputs:
+- tower interface contract,
+- modality-to-tower mapping table,
+- failure cases for contract violations.
 
-### 4) Scaling Considerations
+### 2.2 Shared Fusion Layer
 
-- Parameter growth, memory behavior, and attention cost are treated as scaling dimensions.
-- Numerical scaling examples are exploratory unless replicated in canonical sections.
+Questions this section should answer:
+- How does shared fusion trade representational sharing against modality specialization?
+- Which diagnostics indicate healthy versus unstable cross-modal interaction?
 
-## Comparative Framing
+Expected outputs:
+- fusion diagnostics protocol,
+- confound controls for ablation design.
 
-Comparisons against alternative multimodal patterns are treated as analytical framing and hypothesis generation.
-Any claim of comparative superiority is non-canonical unless backed by canonical benchmark reporting.
+### 2.3 Replay Interaction
 
-## Limitations
+Questions this section should answer:
+- Which replay placements preserve backbone representations?
+- What evidence distinguishes head-only stabilization from backbone-level stabilization?
 
-1. This document does not define canonical benchmark tables.
-2. Real large-scale multimodal ingestion remains outside this supplementary scope.
-3. Some architecture analyses are design-forward and require dedicated empirical confirmation.
+Expected outputs:
+- replay pathway diagrams,
+- replay-mode comparison protocol (`er` vs `contrastive`).
 
-## Conclusion
+## 3. Scaling Analysis Blueprint
 
-The supplementary architecture analysis is retained as a structured rationale and experimental planning companion. Canonical paper claims remain governed by the main section corpus.
+This section defines scaling studies without asserting canonical outcomes.
+
+### 3.1 Scaling Axes
+
+- modality count,
+- sequence/feature dimensionality,
+- batch size,
+- replay buffer pressure,
+- service-level memory/latency constraints.
+
+### 3.2 Reporting Requirements
+
+Every scaling report must include:
+1. environment assumptions,
+2. active runtime path identification,
+3. metric definitions,
+4. failure thresholds,
+5. confidence notes on generalizability.
+
+## 4. Ablation Matrix (Decision-Ready)
+
+Recommended ablation families:
+1. tower simplification vs modality-specific adaptation,
+2. fusion mechanism variants,
+3. replay mode variants,
+4. isolation API enabled/disabled (where service path supports it).
+
+Each ablation row should include:
+- hypothesis,
+- expected mechanism,
+- evaluation metric,
+- interpretation guardrails.
+
+## 5. Comparative Framing Rules
+
+Comparisons are permitted as analytical framing if all of the following hold:
+- baseline definition is explicit,
+- metric/setting equivalence is explicit,
+- claim is labeled exploratory unless in canonical sections.
+
+No comparative superiority language should be treated as canonical unless promoted through main section updates.
+
+## 6. Risks and Failure Modes
+
+1. Over-attributing improvements to fusion when replay placement is the driver.
+2. Treating proxy dataset behavior as large-scale multimodal ingestion evidence.
+3. Conflating implemented model APIs with default service-path behavior.
+
+## 7. Promotion Path to Canonical Sections
+
+A supplementary architecture finding is promotable only when:
+1. reproduced via active runtime/service path,
+2. represented in status matrix with matching implementation state,
+3. included with method and result updates in the same paper change.
+
+## 8. Conclusion
+
+This document is a technical expansion layer for architecture reasoning, ablation planning, and scaling-study design. It remains subordinate to canonical section claims while enabling fast, consistent follow-on experimentation.

@@ -6,7 +6,7 @@ Integrating attention mechanisms has been a significant advancement, allowing mo
 
 In contrast, human perception operates differently. It involves parallel processing of multimodal sensory information, rapidly integrating it into a coherent perceptual whole. This process is not purely sequential or solely based on local features; it is a dynamic synthesis of sensory inputs guided by both bottom-up sensory data and top-down cognitive processes.
 
-Traditional neural network models face challenges in modeling human-like perception, particularly in scalability, generalizability, and integration of multimodal data. Current architectures struggle to process diverse sensory inputs simultaneously, often requiring extensive data pre-processing or model specialization. Our Sensory Perceiver addresses these challenges by introducing a novel approach to neural network design: the use of **MIME-Type unified encoding** as a first-class routing primitive for modality-specific processing.
+Traditional neural network models face challenges in modeling human-like perception, particularly in scalability, generalizability, and integration of multimodal data. Current architectures struggle to process diverse sensory inputs simultaneously, often requiring extensive data pre-processing or model specialization. Our Sensory Perceiver addresses these challenges by introducing **MIME-style modality semantics** as a routing primitive with runtime-contract validation and setup derivation.
 
 ## Continual Learning and Catastrophic Forgetting
 
@@ -20,7 +20,7 @@ The Sensory Perceiver addresses catastrophic forgetting through replay-centric m
 
 2. **Replay Mode Variants**: The training pipeline supports (a) standard replay with cross-entropy on replayed samples and (b) contrastive replay based on NT-Xent-style feature alignment.
 
-Task-adapter parameter-isolation APIs are implemented in the model and tested in isolated benchmarks, but end-to-end activation in the default service loop is treated as next-phase work.
+Task-adapter parameter-isolation APIs are implemented in the model and tested in isolated benchmarks, but end-to-end activation in the default service loop remains partial.
 
 ## Contributions and Scope
 
@@ -32,14 +32,8 @@ Our contributions in this paper are fourfold:
 
 3. **Modern Runtime Implementation**: We provide typed runtime contracts, structured errors, service-layer orchestration, and observability instrumentation suitable for reproducible experimentation.
 
-4. **Canonical Sensor-Streaming MIME Registry**: We formalize sensor-streaming input cases (modality, MIME type, feature dimensionality) as a single runtime source of truth.
+4. **Canonical `sensor_streaming` MIME Registry**: We formalize sensor_streaming input cases (modality, MIME type, feature dimensionality) as a single runtime source of truth.
 
 The remainder of this paper is organized as follows: §3 provides related work. §4 details architecture and implementation-aligned methods. §5 describes experimental setup and implementation status. §6 presents phase-based empirical results. §7 discusses implications, gaps, and next-stage roadmap. §8 concludes.
 
 **Scope Note**: We acknowledge that the name "Perceiver" was independently used by Jaegle et al. (2021) for a different architecture. While both architectures share the goal of general-purpose multimodal perception, our current implementation focuses on continual-learning behavior, MIME-style modality semantics, and service-oriented runtime architecture. A detailed comparison is provided in §3 (Related Work).
-
----
-
-**Status**: ✅ Complete
-**Length**: ~2,200 words
-**Updated**: February 20, 2026

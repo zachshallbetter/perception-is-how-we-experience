@@ -25,7 +25,7 @@ Primary reproducibility controls:
 - Split-CIFAR-100 (`experiment=continual`, `dataset=split_cifar`)
 
 ### Implemented but not the primary source of the reported CL table
-- Sensor-streaming generated dataset (`experiment=sensor_streaming`, `dataset=sensor_streaming`)
+- `sensor_streaming` generated dataset (`experiment=sensor_streaming`, `dataset=sensor_streaming`)
 - Audio-visual proxy dataset (`experiment=multimodal`, `dataset=audiovisual`)
 
 ## 5.4 Evaluation Metrics

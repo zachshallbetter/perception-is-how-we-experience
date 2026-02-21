@@ -277,4 +277,4 @@ apt-get install graphviz  # Linux
 2. **Weeks 3-10**: Reference figures in paper sections
 3. **Final submission**: Include all PDFs in supplementary materials
 
-All templates are production-ready and require only data input to generate publication-quality figures.
+All templates are publication-oriented and require only data input to generate publication-quality figures.

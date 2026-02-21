@@ -102,7 +102,10 @@ class Evaluator:
             all_preds.append(predicted.cpu().numpy())
             all_labels.append(labels.cpu().numpy())
             if embeddings is not None:
+                # Shape: (modalities, batch, dim) -> (batch, modalities * dim)
                 pooled_emb = torch.stack([emb.mean(dim=0) for emb in embeddings.values()])
+                pooled_emb = pooled_emb.permute(1, 0, 2).contiguous()
+                pooled_emb = pooled_emb.view(pooled_emb.size(0), -1)
                 all_embeddings.append(pooled_emb.cpu().numpy())
 
         all_preds = np.concatenate(all_preds)
@@ -188,13 +191,29 @@ def load_checkpoint(
     )
 
     try:
-        model.load_state_dict(checkpoint["model_state_dict"])
+        missing_keys, unexpected_keys = model.load_state_dict(
+            checkpoint["model_state_dict"], strict=False
+        )
     except Exception as exc:
         raise AppError(
             ErrorCode.CHECKPOINT_LOAD_FAILED,
             "Model state dict does not match checkpoint metadata",
             context={"checkpoint": checkpoint_path},
         ) from exc
+
+    filtered_unexpected = [
+        key for key in unexpected_keys if not key.startswith("replay_buf_")
+    ]
+    if missing_keys or filtered_unexpected:
+        raise AppError(
+            ErrorCode.CHECKPOINT_LOAD_FAILED,
+            "Model state dict does not match checkpoint metadata",
+            context={
+                "checkpoint": checkpoint_path,
+                "missing_keys": missing_keys,
+                "unexpected_keys": filtered_unexpected,
+            },
+        )
 
     classifier = None
     classifier_state_dict = checkpoint.get("classifier_state_dict")

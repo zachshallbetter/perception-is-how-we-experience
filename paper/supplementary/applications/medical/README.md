@@ -2,15 +2,44 @@
 
 ## Scope
 
-Exploratory benchmark-design template for multimodal medical monitoring.
-This file is not a canonical source for main-paper empirical claims.
+This document defines the medical-domain evaluation blueprint for multimodal monitoring/diagnostic support studies.
+It is not a canonical source for main-paper empirical claims.
 
-## Evaluation Focus
+## Problem Framing
 
-- heterogeneous modality integration,
-- calibration and false-alarm behavior,
-- interpretability and safety-oriented error analysis.
+Primary objective: reliable multimodal inference under missingness, calibration requirements, and interpretability constraints.
 
-## Claim Policy
+Key modality classes:
+- physiological time-series,
+- imaging modalities,
+- structured clinical signals,
+- text/context channels where available.
 
-Any quantitative medical result is provisional unless promoted into canonical sections.
+## Evaluation Blueprint
+
+### Core Experiments
+
+1. Multimodal baseline with complete modality availability.
+2. Missing-modality stress tests.
+3. Calibration and threshold sensitivity analyses.
+4. Interpretability and error-review protocol runs.
+
+### Metrics
+
+- discriminative performance,
+- calibration reliability,
+- false-alarm burden,
+- robustness to incomplete modality sets.
+
+## Risk Register
+
+- overconfident incorrect predictions,
+- poor behavior under sparse or delayed modalities,
+- explanations that are not clinically actionable.
+
+## Promotion Criteria
+
+A medical finding can be promoted to canonical sections only if:
+1. the run path is reproducible in active runtime/service flow,
+2. evaluation protocol and safety constraints are explicit,
+3. evidence and limitation boundaries are documented together.

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
+import torch
 
 from src.observability import MetricsCollector, emit_event, generate_trace_id
 from src.runtime import (
@@ -54,7 +55,7 @@ class ExperimentOrchestrator:
 
     def _resolve_experiment_for_dataset(self, dataset: str) -> str:
         """Resolve canonical experiment id for a dataset."""
-        if dataset == "sensor_streaming":
+        if dataset in {"sensor_streaming", "sensor_streaming_small", "sensor_streaming_smoke"}:
             experiment = "sensor_streaming"
         elif dataset in {"split_cifar", "permuted_mnist"}:
             experiment = "continual"
@@ -68,6 +69,13 @@ class ExperimentOrchestrator:
             )
         validate_experiment_dataset(experiment, dataset)
         return experiment
+
+    def _resolve_device(self, gpu_id: int) -> str:
+        if torch.cuda.is_available():
+            return f"cuda:{gpu_id}"
+        if torch.backends.mps.is_available():
+            return "mps"
+        return "cpu"
 
     def add_experiment(
         self, name: str, dataset: str, gpu_id: Optional[int] = None, epochs: int = 50
@@ -109,7 +117,12 @@ class ExperimentOrchestrator:
         """Execute a single experiment."""
         exp.status = "running"
         exp.start_time = datetime.now()
-        experiment_name = self._resolve_experiment_for_dataset(exp.dataset)
+        device = self._resolve_device(exp.gpu_id)
+        dataset = exp.dataset
+        if device in {"mps", "cpu"} and exp.dataset == "sensor_streaming":
+            dataset = "sensor_streaming_small"
+            exp.dataset_override = dataset
+        experiment_name = self._resolve_experiment_for_dataset(dataset)
 
         cmd = [
             "python",
@@ -118,13 +131,13 @@ class ExperimentOrchestrator:
             "--experiment",
             experiment_name,
             "--dataset",
-            exp.dataset,
+            dataset,
             "--epochs",
             str(exp.epochs),
             "--batch_size",
-            "32",
+            "16" if device in {"mps", "cpu"} else "32",
             "--device",
-            f"cuda:{exp.gpu_id}",
+            device,
             "--output_dir",
             str(exp.output_dir),
         ]
@@ -169,7 +182,9 @@ class ExperimentOrchestrator:
         if not checkpoint.exists():
             logger.warning(f"Checkpoint not found: {checkpoint}")
             return {}
-        experiment_name = self._resolve_experiment_for_dataset(exp.dataset)
+        dataset = getattr(exp, "dataset_override", exp.dataset)
+        experiment_name = self._resolve_experiment_for_dataset(dataset)
+        device = self._resolve_device(exp.gpu_id)
 
         cmd = [
             "python",
@@ -180,9 +195,9 @@ class ExperimentOrchestrator:
             "--experiment",
             experiment_name,
             "--dataset",
-            exp.dataset,
+            dataset,
             "--device",
-            f"cuda:{exp.gpu_id}",
+            device,
             "--output_file",
             str(exp.output_dir / "eval_results.json"),
         ]

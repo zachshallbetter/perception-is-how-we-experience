@@ -79,6 +79,9 @@ class Trainer:
 
         self.best_val_acc = 0.0
         self.train_history = {"loss": [], "acc": [], "val_loss": [], "val_acc": []}
+        self.feature_replay_features = None
+        self.feature_replay_labels = None
+        self.feature_replay_limit = int(self.config.get("replay_buffer_size", 0))
 
     def _sync_optimizer_params(self):
         """Ensure optimizer includes newly added trainable parameters."""
@@ -103,6 +106,43 @@ class Trainer:
         if new_params:
             self.optimizer.add_param_group({"params": new_params})
 
+    def _update_feature_replay(self, features: torch.Tensor, labels: torch.Tensor) -> None:
+        """Update feature-only replay store used by replay-depth ablations."""
+        if self.feature_replay_limit <= 0:
+            return
+        feats = features.detach().cpu()
+        labs = labels.detach().cpu()
+        if self.feature_replay_features is None:
+            self.feature_replay_features = feats
+            self.feature_replay_labels = labs
+        else:
+            self.feature_replay_features = torch.cat(
+                [self.feature_replay_features, feats], dim=0
+            )
+            self.feature_replay_labels = torch.cat([self.feature_replay_labels, labs], dim=0)
+
+        if self.feature_replay_features.shape[0] > self.feature_replay_limit:
+            keep = self.feature_replay_features.shape[0] - self.feature_replay_limit
+            self.feature_replay_features = self.feature_replay_features[keep:]
+            self.feature_replay_labels = self.feature_replay_labels[keep:]
+
+    def _sample_feature_replay(
+        self, n_samples: int
+    ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
+        """Sample feature-only replay entries for baseline ablation."""
+        if (
+            self.feature_replay_features is None
+            or self.feature_replay_labels is None
+            or self.feature_replay_features.shape[0] == 0
+        ):
+            return None, None
+        count = min(n_samples, self.feature_replay_features.shape[0])
+        indices = torch.randperm(self.feature_replay_features.shape[0])[:count]
+        return (
+            self.feature_replay_features[indices],
+            self.feature_replay_labels[indices],
+        )
+
     def train_epoch(self, epoch: int) -> Tuple[float, float]:
         """Train for one epoch."""
         self._sync_optimizer_params()
@@ -120,7 +160,14 @@ class Trainer:
             labels = inputs.pop("label")
 
             self.optimizer.zero_grad()
-            outputs, embeddings = self.model(inputs, labels=labels, return_embeddings=True)
+            if self.replay_mode == "feature":
+                outputs, embeddings = self.model(
+                    inputs, labels=None, update_buffer=False, return_embeddings=True
+                )
+            else:
+                outputs, embeddings = self.model(
+                    inputs, labels=labels, return_embeddings=True
+                )
 
             pooled = outputs.mean(dim=1)
             if self.classifier is not None:
@@ -161,10 +208,27 @@ class Trainer:
                             current_features[:n_pairs], rp_features[:n_pairs]
                         )
                         loss = loss + 0.1 * replay_loss
+            elif self.replay_mode == "feature":
+                replay_features, replay_labels = self._sample_feature_replay(
+                    labels.shape[0]
+                )
+                if replay_features is not None and replay_labels is not None:
+                    replay_features = replay_features.to(self.device)
+                    replay_labels = replay_labels.to(self.device)
+                    rp_logits = (
+                        self.classifier(replay_features)
+                        if self.classifier is not None
+                        else replay_features
+                    )
+                    replay_loss = self.criterion(rp_logits, replay_labels)
+                    loss = loss + replay_loss
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
             self.optimizer.step()
+
+            if self.replay_mode == "feature":
+                self._update_feature_replay(pooled, labels)
 
             total_loss += loss.item() * labels.shape[0]
             _, predicted = logits.max(1)
@@ -286,14 +350,6 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
         torch.manual_seed(runtime_config.seed)
         np.random.seed(runtime_config.seed)
 
-        train_loader, val_loader = create_dataloaders(
-            experiment=runtime_config.experiment,
-            dataset_name=runtime_config.dataset,
-            batch_size=runtime_config.batch_size,
-            num_workers=runtime_config.num_workers,
-            seed=runtime_config.seed,
-        )
-
         modality_configs, n_classes = resolve_modality_setup(runtime_config.experiment)
         model = SensoryPerceiver(
             modality_configs=modality_configs,
@@ -314,12 +370,23 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
             lr=runtime_config.learning_rate,
             weight_decay=0.01,
         )
-        scheduler = CosineAnnealingLR(optimizer, T_max=runtime_config.epochs)
+        n_continual_tasks = 1
+        if (
+            runtime_config.experiment == "continual"
+            and runtime_config.adapter_rollover
+            and runtime_config.continual_task_count > 1
+        ):
+            n_continual_tasks = runtime_config.continual_task_count
+        scheduler = CosineAnnealingLR(
+            optimizer, T_max=max(1, runtime_config.epochs * n_continual_tasks)
+        )
 
         config = {
             "config_schema_version": TRAIN_CONFIG_SCHEMA_VERSION,
             "experiment": runtime_config.experiment,
             "dataset": runtime_config.dataset,
+            "adapter_rollover": runtime_config.adapter_rollover,
+            "continual_task_count": runtime_config.continual_task_count,
             "d_model": runtime_config.d_model,
             "num_heads": runtime_config.num_heads,
             "depth": runtime_config.depth,
@@ -346,6 +413,25 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
         with open(config_file, "w") as file:
             yaml.dump(config, file)
 
+        if n_continual_tasks > 1:
+            emit_event(
+                logger,
+                logging.INFO,
+                "training.adapter_rollover.enabled",
+                trace_id,
+                continual_task_count=n_continual_tasks,
+            )
+
+        train_loader, val_loader = create_dataloaders(
+            experiment=runtime_config.experiment,
+            dataset_name=runtime_config.dataset,
+            batch_size=runtime_config.batch_size,
+            num_workers=runtime_config.num_workers,
+            seed=runtime_config.seed,
+            task_id=0,
+            n_tasks=max(n_continual_tasks, 1),
+        )
+
         trainer = Trainer(
             model=model,
             classifier=classifier,
@@ -360,7 +446,41 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
             output_dir=output_dir,
             config=config,
         )
-        trainer.fit(runtime_config.epochs)
+
+        for task_id in range(n_continual_tasks):
+            if task_id > 0:
+                train_loader, val_loader = create_dataloaders(
+                    experiment=runtime_config.experiment,
+                    dataset_name=runtime_config.dataset,
+                    batch_size=runtime_config.batch_size,
+                    num_workers=runtime_config.num_workers,
+                    seed=runtime_config.seed + task_id,
+                    task_id=task_id,
+                    n_tasks=n_continual_tasks,
+                )
+                trainer.train_loader = train_loader
+                trainer.val_loader = val_loader
+
+            emit_event(
+                logger,
+                logging.INFO,
+                "training.task.started",
+                trace_id,
+                task_id=task_id,
+                total_tasks=n_continual_tasks,
+            )
+            trainer.fit(runtime_config.epochs)
+
+            if task_id < n_continual_tasks - 1:
+                trainer.model.freeze_task()
+                emit_event(
+                    logger,
+                    logging.INFO,
+                    "training.task.adapter_frozen",
+                    trace_id,
+                    task_id=task_id,
+                    next_task_id=task_id + 1,
+                )
 
         duration_sec = time.perf_counter() - start_time
         metrics.increment("training.runs.success")

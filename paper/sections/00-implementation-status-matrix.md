@@ -23,9 +23,9 @@ This matrix maps paper claims to current implementation status in the codebase.
 | TaskAdapter module exists | Implemented | `src/models/core.py` (`class TaskAdapter`) | Includes `freeze()` method. |
 | Adapter rollover per task (`freeze_task`) | Implemented (model API) | `src/models/core.py` (`freeze_task`) | Freezes current adapter and allocates next adapter. |
 | Parameter-isolation telemetry (`get_trainable_parameters`, `get_task_coverage`) | Implemented | `src/models/core.py` | Available for reporting/analysis. |
-| Parameter isolation active in default training pipeline | **Partial** | `src/services/training_service.py` | Model supports isolation; service loop does not call `freeze_task()` across tasks. |
+| Parameter isolation active in service pipeline (opt-in) | Implemented | `src/services/training_service.py`, `src/train.py` | Enable with `--adapter_rollover --continual_task_count <N>`. |
 | Reservoir sampling replay buffer | Implemented | `src/models/core.py` (`_update_replay_buffer`) | Integrated in model buffer updates. |
-| Two replay modes (`er`, `contrastive`) | Implemented | `src/services/training_service.py` | Both wired through runtime config. |
+| Replay mode suite (`feature`, `er`, `contrastive`) | Implemented | `src/services/training_service.py`, `src/train.py`, `src/runtime/contracts.py` | Includes feature-only replay baseline and raw-input replay modes. |
 | External classifier head (separate from backbone) | Implemented | `src/services/training_service.py` | Head is `nn.Linear` outside `SensoryPerceiver`. |
 
 ## MIME and Modality Routing
@@ -54,7 +54,7 @@ This matrix maps paper claims to current implementation status in the codebase.
    - Runtime modernization and typed contract system are present.
 
 2. **Must be phrased carefully in paper**:
-   - Parameter isolation is **implemented in model APIs** but **not yet fully exercised in the main training service loop** across sequential tasks.
+   - Parameter isolation is integrated as an **opt-in service path** (not always-on by default).
    - MIME routing is currently a **canonical registry + boundary validation** plus modality-key dispatch, not raw MIME parsing inside `forward()`.
    - Multimodal real-benchmark ingestion (AudioSet/Ego4D) remains future/ongoing work.
 

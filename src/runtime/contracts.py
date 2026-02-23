@@ -151,14 +151,16 @@ class TrainRuntimeConfig:
     device: torch.device
     seed: int
     output_dir: Path
+    adapter_rollover: bool = False
+    continual_task_count: int = 1
 
     @classmethod
     def from_namespace(cls, args) -> "TrainRuntimeConfig":
         validate_experiment_dataset(args.experiment, args.dataset)
-        if args.replay_mode not in {"er", "contrastive"}:
+        if args.replay_mode not in {"er", "contrastive", "feature"}:
             raise AppError(
                 ErrorCode.INVALID_ARGUMENT,
-                "replay_mode must be 'er' or 'contrastive'",
+                "replay_mode must be 'er', 'contrastive', or 'feature'",
                 context={"replay_mode": args.replay_mode},
             )
 
@@ -180,6 +182,9 @@ class TrainRuntimeConfig:
         _validate_non_negative(args.warmup_steps, "warmup_steps")
         _validate_non_negative(args.num_workers, "num_workers")
         _validate_non_negative(args.seed, "seed")
+        _validate_positive(
+            getattr(args, "continual_task_count", 1), "continual_task_count"
+        )
 
         return cls(
             experiment=args.experiment,
@@ -200,6 +205,8 @@ class TrainRuntimeConfig:
             device=resolve_device(args.device),
             seed=args.seed,
             output_dir=Path(args.output_dir),
+            adapter_rollover=bool(getattr(args, "adapter_rollover", False)),
+            continual_task_count=int(getattr(args, "continual_task_count", 1)),
         )
 
 

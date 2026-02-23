@@ -19,6 +19,23 @@ python scripts/run_local.py --tuned --replay_mode contrastive
 ```
 It outputs Task-Incremental metrics, measuring absolute Catastrophic Forgetting, Forward Transfer (FWT), and Backward Transfer (BWT).
 
+### Replay-Depth and Adapter-Rollover Controls (`src.train`)
+
+The service-layer trainer supports replay-depth ablations and opt-in adapter rollover:
+
+```bash
+# Feature-only replay baseline (classifier-level replay store)
+python -m src.train --experiment continual --dataset split_cifar --replay_mode feature --epochs 5
+
+# Raw-input replay baselines
+python -m src.train --experiment continual --dataset split_cifar --replay_mode er --epochs 5
+python -m src.train --experiment continual --dataset split_cifar --replay_mode contrastive --epochs 5
+
+# Sequential adapter rollover across tasks (opt-in path)
+python -m src.train --experiment continual --dataset split_cifar --replay_mode er \
+  --adapter_rollover --continual_task_count 5 --epochs 1
+```
+
 ### B. Standard Multimodal Training (`src/train.py`)
 Used for generic, single-task multimodal learning across vision, IoT streaming, or medical benchmarks.
 ```bash
@@ -117,6 +134,13 @@ python -m src.train --experiment continual --dataset split_cifar --output_dir re
 1. **`ablation_1_without_replay`**: Disables the contrastive replay buffer to measure baseline catastrophic forgetting.
 2. **`ablation_2_without_mime`**: Replaces MIME-Type modality routing with a generic embedding layer.
 3. **`ablation_3_efficiency`**: Scales model parameters down to 100M to measure accuracy vs. efficiency trade-offs.
+
+Replay-depth harness:
+
+```bash
+python scripts/run_replay_depth_ablation.py --experiment continual --dataset split_cifar --seeds 42,43,44
+python scripts/report_replay_depth_ablation.py --ablation_dir results/replay_depth_ablation/run_YYYYMMDD_HHMMSS
+```
 
 ---
 

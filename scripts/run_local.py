@@ -15,12 +15,12 @@ Purpose:
 
 Usage:
   python scripts/run_local.py --quick        # 3 tasks, 1 epoch, d_model=128  (~5 min CPU)
-  python scripts/run_local.py                # baseline: 10 tasks, 5 epochs, replay_weight=0.1
-  python scripts/run_local.py --tuned        # tuned:    10 tasks, 5 epochs, replay_weight=0.5, buffer=5000
+  python scripts/run_local.py                # baseline: 10 tasks, 5 epochs, replay_weight=0.5
+  python scripts/run_local.py --tuned        # tuned:    10 tasks, 5 epochs, replay_weight=0.8, buffer=8000, ewc_lambda=0.6
 
 Baseline vs Tuned:
-  --baseline  replay_weight=0.1, replay_buffer=1000, lr=1e-4  → results/cl_experiment/
-  --tuned     replay_weight=0.5, replay_buffer=5000, lr=3e-4  → results/cl_experiment_tuned/
+  --baseline  replay_weight=0.5, replay_buffer=5000, lr=1e-4  → results/cl_experiment/
+  --tuned     replay_weight=0.8, replay_buffer=8000, lr=3e-4, ewc_lambda=0.6  → results/cl_experiment_tuned/
 
 Results: results/cl_experiment/ (baseline) or results/cl_experiment_tuned/ (tuned)
 """
@@ -30,7 +30,13 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, List
+
+# Ensure the repository root is on sys.path so `import src...` works even when this
+# script is executed from within the `scripts/` directory.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 import torch
@@ -45,6 +51,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+
+from src.models.core import SensoryPerceiver, ContrastiveLoss
 
 
 # ─── Device detection ────────────────────────────────────────────────────────
@@ -63,243 +71,6 @@ def get_device() -> torch.device:
 
 
 # ─── Model ───────────────────────────────────────────────────────────────────
-
-
-class PerceiverTower(nn.Module):
-    """Modality-specific feature extraction.
-    Conv2d → flatten spatial → self-attention → MLP → LayerNorm → (seq, B, dim)
-    """
-
-    def __init__(
-        self,
-        in_channels: int,
-        dim: int,
-        num_heads: int,
-        mlp_dim: int,
-        dropout: float = 0.1,
-        use_conv: bool = True,
-    ):
-        super().__init__()
-        self.use_conv = use_conv
-
-        if use_conv:
-            self.proj = nn.Conv2d(in_channels, dim, kernel_size=3, stride=2, padding=1)
-        else:
-            self.proj = nn.Linear(in_channels, dim)
-
-        self.attn = nn.MultiheadAttention(
-            dim, num_heads, dropout=dropout, batch_first=False
-        )
-        self.mlp = nn.Sequential(
-            nn.Linear(dim, mlp_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(mlp_dim, dim),
-            nn.Dropout(dropout),
-        )
-        self.norm1 = nn.LayerNorm(dim)
-        self.norm2 = nn.LayerNorm(dim)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if self.use_conv:
-            x = self.proj(x)  # (B, dim, H', W')
-            x = x.flatten(2).permute(2, 0, 1)  # (H'*W', B, dim)
-        else:
-            x = self.proj(x).permute(1, 0, 2)  # (seq, B, dim)
-
-        residual = x
-        x = self.norm1(x)
-        attn_out, _ = self.attn(x, x, x)
-        x = residual + attn_out
-
-        residual = x
-        x = residual + self.mlp(self.norm2(x))
-        return x  # (seq, B, dim)
-
-
-class SensoryPerceiver(nn.Module):
-    """Multimodal backbone: per-modality towers + cross-modal attention.
-    Returns (B, total_seq, dim). Attach a classifier head on top.
-    """
-
-    def __init__(
-        self,
-        modality_configs: dict,
-        dim: int,
-        num_heads: int,
-        mlp_dim: int,
-        dropout: float = 0.1,
-        replay_buffer_size: int = 1000,
-    ):
-        super().__init__()
-        self.towers = nn.ModuleDict(
-            {
-                name: PerceiverTower(
-                    cfg["input_dim"],
-                    dim,
-                    num_heads,
-                    mlp_dim,
-                    dropout,
-                    cfg.get("use_conv", False),
-                )
-                for name, cfg in modality_configs.items()
-            }
-        )
-        self.cross_attn = nn.MultiheadAttention(
-            dim, num_heads, dropout=dropout, batch_first=False
-        )
-        self.output_proj = nn.Sequential(
-            nn.Linear(dim, mlp_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(mlp_dim, dim),
-        )
-        self.norm1 = nn.LayerNorm(dim)
-        self.norm2 = nn.LayerNorm(dim)
-
-        self.norm2 = nn.LayerNorm(dim)
-
-        # Replay buffer (stores RAW inputs and labels)
-        self.replay_buffer = {}  # mod_name -> tensor (buffer_size, ...)
-        self.register_buffer(
-            "replay_labels", torch.zeros(replay_buffer_size, dtype=torch.long)
-        )
-        self.register_buffer("replay_ptr", torch.zeros(1, dtype=torch.long))
-        self.register_buffer("replay_count", torch.zeros(1, dtype=torch.long))
-        self.replay_buffer_size = replay_buffer_size
-        self.modality_configs = modality_configs
-
-    def forward(
-        self, inputs: dict, labels: torch.Tensor = None, update_buffer: bool = True
-    ) -> torch.Tensor:
-        # ── Initialize buffers on first call if not exists ──
-        if update_buffer and labels is not None:
-            for name, x in inputs.items():
-                if name not in self.replay_buffer:
-                    shape = [self.replay_buffer_size] + list(x.shape[1:])
-                    self.register_buffer(
-                        f"buf_{name}", torch.zeros(*shape, device=x.device)
-                    )
-                    self.replay_buffer[name] = getattr(self, f"buf_{name}")
-
-        tokens = [self.towers[n](x) for n, x in inputs.items() if n in self.towers]
-        combined = torch.cat(tokens, dim=0)  # (total_seq, B, dim)
-
-        residual = combined
-        combined = (
-            residual
-            + self.cross_attn(
-                self.norm1(combined), self.norm1(combined), self.norm1(combined)
-            )[0]
-        )
-        combined = combined + self.output_proj(self.norm2(combined))
-
-        out = combined.permute(1, 0, 2)  # (B, total_seq, dim)
-
-        if update_buffer and labels is not None:
-            with torch.no_grad():
-                B = labels.size(0)
-
-                # ── Reservoir Sampling ──
-                for i in range(B):
-                    count = self.replay_count.item()
-                    if count < self.replay_buffer_size:
-                        # Buffer not full, just append
-                        idx = count
-                    else:
-                        # Buffer full, replace with probability buffer_size / total_seen
-                        idx = torch.randint(0, count + 1, (1,)).item()
-                        if idx >= self.replay_buffer_size:
-                            idx = -1  # Do not keep
-
-                    if idx != -1:
-                        # Update all modality buffers
-                        for name, x_i in inputs.items():
-                            if name in self.replay_buffer:
-                                self.replay_buffer[name][idx] = x_i[i].detach()
-                        # Update labels
-                        self.replay_labels[idx] = labels[i].detach()
-
-                    self.replay_count[0] += 1
-
-        return out
-
-    def get_replay_samples(
-        self, n: int
-    ) -> Tuple[Optional[dict], Optional[torch.Tensor]]:
-        count = min(self.replay_count.item(), self.replay_buffer_size)
-        if count == 0:
-            return None, None
-        n = min(n, count)
-        idx = torch.randperm(count, device=self.replay_labels.device)[:n]
-
-        samples = {}
-        for name in self.replay_buffer:
-            samples[name] = self.replay_buffer[name][idx]
-
-        return samples, self.replay_labels[idx]
-
-
-class SensoryPerceiverCL(nn.Module):
-    """Backbone + fixed 100-class CIL head."""
-
-    def __init__(
-        self,
-        modality_configs: dict,
-        dim: int,
-        num_heads: int,
-        mlp_dim: int,
-        n_classes: int = 100,
-        dropout: float = 0.1,
-        replay_buffer_size: int = 1000,
-        contrastive_temp: float = 0.07,
-    ):
-        super().__init__()
-        self.backbone = SensoryPerceiver(
-            modality_configs, dim, num_heads, mlp_dim, dropout, replay_buffer_size
-        )
-        self.classifier = nn.Linear(dim, n_classes)
-        self.temp = contrastive_temp
-
-    def forward(
-        self, inputs: dict, labels: torch.Tensor = None, update_buffer: bool = True
-    ):
-        features = self.backbone(
-            inputs, labels=labels, update_buffer=update_buffer
-        )  # (B, seq, dim)
-        pooled = features.mean(dim=1)  # (B, dim)
-        logits = self.classifier(pooled)  # (B, n_classes)
-        return logits, features
-
-    def contrastive_replay_loss(self, features: torch.Tensor) -> torch.Tensor:
-        """NT-Xent loss: current batch embeddings vs. random replay buffer samples."""
-        replay_inputs, _ = self.backbone.get_replay_samples(features.size(0))
-        if replay_inputs is None:
-            return torch.tensor(0.0, device=features.device)
-
-        # We need to run replay inputs through backbone to get features
-        with torch.no_grad():
-            replay_out = self.backbone(replay_inputs, update_buffer=False)
-            replay_features = replay_out.mean(dim=1)
-
-        pooled = nn.functional.normalize(features.mean(dim=1), dim=-1)
-        replay = nn.functional.normalize(replay_features, dim=-1)
-        sim = torch.mm(pooled, replay.t()) / self.temp
-        labels = torch.arange(sim.size(0), device=sim.device)
-        return (
-            nn.functional.cross_entropy(sim, labels)
-            + nn.functional.cross_entropy(sim.t(), labels)
-        ) / 2
-
-    def experience_replay_loss(self, batch_size: int) -> torch.Tensor:
-        """Standard Experience Replay: CE loss on replayed raw samples."""
-        replay_inputs, replay_labels = self.backbone.get_replay_samples(batch_size)
-        if replay_inputs is None:
-            return torch.tensor(0.0, device=self.classifier.weight.device)
-
-        # Forward pass for replayed samples (updates backbone and head)
-        logits, _ = self.forward(replay_inputs, update_buffer=False)
-        return nn.functional.cross_entropy(logits, replay_labels)
 
 
 # ─── Data ────────────────────────────────────────────────────────────────────
@@ -386,8 +157,88 @@ def make_train_loader(task_id, classes_per_task, batch_size, num_workers, pin_me
 # ─── Training / Evaluation ───────────────────────────────────────────────────
 
 
-def train_one_epoch(model, loader, optimizer, device, replay_weight=0.1):
+def pool_features(features: torch.Tensor) -> torch.Tensor:
+    return features.mean(dim=1)
+
+
+def build_optimizer(params, lr):
+    return optim.AdamW(params, lr=lr, weight_decay=0.01)
+
+
+def replay_loss(
+    model,
+    classifier,
+    contrastive_loss_fn,
+    device,
+    batch_size,
+    mode,
+    current_pooled,
+):
+    replay_inputs, replay_labels = model.get_replay_samples(batch_size)
+    if replay_inputs is None:
+        return torch.tensor(0.0, device=device)
+
+    replay_inputs = {k: v.to(device) for k, v in replay_inputs.items()}
+
+    if mode == "er":
+        replay_features, _ = model(
+            replay_inputs, labels=None, update_buffer=False, return_embeddings=False
+        )
+        replay_logits = classifier(pool_features(replay_features))
+        return nn.functional.cross_entropy(replay_logits, replay_labels.to(device))
+
+    replay_features, _ = model(
+        replay_inputs, labels=None, update_buffer=False, return_embeddings=False
+    )
+    replay_pooled = pool_features(replay_features)
+    if current_pooled.size(0) != replay_pooled.size(0):
+        current_pooled = current_pooled[: replay_pooled.size(0)]
+    return contrastive_loss_fn(current_pooled, replay_pooled)
+
+
+def ewc_penalty(model, ewc_tasks: List[Dict[str, Dict[str, torch.Tensor]]]):
+    if not ewc_tasks:
+        return torch.tensor(0.0, device=next(model.parameters()).device)
+    penalty = 0.0
+    for task in ewc_tasks:
+        for name, param in model.named_parameters():
+            if name in task["fisher"]:
+                fisher = task["fisher"][name]
+                prev = task["params"][name]
+                penalty += (fisher * (param - prev).pow(2)).sum()
+    return penalty
+
+
+def si_penalty(model, si_omega: Dict[str, torch.Tensor], si_prev: Dict[str, torch.Tensor]):
+    if not si_omega:
+        return torch.tensor(0.0, device=next(model.parameters()).device)
+    penalty = 0.0
+    for name, param in model.named_parameters():
+        if name in si_omega:
+            prev = si_prev[name]
+            omega = si_omega[name]
+            penalty += (omega * (param - prev).pow(2)).sum()
+    return penalty
+
+
+def train_one_epoch(
+    model,
+    classifier,
+    loader,
+    optimizer,
+    device,
+    replay_weight,
+    replay_mode,
+    contrastive_loss_fn,
+    ewc_tasks,
+    ewc_lambda,
+    si_omega,
+    si_prev,
+    si_lambda,
+    si_accum,
+):
     model.train()
+    classifier.train()
     ce = nn.CrossEntropyLoss()
     total_loss, correct, total = 0.0, 0, 0
 
@@ -396,20 +247,42 @@ def train_one_epoch(model, loader, optimizer, device, replay_weight=0.1):
         labels = labels.to(device)
 
         optimizer.zero_grad()
-        logits, features = model(inputs, labels=labels, update_buffer=True)
+        features, _ = model(inputs, labels=labels, update_buffer=True)
+        pooled = pool_features(features)
+        logits = classifier(pooled)
         loss = ce(logits, labels)
 
         if replay_weight > 0:
-            if getattr(model, "replay_mode", "er") == "er":
-                loss = loss + replay_weight * model.experience_replay_loss(
-                    labels.size(0)
-                )
-            else:
-                loss = loss + replay_weight * model.contrastive_replay_loss(features)
+            loss = loss + replay_weight * replay_loss(
+                model,
+                classifier,
+                contrastive_loss_fn,
+                device,
+                labels.size(0),
+                replay_mode,
+                pooled,
+            )
+
+        if ewc_lambda > 0:
+            loss = loss + ewc_lambda * ewc_penalty(model, ewc_tasks)
+
+        if si_lambda > 0:
+            loss = loss + si_lambda * si_penalty(model, si_omega, si_prev)
 
         loss.backward()
-        nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        nn.utils.clip_grad_norm_(list(model.parameters()) + list(classifier.parameters()), 1.0)
+
+        if si_lambda > 0:
+            prev_params = {n: p.detach().clone() for n, p in model.named_parameters()}
+
         optimizer.step()
+
+        if si_lambda > 0:
+            for name, param in model.named_parameters():
+                if param.grad is None or name not in si_accum:
+                    continue
+                delta = param.detach() - prev_params[name]
+                si_accum[name] += param.grad.detach() * delta
 
         total_loss += loss.item() * labels.size(0)
         correct += logits.argmax(1).eq(labels).sum().item()
@@ -419,16 +292,54 @@ def train_one_epoch(model, loader, optimizer, device, replay_weight=0.1):
 
 
 @torch.no_grad()
-def evaluate(model, loader, device) -> float:
+def evaluate(model, classifier, loader, device) -> float:
     model.eval()
+    classifier.eval()
     correct, total = 0, 0
     for inputs, labels in loader:
         inputs = {k: v.to(device) for k, v in inputs.items()}
         labels = labels.to(device)
-        logits, _ = model(inputs, labels=None, update_buffer=False)
+        features, _ = model(inputs, labels=None, update_buffer=False)
+        logits = classifier(pool_features(features))
         correct += logits.argmax(1).eq(labels).sum().item()
         total += labels.size(0)
     return 100.0 * correct / total
+
+
+def compute_fisher(
+    model,
+    classifier,
+    loader,
+    device,
+    max_batches: int,
+) -> Dict[str, torch.Tensor]:
+    model.eval()
+    classifier.eval()
+    fisher = {name: torch.zeros_like(p) for name, p in model.named_parameters()}
+    ce = nn.CrossEntropyLoss()
+    batches = 0
+
+    for inputs, labels in loader:
+        if batches >= max_batches:
+            break
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+        labels = labels.to(device)
+
+        model.zero_grad(set_to_none=True)
+        classifier.zero_grad(set_to_none=True)
+        features, _ = model(inputs, labels=None, update_buffer=False)
+        logits = classifier(pool_features(features))
+        loss = ce(logits, labels)
+        loss.backward()
+
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                fisher[name] += param.grad.detach().pow(2)
+        batches += 1
+
+    for name in fisher:
+        fisher[name] /= max(1, batches)
+    return fisher
 
 
 # ─── Metrics ─────────────────────────────────────────────────────────────────
@@ -577,7 +488,7 @@ def main():
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument("--replay_weight", type=float, default=1.0)
+    parser.add_argument("--replay_weight", type=float, default=0.5)
     parser.add_argument("--replay_buffer", type=int, default=5000)
     parser.add_argument(
         "--replay_mode",
@@ -586,6 +497,13 @@ def main():
         choices=["er", "contrastive"],
         help="ER: Experience Replay (raw samples). Contrastive: NT-Xent on replayed tokens.",
     )
+    parser.add_argument("--ewc_lambda", type=float, default=0.4)
+    parser.add_argument("--ewc_batches", type=int, default=5)
+    parser.add_argument("--si_lambda", type=float, default=0.0)
+    parser.add_argument("--si_epsilon", type=float, default=1e-3)
+    parser.add_argument("--late_task_boost", type=int, default=2)
+    parser.add_argument("--late_task_start", type=int, default=-1)
+    parser.add_argument("--no_parameter_isolation", action="store_true")
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output_dir", type=str, default="results/cl_experiment")
@@ -602,15 +520,13 @@ def main():
 
     if args.tuned:
         # Stronger replay signal — designed to reduce catastrophic forgetting
-        # replay_weight 0.1→0.5: NT-Xent loss competes meaningfully with CE loss
-        # replay_buffer 1000→5000: ~500 exemplars/task at 10 tasks (vs ~100)
-        # lr 1e-4→3e-4: helps later tasks overcome accumulated weight inertia
-        args.replay_weight = 0.5
-        args.replay_buffer = 5000
+        args.replay_weight = 0.8
+        args.replay_buffer = 8000
         args.lr = 3e-4
+        args.ewc_lambda = 0.6
         if args.output_dir == "results/cl_experiment":  # only override if default
             args.output_dir = "results/cl_experiment_tuned"
-        print("── TUNED MODE: replay_weight=0.5 / buffer=5000 / lr=3e-4 ──")
+        print("── TUNED MODE: replay_weight=0.8 / buffer=8000 / lr=3e-4 / ewc_lambda=0.6 ──")
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -623,24 +539,37 @@ def main():
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    if args.late_task_start < 0:
+        args.late_task_start = max(0, args.n_tasks - 3)
+
+    total_epochs = args.n_tasks * args.epochs_per_task
+    if args.late_task_boost > 0:
+        total_epochs += max(0, args.n_tasks - args.late_task_start) * args.late_task_boost
+
     # ── Build model ──────────────────────────────────────────────────────────
-    model = SensoryPerceiverCL(
+    model = SensoryPerceiver(
         modality_configs={"vision": {"input_dim": 3, "use_conv": True}},
         dim=args.d_model,
         num_heads=args.num_heads,
         mlp_dim=args.mlp_dim,
-        n_classes=n_classes,
         dropout=args.dropout,
         replay_buffer_size=args.replay_buffer,
         contrastive_temp=0.07,
+        enable_parameter_isolation=not args.no_parameter_isolation,
+        adapter_hidden_dim=max(128, args.d_model // 2),
     ).to(device)
-    model.replay_mode = args.replay_mode
+    classifier = nn.Linear(args.d_model, n_classes).to(device)
+    contrastive_loss_fn = ContrastiveLoss(temperature=0.07).to(device)
 
-    total_params = sum(p.numel() for p in model.parameters())
+    total_params = sum(p.numel() for p in model.parameters()) + sum(
+        p.numel() for p in classifier.parameters()
+    )
     print(f"Model params: {total_params:,}  ({total_params/1e6:.2f}M)")
 
-    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
-    scheduler = CosineAnnealingLR(optimizer, T_max=args.n_tasks * args.epochs_per_task)
+    optimizer = build_optimizer(
+        list(model.parameters()) + list(classifier.parameters()), args.lr
+    )
+    scheduler = CosineAnnealingLR(optimizer, T_max=total_epochs)
 
     # ── Pre-load ALL val loaders (needed for FWT: eval on next unseen task) ──
     print("Loading datasets...", end=" ", flush=True)
@@ -656,6 +585,10 @@ def main():
     # Also fills R[t][t+1] for FWT (zero-shot on next unseen task)
     R = np.full((args.n_tasks, args.n_tasks), np.nan)
     start_time = time.time()
+    ewc_tasks = []
+    si_prev = {name: param.detach().clone() for name, param in model.named_parameters()}
+    si_omega = {name: torch.zeros_like(param) for name, param in model.named_parameters()}
+    si_accum = {name: torch.zeros_like(param) for name, param in model.named_parameters()}
 
     print(f"\n{'='*60}")
     print(
@@ -673,25 +606,71 @@ def main():
             t, classes_per_task, args.batch_size, args.num_workers, pin_memory
         )
 
-        for epoch in range(args.epochs_per_task):
+        epochs_this_task = args.epochs_per_task
+        if t >= args.late_task_start:
+            epochs_this_task += args.late_task_boost
+
+        for epoch in range(epochs_this_task):
             loss, acc = train_one_epoch(
-                model, train_loader, optimizer, device, args.replay_weight
+                model,
+                classifier,
+                train_loader,
+                optimizer,
+                device,
+                args.replay_weight,
+                args.replay_mode,
+                contrastive_loss_fn,
+                ewc_tasks,
+                args.ewc_lambda,
+                si_omega,
+                si_prev,
+                args.si_lambda,
+                si_accum,
             )
             scheduler.step()
             print(
-                f"  epoch {epoch+1}/{args.epochs_per_task}  "
+                f"  epoch {epoch+1}/{epochs_this_task}  "
                 f"loss={loss:.4f}  train_acc={acc:.1f}%"
+            )
+
+        if args.ewc_lambda > 0:
+            fisher = compute_fisher(
+                model, classifier, train_loader, device, args.ewc_batches
+            )
+            ewc_tasks.append(
+                {
+                    "params": {
+                        name: param.detach().clone()
+                        for name, param in model.named_parameters()
+                    },
+                    "fisher": fisher,
+                }
+            )
+
+        if args.si_lambda > 0:
+            for name, param in model.named_parameters():
+                delta = param.detach() - si_prev[name]
+                si_omega[name] += si_accum[name] / (delta.pow(2) + args.si_epsilon)
+                si_prev[name] = param.detach().clone()
+                si_accum[name].zero_()
+
+        if not args.no_parameter_isolation:
+            model.freeze_task()
+            optimizer = build_optimizer(
+                [p for p in model.parameters() if p.requires_grad]
+                + list(classifier.parameters()),
+                args.lr,
             )
 
         # Evaluate on all seen tasks (0..t)
         print(f"  eval (seen):  ", end="", flush=True)
         for j in range(t + 1):
-            R[t][j] = evaluate(model, all_val_loaders[j], device)
+            R[t][j] = evaluate(model, classifier, all_val_loaders[j], device)
             print(f"T{j}={R[t][j]:.1f}%  ", end="", flush=True)
 
         # FWT: evaluate on next unseen task (t+1) before training it
         if t + 1 < args.n_tasks:
-            R[t][t + 1] = evaluate(model, all_val_loaders[t + 1], device)
+            R[t][t + 1] = evaluate(model, classifier, all_val_loaders[t + 1], device)
             print(f"| zero-shot T{t+1}={R[t][t+1]:.1f}%", end="")
 
         print()

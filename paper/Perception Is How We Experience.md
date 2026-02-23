@@ -1,7 +1,3 @@
-# Perception Is How We Experience
-
-_Generated from canonical section sources in `paper/sections/`. Edit section files first._
-
 # Abstract
 
 We present **Sensory Perceiver**, a multimodal architecture that combines modality-specific towers with shared cross-modal attention for continual learning settings. The system uses explicit modality identity and canonical MIME-style input case definitions for routing semantics, with a runtime registry for `sensor_streaming` modalities.
@@ -15,8 +11,6 @@ Parameter-isolation primitives (task adapters with freeze/rollover APIs) are imp
 Current multimodal support includes proxy audiovisual and sensor_streaming datasets. Real benchmark ingestion (for example AudioSet/Ego4D) and additional modality towers remain future-stage work.
 
 **Keywords:** multimodal perception, continual learning, catastrophic forgetting, reservoir sampling, MIME-type routing, parameter isolation
-
-
 # Introduction
 
 In the field of artificial intelligence (AI), interpreting complex, high-dimensional data has traditionally been done using recurrent neural networks (RNNs) and convolutional neural networks (CNNs). These architectures have been successful in applications like speech recognition and image classification. However, they have limitations in capturing the global, integrative nature of human perceptual experience due to their sequential data processing nature (in the case of RNNs) and localized receptive fields (in the case of CNNs).
@@ -56,8 +50,6 @@ Our contributions in this paper are fourfold:
 The remainder of this paper is organized as follows: §3 provides related work. §4 details architecture and implementation-aligned methods. §5 describes experimental setup and implementation status. §6 presents phase-based empirical results. §7 discusses implications, gaps, and next-stage roadmap. §8 concludes.
 
 **Scope Note**: We acknowledge that the name "Perceiver" was independently used by Jaegle et al. (2021) for a different architecture. While both architectures share the goal of general-purpose multimodal perception, our current implementation focuses on continual-learning behavior, MIME-style modality semantics, and service-oriented runtime architecture. A detailed comparison is provided in §3 (Related Work).
-
-
 # Related Work
 
 The Sensory Perceiver builds on and extends several lines of research. We organize the relevant literature around four themes: the Perceiver family, efficient convolution, temporal and multimodal perception, and continual learning.
@@ -133,8 +125,6 @@ While replay and gradient constraints address forgetting through training mechan
 ## 3.7 Positioning
 
 The Sensory Perceiver occupies a distinct position in this landscape. In this implementation, content-type (MIME-Type) metadata is treated as a first-class runtime primitive for modality-case validation and setup, alongside replay mechanisms that include an NT-Xent contrastive mode for continual learning across heterogeneous sensory streams. The closest work — Perceiver IO [3] — uses modality embeddings for a different goal (arbitrary input-output routing) without addressing continual-learning replay behavior in this manner. The architectural opportunities identified by this literature — query-based output decoding [3], Fourier position encodings [2, 3], KernelWarehouse efficiency [kernelwarehouse2023], and hierarchical scaling [hip2022] — are well-characterized future extensions, discussed in §7.9.
-
-
 # Methods (Code-Aligned)
 
 ## 4.1 System Architecture
@@ -172,10 +162,11 @@ This ensures each observed sample has equal retention probability over time.
 
 ### 4.3.2 Replay Modes
 
-The training service exposes two replay modes:
+The training service exposes three replay modes:
 
 - `er`: cross-entropy on replayed raw samples.
 - `contrastive`: NT-Xent-style feature alignment between current and replayed features.
+- `feature`: classifier-level replay from a feature store (ablation baseline).
 
 Replay is computed from raw modality inputs, so gradients can traverse the backbone when replayed batches are processed.
 
@@ -188,7 +179,7 @@ Implemented model capabilities:
 
 Current status:
 - APIs are implemented and test-validated.
-- Full sequential activation of adapter rollover in the default service training loop remains partial.
+- Sequential activation is available in the service path via `adapter_rollover` with configurable `continual_task_count`.
 
 ## 4.5 Runtime and Services
 
@@ -212,8 +203,6 @@ Implemented in dataloader factory:
 - `multimodal` (audio-visual proxy dataset)
 
 Real benchmark ingestion pipelines (e.g., AudioSet/Ego4D) remain future-stage work and are not yet in the active runtime path.
-
-
 # Experiments
 
 ## 5.1 Experimental Scope
@@ -255,13 +244,11 @@ Primary continual-learning metrics:
 
 To avoid over-claiming:
 
-1. Task-adapter isolation APIs are implemented in the model, but full sequential adapter rollover is not yet the default service training path.
+1. Task-adapter rollover is implemented in the service path and can be enabled via `adapter_rollover` with `continual_task_count > 1`.
 2. MIME routing is implemented as canonical modality-case registry + validation, while model dispatch uses modality keys in input dicts.
 3. Real multimodal ingestion pipelines (AudioSet/Ego4D-scale training integration) remain future work.
 
 These constraints are intentional and reflected in the Results/Discussion interpretation.
-
-
 # Results
 
 We report a phase-based continual-learning result profile on Split-CIFAR-100.
@@ -315,8 +302,6 @@ Therefore, this section claims a robust replay result, not a full replay+isolati
 1. Current quantitative claim is based on a narrow benchmark setting (Split-CIFAR-100 phase analysis).
 2. Multiseed confidence intervals are still needed for stronger statistical reporting.
 3. Real multimodal dataset ingestion (AudioSet/Ego4D-scale) is not yet an active training/eval path in this code branch.
-
-
 # Discussion
 
 ## 7.1 Core Mechanistic Insight
@@ -361,8 +346,6 @@ MIME semantics are formalized as a registry with explicit modality definitions a
 1. Activate and benchmark sequential adapter rollover in the default service training pipeline.
 2. Run multiseed evaluation and confidence intervals for phase metrics.
 3. Add real multimodal ingestion/evaluation paths and report results separately from proxy datasets.
-
-
 # Conclusion
 
 This work establishes a code-aligned continual-learning result for Sensory Perceiver:
@@ -380,12 +363,6 @@ At the same time, two boundaries remain explicit:
 2. Real multimodal benchmark ingestion (beyond proxy datasets) remains future-stage work.
 
 The immediate path forward is therefore clear: complete service-path adapter-rollover integration, run multiseed continual-learning validation, and extend from proxy multimodal data to real large-scale multimodal datasets.
-
-
----
-
-# Annex A: Implementation Status Matrix
-
 # Implementation Status Matrix (Code-Aligned)
 
 This matrix maps paper claims to current implementation status in the codebase.
@@ -411,9 +388,9 @@ This matrix maps paper claims to current implementation status in the codebase.
 | TaskAdapter module exists | Implemented | `src/models/core.py` (`class TaskAdapter`) | Includes `freeze()` method. |
 | Adapter rollover per task (`freeze_task`) | Implemented (model API) | `src/models/core.py` (`freeze_task`) | Freezes current adapter and allocates next adapter. |
 | Parameter-isolation telemetry (`get_trainable_parameters`, `get_task_coverage`) | Implemented | `src/models/core.py` | Available for reporting/analysis. |
-| Parameter isolation active in default training pipeline | **Partial** | `src/services/training_service.py` | Model supports isolation; service loop does not call `freeze_task()` across tasks. |
+| Parameter isolation active in service pipeline (opt-in) | Implemented | `src/services/training_service.py`, `src/train.py` | Enable with `--adapter_rollover --continual_task_count <N>`. |
 | Reservoir sampling replay buffer | Implemented | `src/models/core.py` (`_update_replay_buffer`) | Integrated in model buffer updates. |
-| Two replay modes (`er`, `contrastive`) | Implemented | `src/services/training_service.py` | Both wired through runtime config. |
+| Replay mode suite (`feature`, `er`, `contrastive`) | Implemented | `src/services/training_service.py`, `src/train.py`, `src/runtime/contracts.py` | Includes feature-only replay baseline and raw-input replay modes. |
 | External classifier head (separate from backbone) | Implemented | `src/services/training_service.py` | Head is `nn.Linear` outside `SensoryPerceiver`. |
 
 ## MIME and Modality Routing
@@ -442,18 +419,12 @@ This matrix maps paper claims to current implementation status in the codebase.
    - Runtime modernization and typed contract system are present.
 
 2. **Must be phrased carefully in paper**:
-   - Parameter isolation is **implemented in model APIs** but **not yet fully exercised in the main training service loop** across sequential tasks.
+   - Parameter isolation is integrated as an **opt-in service path** (not always-on by default).
    - MIME routing is currently a **canonical registry + boundary validation** plus modality-key dispatch, not raw MIME parsing inside `forward()`.
    - Multimodal real-benchmark ingestion (AudioSet/Ego4D) remains future/ongoing work.
 
 3. **Canonical naming**:
    - Use `sensor_streaming` consistently (experiment ID, dataset ID, docs, scripts).
-
-
----
-
-# Annex B: Concept-Implementation Audit
-
 # 10. Concept-Implementation Audit
 
 This section compares core paper concepts against current implementation behavior and evidentiary strength.
@@ -465,9 +436,9 @@ This section compares core paper concepts against current implementation behavio
 | Multimodal tower architecture with shared cross-modal integration | Core architecture supports modality-specific processing + shared integration | `src/models/core.py` (`PerceiverTower`, `SensoryPerceiver`) | Implemented | Low |
 | Replay must reach shared feature extractors | Mechanistic claim from Phase 1 → Phase 2 | Phase-based results in `06-results.md`; replay applied in model/service (`_update_replay_buffer`, replay branches in `training_service.py`) | Implemented + evidenced (Split-CIFAR-100 scope) | Low |
 | Reservoir sampling for long-horizon buffer fairness | Required buffer policy for continual learning | `src/models/core.py` (`_update_replay_buffer`) | Implemented | Low |
-| Dual replay modes (`er`, `contrastive`) | Current runtime supports two replay objectives | `src/services/training_service.py` (`replay_mode` branches, `ContrastiveLoss`) | Implemented | Low |
+| Replay mode suite (`feature`, `er`, `contrastive`) | Current runtime supports feature-only baseline and raw-input replay objectives | `src/services/training_service.py` (`replay_mode` branches, `ContrastiveLoss`) | Implemented | Low |
 | Parameter isolation via task adapters | API exists for freeze/rollover and trainable-coverage controls | `src/models/core.py` (`TaskAdapter.freeze`, `freeze_task`, `get_task_coverage`, `get_trainable_parameters`) | Implemented in model API | Medium |
-| Parameter isolation as default sequential service behavior | Presented as near-term integration target, not completed default | No `freeze_task()` usage in `src/services/*`, `src/train.py` | Partial | Medium |
+| Parameter isolation as sequential service behavior | Available via explicit training flags (`adapter_rollover`, `continual_task_count`) | `src/services/training_service.py`, `src/train.py` | Implemented (opt-in path) | Low |
 | MIME-style modality semantics as runtime source of truth | Canonical modality-case registry and validation at boundaries | `src/runtime/mime_cases.py`, `src/runtime/contracts.py` | Implemented | Low |
 | MIME-string-driven dispatch inside model forward | Architectural ideal of semantic routing in-model | `src/models/core.py` forward dispatches by modality keys in input dict, not MIME strings | Partial by design | Medium |
 | Modern runtime/service/observability architecture | Typed contracts + services + structured metrics/logging | `src/runtime/*`, `src/services/*`, `src/observability/*` | Implemented | Low |
@@ -480,10 +451,10 @@ This section compares core paper concepts against current implementation behavio
    - Model execution still routes by modality dictionary keys.
    - Interpretation: semantic routing exists at the contract layer, not as direct MIME parsing in forward.
 
-2. **Parameter isolation promise vs service-path activation**
+2. **Parameter isolation default vs opt-in execution**
    - Isolation APIs are present and functional in the model.
-   - Default training service does not yet execute per-task freeze/rollover lifecycle.
-   - Interpretation: concept is implemented as capability, not yet integrated as default experiment path.
+   - Service-path freeze/rollover execution is available through explicit CLI/runtime flags.
+   - Interpretation: concept is integrated as an opt-in path rather than an always-on default.
 
 3. **Multimodal architecture claims vs benchmark evidence scope**
    - Architecture and proxy multimodal datasets exist.
@@ -495,7 +466,7 @@ This section compares core paper concepts against current implementation behavio
 Use these canonical phrasings in the main paper to keep claims defensible:
 
 - **Replay claim**: “Raw-input replay with reservoir sampling materially improves retention in the current Split-CIFAR-100 continual-learning setting.”
-- **Isolation claim**: “Task-adapter isolation APIs are implemented in the model; full sequential service-path activation remains ongoing integration work.”
+- **Isolation claim**: “Task-adapter isolation and sequential rollover are implemented and exposed as an opt-in service path.”
 - **MIME claim**: “MIME semantics are canonicalized at runtime-contract boundaries and drive modality validation/setup; model forward dispatch currently uses modality keys.”
 - **Multimodal claim**: “Proxy multimodal support is implemented; real large-scale multimodal ingestion (e.g., AudioSet/Ego4D) remains future-stage work.”
 

@@ -34,7 +34,18 @@ def build_parser() -> ArgumentParser:
     parser.add_argument("--replay_buffer_size", type=int, default=2000)
     parser.add_argument("--contrastive_temp", type=float, default=0.07)
     parser.add_argument(
-        "--replay_mode", type=str, default="er", choices=["er", "contrastive"]
+        "--replay_mode", type=str, default="er", choices=["er", "contrastive", "feature"]
+    )
+    parser.add_argument(
+        "--adapter_rollover",
+        action="store_true",
+        help="Enable task-adapter freeze/rollover between continual tasks.",
+    )
+    parser.add_argument(
+        "--continual_task_count",
+        type=int,
+        default=1,
+        help="Number of continual tasks to run sequentially when adapter rollover is enabled.",
     )
 
     parser.add_argument("--batch_size", type=int, default=32)

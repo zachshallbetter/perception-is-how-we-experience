@@ -39,7 +39,7 @@ Primary continual-learning metrics:
 
 To avoid over-claiming:
 
-1. Task-adapter isolation APIs are implemented in the model, but full sequential adapter rollover is not yet the default service training path.
+1. Task-adapter rollover is implemented in the service path and can be enabled via `adapter_rollover` with `continual_task_count > 1`.
 2. MIME routing is implemented as canonical modality-case registry + validation, while model dispatch uses modality keys in input dicts.
 3. Real multimodal ingestion pipelines (AudioSet/Ego4D-scale training integration) remain future work.
 

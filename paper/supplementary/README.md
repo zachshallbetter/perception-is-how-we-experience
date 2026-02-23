@@ -24,6 +24,7 @@ Supplementary documents provide:
 - `architecture-paper/`: architecture decomposition, scaling hypotheses, and ablation protocol templates.
 - `orchestrator-paper/`: distributed training/orchestration framing, reproducibility controls, and operational test plans.
 - `applications/`: robotics, medical, and smart-home benchmark-design packages.
+- `research-papers/`: candidate publication drafts for replay placement, MIME contracts, and adapter isolation governance.
 
 ## Claim and Promotion Policy
 

@@ -35,10 +35,11 @@ This ensures each observed sample has equal retention probability over time.
 
 ### 4.3.2 Replay Modes
 
-The training service exposes two replay modes:
+The training service exposes three replay modes:
 
 - `er`: cross-entropy on replayed raw samples.
 - `contrastive`: NT-Xent-style feature alignment between current and replayed features.
+- `feature`: classifier-level replay from a feature store (ablation baseline).
 
 Replay is computed from raw modality inputs, so gradients can traverse the backbone when replayed batches are processed.
 
@@ -51,7 +52,7 @@ Implemented model capabilities:
 
 Current status:
 - APIs are implemented and test-validated.
-- Full sequential activation of adapter rollover in the default service training loop remains partial.
+- Sequential activation is available in the service path via `adapter_rollover` with configurable `continual_task_count`.
 
 ## 4.5 Runtime and Services
 

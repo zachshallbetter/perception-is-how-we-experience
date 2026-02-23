@@ -23,9 +23,16 @@ Authoritative claim files:
 - Empirical benchmark claims are bounded to currently reported results and active code paths.
 - MIME semantics are framed as runtime-contract validation and modality setup derivation.
 - Model forward dispatch is framed as modality-key based.
-- Parameter isolation is framed as implemented API capability with partial service-path integration.
+- Parameter isolation is framed as implemented model capability with opt-in service-path integration.
 
 ## Monolith Policy
 
 `paper/Perception Is How We Experience.md` is a generated monolith assembled from canonical section files.
 Do not hand-edit the monolith as a source of truth.
+
+## Supplementary Tracks
+
+- Research drafts: `paper/supplementary/research-papers/`
+- Patent drafts: `paper/patents/`
+
+These tracks are non-canonical and must stay synchronized with implementation status constraints in `paper/sections/10-concept-implementation-audit.md`.

@@ -81,6 +81,37 @@ python -m src.eval \
 
 ## Benchmarking
 
+### `run_replay_depth_ablation.py`
+Run replay-depth ablations across three conditions:
+- `feature_only` (`--replay_mode feature`)
+- `raw_er` (`--replay_mode er`)
+- `raw_contrastive` (`--replay_mode contrastive`)
+
+```bash
+python scripts/run_replay_depth_ablation.py \
+  --experiment continual \
+  --dataset split_cifar \
+  --seeds 42,43,44 \
+  --epochs 5 \
+  --device cpu
+```
+
+**Outputs**:
+- `ablation_runs.json`: per-run records + aggregate stats
+- `ablation_runs.csv`: flat run table
+- `ablation_summary.csv`: condition-level mean/std metrics
+
+### `report_replay_depth_ablation.py`
+Generate a Markdown report from a completed replay-depth ablation run.
+
+```bash
+python scripts/report_replay_depth_ablation.py \
+  --ablation_dir results/replay_depth_ablation/run_YYYYMMDD_HHMMSS
+```
+
+**Output**:
+- `ablation_report.md` in the selected ablation directory
+
 ### `run_full_benchmark.sh`
 Execute all 3 experiments × 3 seeds with evaluation.
 

@@ -223,6 +223,8 @@ def create_dataloaders(
     batch_size: int = 32,
     num_workers: int = 4,
     seed: int = 42,
+    task_id: int = 0,
+    n_tasks: int = 20,
 ) -> Tuple[DataLoader, DataLoader]:
     """Factory function to create train/val dataloaders.
 
@@ -232,6 +234,8 @@ def create_dataloaders(
         batch_size: Batch size
         num_workers: Data loading workers
         seed: Random seed
+        task_id: Task index for continual datasets
+        n_tasks: Total task count for continual datasets
 
     Returns:
         (train_loader, val_loader)
@@ -243,12 +247,12 @@ def create_dataloaders(
         if dataset_name == "split_cifar":
             # For continual learning, return single task loaders
             # In practice, iterate over tasks
-            train_ds = SplitCIFAR100(n_tasks=20, task_id=0, split="train")
-            val_ds = SplitCIFAR100(n_tasks=20, task_id=0, split="test")
+            train_ds = SplitCIFAR100(n_tasks=n_tasks, task_id=task_id, split="train")
+            val_ds = SplitCIFAR100(n_tasks=n_tasks, task_id=task_id, split="test")
 
         elif dataset_name == "permuted_mnist":
-            train_ds = PermutedMNIST(n_tasks=20, task_id=0, split="train")
-            val_ds = PermutedMNIST(n_tasks=20, task_id=0, split="test")
+            train_ds = PermutedMNIST(n_tasks=n_tasks, task_id=task_id, split="train")
+            val_ds = PermutedMNIST(n_tasks=n_tasks, task_id=task_id, split="test")
         else:
             raise ValueError(f"Unknown continual dataset: {dataset_name}")
 

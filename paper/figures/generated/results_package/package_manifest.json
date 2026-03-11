@@ -1,0 +1,239 @@
+{
+  "package_version": 1,
+  "output_dir": "paper/figures/generated/results_package",
+  "phase_progression": [
+    {
+      "phase": "1",
+      "phase_label": "Phase 1",
+      "configuration": "Feature-only replay",
+      "source_kind": "paper_canonical_section",
+      "source_path": "paper/sections/06-results.md",
+      "CIL": 4.86,
+      "BWT": -53.8,
+      "FWT": 0.0,
+      "task0_retention": 0.6
+    },
+    {
+      "phase": "2",
+      "phase_label": "Phase 2",
+      "configuration": "Raw-input replay + reservoir sampling",
+      "source_kind": "artifact_results_json",
+      "source_path": "results/cl_baseline_reservoir_sampling/results.json",
+      "CIL": 19.54,
+      "BWT": -34.91111111111112,
+      "FWT": 0.0,
+      "task0_retention": 33.0
+    },
+    {
+      "phase": "3",
+      "phase_label": "Phase 3",
+      "configuration": "Tuned core continual path (3-seed mean)",
+      "source_kind": "artifact_results_json_mean",
+      "source_path": "results/paper_runlocal_tuned_20t_seed42_20260310_091001_recover/results.json; results/paper_runlocal_tuned_20t_seed43_20260310_091001_recover/results.json; results/paper_runlocal_tuned_20t_seed44_20260310_091001_recover/results.json",
+      "CIL": 23.643333333333334,
+      "BWT": -30.94736842105263,
+      "FWT": 0.0,
+      "task0_retention": 23.0
+    }
+  ],
+  "tuned_core_summary": {
+    "CIL": 23.643333333333334,
+    "BWT": -30.94736842105263,
+    "FWT": 0.0,
+    "task0_retention": 23.0,
+    "CIL_std": 0.37862323694611555,
+    "BWT_std": 1.3575546969862067
+  },
+  "tuned_seed_rows": [
+    {
+      "run": "paper_runlocal_tuned_20t_seed42_20260310_091001_recover",
+      "seed": 42,
+      "source_path": "results/paper_runlocal_tuned_20t_seed42_20260310_091001_recover/results.json",
+      "CIL": 24.15,
+      "BWT": -29.400000000000002,
+      "FWT": 0.0,
+      "task0_retention": 23.4
+    },
+    {
+      "run": "paper_runlocal_tuned_20t_seed43_20260310_091001_recover",
+      "seed": 43,
+      "source_path": "results/paper_runlocal_tuned_20t_seed43_20260310_091001_recover/results.json",
+      "CIL": 23.540000000000003,
+      "BWT": -30.736842105263165,
+      "FWT": 0.0,
+      "task0_retention": 20.0
+    },
+    {
+      "run": "paper_runlocal_tuned_20t_seed44_20260310_091001_recover",
+      "seed": 44,
+      "source_path": "results/paper_runlocal_tuned_20t_seed44_20260310_091001_recover/results.json",
+      "CIL": 23.240000000000002,
+      "BWT": -32.70526315789473,
+      "FWT": 0.0,
+      "task0_retention": 25.6
+    }
+  ],
+  "bwt_sweep_top_ranked": [
+    {
+      "run": "bwt_ewc_1_0_seed42_20260311_002625",
+      "source_path": "results/bwt_ewc_1_0_seed42_20260311_002625/results.json",
+      "seed": 42,
+      "replay_mode": "er",
+      "replay_weight": 1.0,
+      "replay_buffer": 12000,
+      "ewc_lambda": 1.0,
+      "si_lambda": 0.0,
+      "CIL": 23.029999999999998,
+      "BWT": -35.2,
+      "FWT": 0.0,
+      "task0_retention": 32.0
+    },
+    {
+      "run": "bwt_replay_er_high_buffer_seed42_20260311_002625",
+      "source_path": "results/bwt_replay_er_high_buffer_seed42_20260311_002625/results.json",
+      "seed": 42,
+      "replay_mode": "er",
+      "replay_weight": 1.0,
+      "replay_buffer": 12000,
+      "ewc_lambda": 0.6,
+      "si_lambda": 0.0,
+      "CIL": 23.09,
+      "BWT": -35.231578947368426,
+      "FWT": 0.0,
+      "task0_retention": 32.0
+    },
+    {
+      "run": "bwt_ewc_2_0_seed42_20260311_002625",
+      "source_path": "results/bwt_ewc_2_0_seed42_20260311_002625/results.json",
+      "seed": 42,
+      "replay_mode": "er",
+      "replay_weight": 1.0,
+      "replay_buffer": 12000,
+      "ewc_lambda": 2.0,
+      "si_lambda": 0.0,
+      "CIL": 22.96,
+      "BWT": -35.36842105263158,
+      "FWT": 0.0,
+      "task0_retention": 32.2
+    },
+    {
+      "run": "bwt_si_0_1_seed42_20260311_0030_direct",
+      "source_path": "results/bwt_si_0_1_seed42_20260311_0030_direct/results.json",
+      "seed": 42,
+      "replay_mode": "er",
+      "replay_weight": 1.0,
+      "replay_buffer": 12000,
+      "ewc_lambda": 1.0,
+      "si_lambda": 0.1,
+      "CIL": 23.060000000000002,
+      "BWT": -35.41052631578947,
+      "FWT": 0.0,
+      "task0_retention": 32.2
+    },
+    {
+      "run": "bwt_ewc_3_0_seed42_20260311_002625",
+      "source_path": "results/bwt_ewc_3_0_seed42_20260311_002625/results.json",
+      "seed": 42,
+      "replay_mode": "er",
+      "replay_weight": 1.0,
+      "replay_buffer": 12000,
+      "ewc_lambda": 3.0,
+      "si_lambda": 0.0,
+      "CIL": 22.729999999999997,
+      "BWT": -35.50526315789474,
+      "FWT": 0.0,
+      "task0_retention": 32.6
+    },
+    {
+      "run": "bwt_si_0_5_seed42_20260311_0033_followup",
+      "source_path": "results/bwt_si_0_5_seed42_20260311_0033_followup/results.json",
+      "seed": 42,
+      "replay_mode": "er",
+      "replay_weight": 1.0,
+      "replay_buffer": 12000,
+      "ewc_lambda": 1.0,
+      "si_lambda": 0.5,
+      "CIL": 21.78,
+      "BWT": -38.789473684210535,
+      "FWT": 0.0,
+      "task0_retention": 28.6
+    },
+    {
+      "run": "bwt_replay_er_seed42_20260311_002625",
+      "source_path": "results/bwt_replay_er_seed42_20260311_002625/results.json",
+      "seed": 42,
+      "replay_mode": "er",
+      "replay_weight": 0.8,
+      "replay_buffer": 8000,
+      "ewc_lambda": 0.6,
+      "si_lambda": 0.0,
+      "CIL": 21.169999999999995,
+      "BWT": -40.8421052631579,
+      "FWT": 0.0,
+      "task0_retention": 21.4
+    },
+    {
+      "run": "bwt_no_parameter_isolation_seed42_20260311_0033_followup",
+      "source_path": "results/bwt_no_parameter_isolation_seed42_20260311_0033_followup/results.json",
+      "seed": 42,
+      "replay_mode": "er",
+      "replay_weight": 1.0,
+      "replay_buffer": 12000,
+      "ewc_lambda": 1.0,
+      "si_lambda": 0.0,
+      "CIL": 17.78,
+      "BWT": -46.084210526315786,
+      "FWT": 0.0,
+      "task0_retention": 19.4
+    },
+    {
+      "run": "bwt_replay_contrastive_seed42_20260311_002625",
+      "source_path": "results/bwt_replay_contrastive_seed42_20260311_002625/results.json",
+      "seed": 42,
+      "replay_mode": "contrastive",
+      "replay_weight": 0.8,
+      "replay_buffer": 8000,
+      "ewc_lambda": 0.6,
+      "si_lambda": 0.0,
+      "CIL": 3.9299999999999997,
+      "BWT": -70.47368421052632,
+      "FWT": 0.0,
+      "task0_retention": 0.0
+    }
+  ],
+  "source_matrices": {
+    "phase_2": "paper/figures/generated/results_package/source_matrices/phase2_raw_input_replay_accuracy_matrix.png",
+    "tuned_core": [
+      "paper/figures/generated/results_package/source_matrices/tuned_core_seed42_accuracy_matrix.png",
+      "paper/figures/generated/results_package/source_matrices/tuned_core_seed43_accuracy_matrix.png",
+      "paper/figures/generated/results_package/source_matrices/tuned_core_seed44_accuracy_matrix.png"
+    ]
+  },
+  "generated_files": [
+    "paper/figures/generated/results_package/README.md",
+    "paper/figures/generated/results_package/bwt_sweep_ranked.csv",
+    "paper/figures/generated/results_package/captions.md",
+    "paper/figures/generated/results_package/distillation_campaign_status.json",
+    "paper/figures/generated/results_package/figure_bwt_sweep_ranked.pdf",
+    "paper/figures/generated/results_package/figure_bwt_sweep_ranked.png",
+    "paper/figures/generated/results_package/figure_bwt_sweep_ranked.svg",
+    "paper/figures/generated/results_package/figure_phase_progression.pdf",
+    "paper/figures/generated/results_package/figure_phase_progression.png",
+    "paper/figures/generated/results_package/figure_phase_progression.svg",
+    "paper/figures/generated/results_package/figure_tuned_core_multiseed.pdf",
+    "paper/figures/generated/results_package/figure_tuned_core_multiseed.png",
+    "paper/figures/generated/results_package/figure_tuned_core_multiseed.svg",
+    "paper/figures/generated/results_package/latex_results_package.tex",
+    "paper/figures/generated/results_package/package_manifest.json",
+    "paper/figures/generated/results_package/phase_progression.csv",
+    "paper/figures/generated/results_package/source_matrices/phase2_raw_input_replay_accuracy_matrix.png",
+    "paper/figures/generated/results_package/source_matrices/tuned_core_seed42_accuracy_matrix.png",
+    "paper/figures/generated/results_package/source_matrices/tuned_core_seed43_accuracy_matrix.png",
+    "paper/figures/generated/results_package/source_matrices/tuned_core_seed44_accuracy_matrix.png",
+    "paper/figures/generated/results_package/table_results_overview.pdf",
+    "paper/figures/generated/results_package/table_results_overview.png",
+    "paper/figures/generated/results_package/table_results_overview.svg",
+    "paper/figures/generated/results_package/tuned_core_multiseed.csv",
+    "paper/figures/generated/results_package/package_manifest.json"
+  ]
+}

@@ -4,6 +4,28 @@ Complete set of 7 reusable figure templates for SensoryPerceiver research papers
 
 **Status**: ✅ All 7 templates implemented and ready to use
 
+## Current Results Package
+
+The canonical Split-CIFAR-100 paper package is generated into:
+
+- `paper/figures/generated/results_package/`
+
+Build it with:
+
+```bash
+python3 paper/figures/build_results_package.py
+```
+
+This emits:
+
+- artifact-backed CSV tables
+- publication-ready PNG/PDF/SVG figures
+- copied source accuracy matrices for the reported Phase 2 and tuned-core runs
+- `package_manifest.json` describing provenance
+- `captions.md` with paper-ready captions
+- `latex_results_package.tex` with drop-in `table` / `figure` environments
+- `distillation_campaign_status.json` so completed `distill_*` and `tuned_er_*` runs can be folded in automatically when available
+
 ## Templates Overview
 
 ### 1. Accuracy Curves (`plot_accuracy_curves`)

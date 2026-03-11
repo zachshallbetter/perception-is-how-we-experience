@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import numpy as np
+import random
 from pathlib import Path
 import json
 import argparse
@@ -20,6 +21,7 @@ from baselines.hf_perceiver_io import PerceiverIOBaseline
 from baselines.vilt import ViLTBaseline
 from baselines.clip import CLIPBaseline
 from baselines.flava import FLAVABaseline
+from src.runtime import DEFAULT_CONTINUAL_TASKS
 
 # Most vision-language models expect 224x224 inputs
 BASELINE_TRANSFORM = T.Compose(
@@ -54,10 +56,13 @@ def main():
         required=True,
         choices=["perceiver", "perceiver_io", "vilt", "clip", "flava"],
     )
-    parser.add_argument("--n_tasks", type=int, default=10)
+    parser.add_argument(
+        "--n_tasks", type=int, default=DEFAULT_CONTINUAL_TASKS["split_cifar"]
+    )
     parser.add_argument("--epochs_per_task", type=int, default=5)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
         "--quick", action="store_true", help="Run a fast 2-task, 1-epoch test"
     )
@@ -67,7 +72,13 @@ def main():
     if args.quick:
         args.n_tasks = 2
         args.epochs_per_task = 1
-        args.batch_size = 16
+        args.batch_size = min(args.batch_size, 4)
+
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
 
     device = torch.device(
         "mps"

@@ -15,8 +15,8 @@ Purpose:
 
 Usage:
   python scripts/run_local.py --quick        # 3 tasks, 1 epoch, d_model=128  (~5 min CPU)
-  python scripts/run_local.py                # baseline: 10 tasks, 5 epochs, replay_weight=0.5
-  python scripts/run_local.py --tuned        # tuned:    10 tasks, 5 epochs, replay_weight=0.8, buffer=8000, ewc_lambda=0.6
+  python scripts/run_local.py                # baseline: 20 tasks, 5 epochs, replay_weight=0.5
+  python scripts/run_local.py --tuned        # tuned:    20 tasks, 5 epochs, replay_weight=0.8, buffer=8000, ewc_lambda=0.6
 
 Baseline vs Tuned:
   --baseline  replay_weight=0.5, replay_buffer=5000, lr=1e-4  → results/cl_experiment/
@@ -26,6 +26,7 @@ Results: results/cl_experiment/ (baseline) or results/cl_experiment_tuned/ (tune
 """
 
 import argparse
+import copy
 import json
 import sys
 import time
@@ -53,6 +54,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
 from src.models.core import SensoryPerceiver, ContrastiveLoss
+from src.runtime import DEFAULT_CONTINUAL_TASKS
 
 
 # ─── Device detection ────────────────────────────────────────────────────────
@@ -173,6 +175,9 @@ def replay_loss(
     batch_size,
     mode,
     current_pooled,
+    teacher_model,
+    teacher_classifier,
+    distill_temp,
 ):
     replay_inputs, replay_labels = model.get_replay_samples(batch_size)
     if replay_inputs is None:
@@ -186,6 +191,32 @@ def replay_loss(
         )
         replay_logits = classifier(pool_features(replay_features))
         return nn.functional.cross_entropy(replay_logits, replay_labels.to(device))
+
+    if mode == "distill":
+        if teacher_model is None or teacher_classifier is None:
+            return torch.tensor(0.0, device=device)
+
+        replay_features, _ = model(
+            replay_inputs, labels=None, update_buffer=False, return_embeddings=False
+        )
+        student_logits = classifier(pool_features(replay_features))
+        with torch.no_grad():
+            teacher_features, _ = teacher_model(
+                replay_inputs,
+                labels=None,
+                update_buffer=False,
+                return_embeddings=False,
+            )
+            teacher_logits = teacher_classifier(pool_features(teacher_features))
+        student_log_probs = nn.functional.log_softmax(
+            student_logits / distill_temp, dim=1
+        )
+        teacher_probs = nn.functional.softmax(teacher_logits / distill_temp, dim=1)
+        return nn.functional.kl_div(
+            student_log_probs,
+            teacher_probs,
+            reduction="batchmean",
+        ) * (distill_temp**2)
 
     replay_features, _ = model(
         replay_inputs, labels=None, update_buffer=False, return_embeddings=False
@@ -214,11 +245,26 @@ def si_penalty(model, si_omega: Dict[str, torch.Tensor], si_prev: Dict[str, torc
         return torch.tensor(0.0, device=next(model.parameters()).device)
     penalty = 0.0
     for name, param in model.named_parameters():
-        if name in si_omega:
+        if name in si_omega and name in si_prev:
             prev = si_prev[name]
             omega = si_omega[name]
             penalty += (omega * (param - prev).pow(2)).sum()
     return penalty
+
+
+def ensure_si_state(
+    model,
+    si_prev: Dict[str, torch.Tensor],
+    si_omega: Dict[str, torch.Tensor],
+    si_accum: Dict[str, torch.Tensor],
+) -> None:
+    for name, param in model.named_parameters():
+        if name not in si_prev:
+            si_prev[name] = param.detach().clone()
+        if name not in si_omega:
+            si_omega[name] = torch.zeros_like(param)
+        if name not in si_accum:
+            si_accum[name] = torch.zeros_like(param)
 
 
 def train_one_epoch(
@@ -236,11 +282,17 @@ def train_one_epoch(
     si_prev,
     si_lambda,
     si_accum,
+    teacher_model,
+    teacher_classifier,
+    distill_temp,
 ):
     model.train()
     classifier.train()
     ce = nn.CrossEntropyLoss()
     total_loss, correct, total = 0.0, 0, 0
+
+    if si_lambda > 0:
+        ensure_si_state(model, si_prev, si_omega, si_accum)
 
     for inputs, labels in loader:
         inputs = {k: v.to(device) for k, v in inputs.items()}
@@ -261,6 +313,9 @@ def train_one_epoch(
                 labels.size(0),
                 replay_mode,
                 pooled,
+                teacher_model,
+                teacher_classifier,
+                distill_temp,
             )
 
         if ewc_lambda > 0:
@@ -480,7 +535,9 @@ def main():
         help="Tuned config: replay_weight=0.5, buffer=5000, lr=3e-4 "
         "→ results/cl_experiment_tuned/",
     )
-    parser.add_argument("--n_tasks", type=int, default=10)
+    parser.add_argument(
+        "--n_tasks", type=int, default=DEFAULT_CONTINUAL_TASKS["split_cifar"]
+    )
     parser.add_argument("--epochs_per_task", type=int, default=5)
     parser.add_argument("--d_model", type=int, default=256)
     parser.add_argument("--num_heads", type=int, default=4)
@@ -494,9 +551,14 @@ def main():
         "--replay_mode",
         type=str,
         default="er",
-        choices=["er", "contrastive"],
-        help="ER: Experience Replay (raw samples). Contrastive: NT-Xent on replayed tokens.",
+        choices=["er", "contrastive", "distill"],
+        help=(
+            "ER: label replay on raw samples. "
+            "Contrastive: NT-Xent on replayed features. "
+            "Distill: KL replay against a frozen previous-task teacher."
+        ),
     )
+    parser.add_argument("--distill_temp", type=float, default=2.0)
     parser.add_argument("--ewc_lambda", type=float, default=0.4)
     parser.add_argument("--ewc_batches", type=int, default=5)
     parser.add_argument("--si_lambda", type=float, default=0.0)
@@ -589,6 +651,8 @@ def main():
     si_prev = {name: param.detach().clone() for name, param in model.named_parameters()}
     si_omega = {name: torch.zeros_like(param) for name, param in model.named_parameters()}
     si_accum = {name: torch.zeros_like(param) for name, param in model.named_parameters()}
+    teacher_model = None
+    teacher_classifier = None
 
     print(f"\n{'='*60}")
     print(
@@ -626,6 +690,9 @@ def main():
                 si_prev,
                 args.si_lambda,
                 si_accum,
+                teacher_model,
+                teacher_classifier,
+                args.distill_temp,
             )
             scheduler.step()
             print(
@@ -648,14 +715,28 @@ def main():
             )
 
         if args.si_lambda > 0:
+            ensure_si_state(model, si_prev, si_omega, si_accum)
             for name, param in model.named_parameters():
                 delta = param.detach() - si_prev[name]
                 si_omega[name] += si_accum[name] / (delta.pow(2) + args.si_epsilon)
                 si_prev[name] = param.detach().clone()
                 si_accum[name].zero_()
 
+        if args.replay_mode == "distill":
+            teacher_model = copy.deepcopy(model).to(device)
+            teacher_model.eval()
+            for param in teacher_model.parameters():
+                param.requires_grad_(False)
+
+            teacher_classifier = copy.deepcopy(classifier).to(device)
+            teacher_classifier.eval()
+            for param in teacher_classifier.parameters():
+                param.requires_grad_(False)
+
         if not args.no_parameter_isolation:
             model.freeze_task()
+            if args.si_lambda > 0:
+                ensure_si_state(model, si_prev, si_omega, si_accum)
             optimizer = build_optimizer(
                 [p for p in model.parameters() if p.requires_grad]
                 + list(classifier.parameters()),

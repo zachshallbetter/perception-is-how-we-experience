@@ -54,7 +54,7 @@ This matrix maps paper claims to current implementation status in the codebase.
    - Runtime modernization and typed contract system are present.
 
 2. **Must be phrased carefully in paper**:
-   - Parameter isolation is integrated as an **opt-in service path** (not always-on by default).
+   - Parameter isolation is integrated as an **opt-in service path** (not always-on by default), and current exploratory Titan results do not yet show it outperforming the tuned replay-centric baseline.
    - MIME routing is currently a **canonical registry + boundary validation** plus modality-key dispatch, not raw MIME parsing inside `forward()`.
    - Multimodal real-benchmark ingestion (AudioSet/Ego4D) remains future/ongoing work.
 

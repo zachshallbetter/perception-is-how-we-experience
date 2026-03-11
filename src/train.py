@@ -33,8 +33,12 @@ def build_parser() -> ArgumentParser:
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--replay_buffer_size", type=int, default=2000)
     parser.add_argument("--contrastive_temp", type=float, default=0.07)
+    parser.add_argument("--distillation_temp", type=float, default=2.0)
     parser.add_argument(
-        "--replay_mode", type=str, default="er", choices=["er", "contrastive", "feature"]
+        "--replay_mode",
+        type=str,
+        default="er",
+        choices=["er", "contrastive", "feature", "distill"],
     )
     parser.add_argument(
         "--adapter_rollover",

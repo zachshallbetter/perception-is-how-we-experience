@@ -23,6 +23,11 @@ EXPERIMENT_DATASETS = {
     "multimodal": {"audiovisual"},
 }
 
+DEFAULT_CONTINUAL_TASKS = {
+    "split_cifar": 20,
+    "permuted_mnist": 20,
+}
+
 
 def validate_experiment_dataset(experiment: str, dataset: str) -> None:
     """Validate experiment and dataset combination."""
@@ -104,6 +109,37 @@ def resolve_modality_setup(experiment: str) -> Tuple[Dict[str, Dict], int]:
     )
 
 
+def resolve_training_setup(
+    experiment: str,
+    dataset: str,
+    continual_task_count: int,
+) -> Tuple[Dict[str, Dict], int, int]:
+    """Resolve modality config, class count, and effective task count for training."""
+    modality_configs, default_n_classes = resolve_modality_setup(experiment)
+
+    if experiment != "continual":
+        return modality_configs, default_n_classes, 1
+
+    effective_task_count = (
+        continual_task_count
+        if continual_task_count > 1
+        else DEFAULT_CONTINUAL_TASKS.get(dataset, 1)
+    )
+
+    if dataset == "split_cifar":
+        n_classes = 100 // effective_task_count
+    elif dataset == "permuted_mnist":
+        n_classes = 10
+    else:
+        raise AppError(
+            ErrorCode.DATASET_MISMATCH,
+            f"Dataset '{dataset}' is invalid for experiment '{experiment}'",
+            context={"experiment": experiment, "dataset": dataset},
+        )
+
+    return modality_configs, n_classes, effective_task_count
+
+
 def _validate_positive(value: int, name: str) -> None:
     if value <= 0:
         raise AppError(
@@ -142,6 +178,7 @@ class TrainRuntimeConfig:
     dropout: float
     replay_buffer_size: int
     contrastive_temp: float
+    distillation_temp: float
     replay_mode: str
     batch_size: int
     epochs: int
@@ -157,10 +194,10 @@ class TrainRuntimeConfig:
     @classmethod
     def from_namespace(cls, args) -> "TrainRuntimeConfig":
         validate_experiment_dataset(args.experiment, args.dataset)
-        if args.replay_mode not in {"er", "contrastive", "feature"}:
+        if args.replay_mode not in {"er", "contrastive", "feature", "distill"}:
             raise AppError(
                 ErrorCode.INVALID_ARGUMENT,
-                "replay_mode must be 'er', 'contrastive', or 'feature'",
+                "replay_mode must be 'er', 'contrastive', 'feature', or 'distill'",
                 context={"replay_mode": args.replay_mode},
             )
 
@@ -171,6 +208,7 @@ class TrainRuntimeConfig:
         _validate_unit_interval(args.dropout, "dropout")
         _validate_non_negative(args.replay_buffer_size, "replay_buffer_size")
         _validate_positive(args.contrastive_temp, "contrastive_temp")
+        _validate_positive(args.distillation_temp, "distillation_temp")
         _validate_positive(args.batch_size, "batch_size")
         _validate_positive(args.epochs, "epochs")
         if args.learning_rate <= 0:
@@ -196,6 +234,7 @@ class TrainRuntimeConfig:
             dropout=args.dropout,
             replay_buffer_size=args.replay_buffer_size,
             contrastive_temp=args.contrastive_temp,
+            distillation_temp=args.distillation_temp,
             replay_mode=args.replay_mode,
             batch_size=args.batch_size,
             epochs=args.epochs,

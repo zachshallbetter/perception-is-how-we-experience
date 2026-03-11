@@ -1,5 +1,6 @@
 """Training service for Sensory Perceiver runtime jobs."""
 
+import copy
 import csv
 import logging
 import time
@@ -23,7 +24,7 @@ from src.runtime import (
     TRAIN_CONFIG_SCHEMA_VERSION,
     TrainRuntimeConfig,
     classify_exception,
-    resolve_modality_setup,
+    resolve_training_setup,
 )
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ class Trainer:
         config: Dict,
         classifier: Optional[nn.Module] = None,
         replay_mode: str = "er",
+        distillation_temp: float = 2.0,
     ):
         self.model = model.to(device)
         self.classifier = classifier
@@ -69,6 +71,7 @@ class Trainer:
         self.val_loader = val_loader
         self.criterion = criterion
         self.replay_mode = replay_mode
+        self.distillation_temp = distillation_temp
         self.replay_criterion = replay_criterion
         self.optimizer = optimizer
         self.scheduler = scheduler
@@ -82,6 +85,8 @@ class Trainer:
         self.feature_replay_features = None
         self.feature_replay_labels = None
         self.feature_replay_limit = int(self.config.get("replay_buffer_size", 0))
+        self.teacher_model = None
+        self.teacher_classifier = None
 
     def _sync_optimizer_params(self):
         """Ensure optimizer includes newly added trainable parameters."""
@@ -186,6 +191,41 @@ class Trainer:
                     rp_pooled = rp_outputs.mean(dim=1)
                     rp_logits = self.classifier(rp_pooled) if self.classifier is not None else rp_pooled
                     replay_loss = self.criterion(rp_logits, replay_labels)
+                    loss = loss + replay_loss
+            elif self.replay_mode == "distill":
+                replay_inputs, _ = self.model.get_replay_samples(labels.shape[0])
+                if (
+                    replay_inputs is not None
+                    and self.teacher_model is not None
+                    and self.teacher_classifier is not None
+                ):
+                    replay_inputs = {
+                        key: value.to(self.device) for key, value in replay_inputs.items()
+                    }
+                    rp_outputs, _ = self.model(replay_inputs, update_buffer=False)
+                    rp_pooled = rp_outputs.mean(dim=1)
+                    student_logits = (
+                        self.classifier(rp_pooled) if self.classifier is not None else rp_pooled
+                    )
+                    with torch.no_grad():
+                        teacher_outputs, _ = self.teacher_model(
+                            replay_inputs, update_buffer=False
+                        )
+                        teacher_pooled = teacher_outputs.mean(dim=1)
+                        teacher_logits = (
+                            self.teacher_classifier(teacher_pooled)
+                            if self.teacher_classifier is not None
+                            else teacher_pooled
+                        )
+                    replay_loss = nn.functional.kl_div(
+                        nn.functional.log_softmax(
+                            student_logits / self.distillation_temp, dim=1
+                        ),
+                        nn.functional.softmax(
+                            teacher_logits / self.distillation_temp, dim=1
+                        ),
+                        reduction="batchmean",
+                    ) * (self.distillation_temp**2)
                     loss = loss + replay_loss
             elif (
                 self.replay_mode == "contrastive"
@@ -329,6 +369,22 @@ class Trainer:
                     }
                 )
 
+    def refresh_teacher(self) -> None:
+        """Freeze the current task state as the replay teacher for the next task."""
+        self.teacher_model = copy.deepcopy(self.model).to(self.device)
+        self.teacher_model.eval()
+        for param in self.teacher_model.parameters():
+            param.requires_grad_(False)
+
+        if self.classifier is None:
+            self.teacher_classifier = None
+            return
+
+        self.teacher_classifier = copy.deepcopy(self.classifier).to(self.device)
+        self.teacher_classifier.eval()
+        for param in self.teacher_classifier.parameters():
+            param.requires_grad_(False)
+
 
 def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
     """Execute a training job from validated runtime config."""
@@ -350,7 +406,11 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
         torch.manual_seed(runtime_config.seed)
         np.random.seed(runtime_config.seed)
 
-        modality_configs, n_classes = resolve_modality_setup(runtime_config.experiment)
+        modality_configs, n_classes, n_continual_tasks = resolve_training_setup(
+            runtime_config.experiment,
+            runtime_config.dataset,
+            runtime_config.continual_task_count,
+        )
         model = SensoryPerceiver(
             modality_configs=modality_configs,
             dim=runtime_config.d_model,
@@ -370,13 +430,6 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
             lr=runtime_config.learning_rate,
             weight_decay=0.01,
         )
-        n_continual_tasks = 1
-        if (
-            runtime_config.experiment == "continual"
-            and runtime_config.adapter_rollover
-            and runtime_config.continual_task_count > 1
-        ):
-            n_continual_tasks = runtime_config.continual_task_count
         scheduler = CosineAnnealingLR(
             optimizer, T_max=max(1, runtime_config.epochs * n_continual_tasks)
         )
@@ -394,6 +447,7 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
             "dropout": runtime_config.dropout,
             "replay_buffer_size": runtime_config.replay_buffer_size,
             "contrastive_temp": runtime_config.contrastive_temp,
+            "distillation_temp": runtime_config.distillation_temp,
             "replay_mode": runtime_config.replay_mode,
             "batch_size": runtime_config.batch_size,
             "epochs": runtime_config.epochs,
@@ -413,7 +467,7 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
         with open(config_file, "w") as file:
             yaml.dump(config, file)
 
-        if n_continual_tasks > 1:
+        if runtime_config.adapter_rollover and n_continual_tasks > 1:
             emit_event(
                 logger,
                 logging.INFO,
@@ -439,6 +493,7 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
             val_loader=val_loader,
             criterion=criterion,
             replay_mode=runtime_config.replay_mode,
+            distillation_temp=runtime_config.distillation_temp,
             replay_criterion=replay_criterion,
             optimizer=optimizer,
             scheduler=scheduler,
@@ -470,8 +525,10 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
                 total_tasks=n_continual_tasks,
             )
             trainer.fit(runtime_config.epochs)
+            if runtime_config.replay_mode == "distill":
+                trainer.refresh_teacher()
 
-            if task_id < n_continual_tasks - 1:
+            if runtime_config.adapter_rollover and task_id < n_continual_tasks - 1:
                 trainer.model.freeze_task()
                 emit_event(
                     logger,

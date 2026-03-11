@@ -72,6 +72,7 @@ class ServiceLayerSmokeTest(unittest.TestCase):
                 dropout=0.1,
                 replay_buffer_size=16,
                 contrastive_temp=0.07,
+                distillation_temp=2.0,
                 replay_mode="er",
                 batch_size=2,
                 epochs=1,
@@ -88,6 +89,36 @@ class ServiceLayerSmokeTest(unittest.TestCase):
             self.assertTrue(result.history_file.exists())
             self.assertTrue(result.metrics_file.exists())
             self.assertTrue(result.trace_id.startswith("training-"))
+
+    @patch("src.services.training_service.create_dataloaders", new=_mock_create_dataloaders)
+    def test_run_training_supports_distill_replay(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runtime_config = TrainRuntimeConfig(
+                experiment="continual",
+                dataset="split_cifar",
+                d_model=16,
+                num_heads=2,
+                depth=1,
+                mlp_dim=32,
+                dropout=0.1,
+                replay_buffer_size=16,
+                contrastive_temp=0.07,
+                distillation_temp=2.0,
+                replay_mode="distill",
+                batch_size=2,
+                epochs=1,
+                learning_rate=1e-3,
+                warmup_steps=0,
+                num_workers=0,
+                device=torch.device("cpu"),
+                seed=1,
+                output_dir=Path(tmpdir) / "train_output",
+                continual_task_count=2,
+            )
+            result = run_training(runtime_config)
+            self.assertTrue(result.config_file.exists())
+            self.assertTrue(result.latest_checkpoint.exists())
+            self.assertTrue(result.history_file.exists())
 
     @patch("src.services.evaluation_service.create_dataloaders", new=_mock_create_dataloaders)
     def test_run_evaluation_writes_results(self):
@@ -121,6 +152,7 @@ class ServiceLayerSmokeTest(unittest.TestCase):
                     "dropout": 0.1,
                     "replay_buffer_size": 16,
                     "contrastive_temp": 0.07,
+                    "distillation_temp": 2.0,
                     "replay_mode": "er",
                     "batch_size": 2,
                     "epochs": 1,

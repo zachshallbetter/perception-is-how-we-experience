@@ -2,10 +2,12 @@
 
 ## 5.1 Experimental Scope
 
-This paper’s empirical claims are grounded in **Split-CIFAR-100 continual learning** with phase-based replay analysis:
+This paper’s empirical claims are grounded in **Split-CIFAR-100 continual learning** with a code-aligned progression of experiments:
 
 - **Phase 1**: feature-only replay (insufficient).
 - **Phase 2**: raw-input replay + reservoir sampling (improved stability).
+- **Current tuned core**: the paper-primary `scripts/run_local.py --tuned` configuration on Titan Node.
+- **Preliminary BWT sweep**: replay-buffer, EWC, and SI follow-on ablations, interpreted as exploratory rather than final paper-primary evidence.
 
 ## 5.2 Runtime and Reproducibility Setup
 
@@ -18,6 +20,7 @@ Primary reproducibility controls:
 - fixed seed configuration,
 - persisted training config schema,
 - deterministic experiment/dataset validation via runtime contracts.
+- Titan Node execution with separate core and baseline environments as documented in `docs/training-guide.md`.
 
 ## 5.3 Datasets and Modalities
 
@@ -35,6 +38,10 @@ Primary continual-learning metrics:
 - **BWT** (backward transfer / forgetting)
 - Task-retention traces (e.g., Task 0 retention after final task)
 
+For current Titan campaigns, we also use:
+- multiseed mean comparison for the tuned-core result,
+- ablation ranking by final BWT for follow-on sweeps.
+
 ## 5.5 Implementation Status Constraints
 
 To avoid over-claiming:
@@ -42,5 +49,6 @@ To avoid over-claiming:
 1. Task-adapter rollover is implemented in the service path and can be enabled via `adapter_rollover` with `continual_task_count > 1`.
 2. MIME routing is implemented as canonical modality-case registry + validation, while model dispatch uses modality keys in input dicts.
 3. Real multimodal ingestion pipelines (AudioSet/Ego4D-scale training integration) remain future work.
+4. Preliminary BWT sweeps are interpreted as follow-on evidence only if they beat the tuned-core continual baseline; otherwise they are diagnostic evidence about what does not improve forgetting.
 
 These constraints are intentional and reflected in the Results/Discussion interpretation.

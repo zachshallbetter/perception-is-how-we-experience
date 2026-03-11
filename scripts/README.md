@@ -156,6 +156,29 @@ bash scripts/launch_tuned_core_expansion_campaign.sh
 
 This expands the tuned-core multiseed evidence instead of introducing yet another mechanism class immediately.
 
+### `decide_distill_followup.sh`
+Choose the next launcher automatically once the current distillation replay comparison has enough completed runs.
+
+Dry run:
+
+```bash
+bash scripts/decide_distill_followup.sh
+```
+
+Apply the decision immediately:
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/decide_distill_followup.sh --apply
+```
+
+Decision rule:
+
+- wait until the package contains at least 4 completed distillation runs and 2 tuned-ER control runs
+- compare mean `BWT`
+- launch `launch_distill_confirmation_campaign.sh` if distillation wins
+- otherwise launch `launch_tuned_core_expansion_campaign.sh`
+
 ### `monitor_titan_campaign.sh`
 Periodic monitor for campaign health and GPU saturation.
 

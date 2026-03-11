@@ -3,6 +3,7 @@
 import json
 import logging
 import subprocess
+import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -125,7 +126,7 @@ class ExperimentOrchestrator:
         experiment_name = self._resolve_experiment_for_dataset(dataset)
 
         cmd = [
-            "python",
+            sys.executable,
             "-m",
             "src.train",
             "--experiment",
@@ -187,7 +188,7 @@ class ExperimentOrchestrator:
         device = self._resolve_device(exp.gpu_id)
 
         cmd = [
-            "python",
+            sys.executable,
             "-m",
             "src.eval",
             "--checkpoint",

@@ -1,11 +1,13 @@
 """Runtime contract and error definitions."""
 
 from .contracts import (
+    DEFAULT_CONTINUAL_TASKS,
     EvalRuntimeConfig,
     OrchestratorRuntimeConfig,
     TrainRuntimeConfig,
     resolve_device,
     resolve_modality_setup,
+    resolve_training_setup,
     validate_experiment_dataset,
 )
 from .bootstrap import validate_environment
@@ -25,11 +27,13 @@ __all__ = [
     "classify_exception",
     "format_error",
     "validate_environment",
+    "DEFAULT_CONTINUAL_TASKS",
     "TrainRuntimeConfig",
     "EvalRuntimeConfig",
     "OrchestratorRuntimeConfig",
     "resolve_device",
     "resolve_modality_setup",
+    "resolve_training_setup",
     "validate_experiment_dataset",
     "SENSOR_STREAMING_EXPERIMENT_ID",
     "SENSOR_STREAMING_CANONICAL_LABEL",

@@ -34,12 +34,17 @@ This section compares core paper concepts against current implementation behavio
    - Reported quantitative CL outcomes are still centered on Split-CIFAR-100.
    - Interpretation: capability breadth exceeds currently published evidence breadth.
 
+4. **Isolation availability vs isolation superiority**
+   - Isolation/regularization paths are available and now directly runnable on Titan.
+   - Preliminary BWT sweeps have not yet shown superiority over the tuned-core replay-centric baseline.
+   - Interpretation: implementation availability should not be conflated with empirical dominance.
+
 ## 10.3 Normalized Claim Language (Recommended)
 
 Use these canonical phrasings in the main paper to keep claims defensible:
 
 - **Replay claim**: “Raw-input replay with reservoir sampling materially improves retention in the current Split-CIFAR-100 continual-learning setting.”
-- **Isolation claim**: “Task-adapter isolation and sequential rollover are implemented and exposed as an opt-in service path.”
+- **Isolation claim**: “Task-adapter isolation and sequential rollover are implemented and exposed as an opt-in service path, but their empirical advantage over the tuned replay-centric baseline remains under evaluation.”
 - **MIME claim**: “MIME semantics are canonicalized at runtime-contract boundaries and drive modality validation/setup; model forward dispatch currently uses modality keys.”
 - **Multimodal claim**: “Proxy multimodal support is implemented; real large-scale multimodal ingestion (e.g., AudioSet/Ego4D) remains future-stage work.”
 

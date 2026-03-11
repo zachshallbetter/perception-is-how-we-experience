@@ -194,7 +194,7 @@ class Validator:
         try:
             result = subprocess.run(
                 [
-                    'python', '-m', 'src.train',
+                    sys.executable, '-m', 'src.train',
                     '--experiment', 'sensor_streaming',
                     '--dataset', 'sensor_streaming',
                     '--epochs', '1',
@@ -273,9 +273,13 @@ class Validator:
         if self.failed == 0:
             logger.info("\n✓ All checks passed! Ready to run experiments.\n")
             logger.info("Next steps:")
-            logger.info("  1. Run quick test: .\\run_experiments.ps1 -Mode quick")
-            logger.info("  2. Run full benchmark: .\\run_experiments.ps1 -Mode full -Parallel")
-            logger.info("  3. Monitor: Open monitor_dashboard.html in browser\n")
+            logger.info("  1. Run quick local test: python scripts/run_local.py --quick")
+            logger.info(
+                "  2. Run baseline smoke: python scripts/run_baselines_cl.py --model perceiver --quick --batch_size 4"
+            )
+            logger.info(
+                "  3. Launch Titan campaign: CORE_PYTHON=... BASELINE_PYTHON=... bash scripts/launch_titan_continuous_campaign.sh\n"
+            )
             return True
         else:
             logger.error("\n✗ Validation failed. Fix errors above before proceeding.\n")

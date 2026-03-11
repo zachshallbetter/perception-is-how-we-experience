@@ -15,6 +15,7 @@ from src.runtime import (
     OrchestratorRuntimeConfig,
     TRAIN_CONFIG_SCHEMA_VERSION,
     TrainRuntimeConfig,
+    resolve_training_setup,
     validate_sensor_streaming_mime_bindings,
     resolve_device,
     validate_environment,
@@ -45,6 +46,7 @@ class RuntimeContractsTest(unittest.TestCase):
             dropout=1.5,
             replay_buffer_size=10,
             contrastive_temp=0.07,
+            distillation_temp=2.0,
             replay_mode="er",
             batch_size=4,
             epochs=1,
@@ -91,6 +93,7 @@ class RuntimeContractsTest(unittest.TestCase):
             dropout=0.1,
             replay_buffer_size=10,
             contrastive_temp=0.07,
+            distillation_temp=2.0,
             replay_mode="contrastive",
             batch_size=4,
             epochs=1,
@@ -105,6 +108,32 @@ class RuntimeContractsTest(unittest.TestCase):
         self.assertEqual(config.experiment, "multimodal")
         self.assertEqual(config.dataset, "audiovisual")
         self.assertEqual(config.device.type, "cpu")
+
+    def test_train_runtime_config_accepts_distill_replay_mode(self):
+        args = SimpleNamespace(
+            experiment="continual",
+            dataset="split_cifar",
+            d_model=64,
+            num_heads=4,
+            depth=2,
+            mlp_dim=128,
+            dropout=0.1,
+            replay_buffer_size=10,
+            contrastive_temp=0.07,
+            distillation_temp=2.0,
+            replay_mode="distill",
+            batch_size=4,
+            epochs=1,
+            learning_rate=1e-3,
+            warmup_steps=0,
+            num_workers=0,
+            device="cpu",
+            seed=1,
+            output_dir="/tmp/train",
+        )
+        config = TrainRuntimeConfig.from_namespace(args)
+        self.assertEqual(config.replay_mode, "distill")
+        self.assertEqual(config.distillation_temp, 2.0)
 
     def test_training_schema_requires_version(self):
         with self.assertRaises(AppError) as context:
@@ -137,8 +166,27 @@ class RuntimeContractsTest(unittest.TestCase):
                     "modality_configs": {"vision": {"input_dim": 3, "use_conv": True}},
                     "n_classes": 5,
                 }
-            )
+        )
         self.assertEqual(context.exception.code, ErrorCode.SCHEMA_VALIDATION_FAILED)
+
+    def test_resolve_training_setup_uses_dataset_default_tasks_for_continual(self):
+        modality_configs, n_classes, n_tasks = resolve_training_setup(
+            "continual",
+            "split_cifar",
+            continual_task_count=1,
+        )
+        self.assertEqual(modality_configs, {"vision": {"input_dim": 3, "use_conv": True}})
+        self.assertEqual(n_classes, 5)
+        self.assertEqual(n_tasks, 20)
+
+    def test_resolve_training_setup_respects_explicit_continual_task_count(self):
+        _, n_classes, n_tasks = resolve_training_setup(
+            "continual",
+            "split_cifar",
+            continual_task_count=5,
+        )
+        self.assertEqual(n_classes, 20)
+        self.assertEqual(n_tasks, 5)
 
     def test_environment_validation_required_env(self):
         with patch.dict("os.environ", {}, clear=True):

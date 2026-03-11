@@ -81,6 +81,147 @@ python -m src.eval \
 
 ## Benchmarking
 
+### `launch_paper_benchmarks_titan.sh`
+Launch one canonical 3-GPU paper run in detached `tmux` sessions.
+
+```bash
+CORE_PYTHON=/ai/envs/perception/bin/python \
+BASELINE_PYTHON=/ai/envs/torch-cu118-smoke/bin/python \
+bash scripts/launch_paper_benchmarks_titan.sh
+```
+
+### `launch_titan_continuous_campaign.sh`
+Launch a set-and-forget multi-seed queue:
+
+- GPU 0: `run_local.py --tuned` seeds + replay-depth ablation
+- GPU 1: `run_baselines_cl.py --model perceiver` seeds
+- GPU 2: `run_baselines_cl.py --model perceiver_io` seeds
+
+```bash
+CORE_PYTHON=/ai/envs/perception/bin/python \
+BASELINE_PYTHON=/ai/envs/torch-cu118-smoke/bin/python \
+CORE_SEEDS=42,43,44 \
+BASELINE_SEEDS=42,43,44 \
+bash scripts/launch_titan_continuous_campaign.sh
+```
+
+This is the canonical paper-run path for Titan Node.
+
+### `launch_distill_bwt_campaign.sh`
+Launch a genuinely different replay mechanism class: task-boundary teacher distillation on replayed raw samples.
+
+- GPU 0: `distill` replay, temperature `2.0`, seeds `42,43`
+- GPU 1: `distill` replay, temperature `4.0`, seeds `42,43`
+- GPU 2: tuned ER control seeds `45,46`
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/launch_distill_bwt_campaign.sh
+```
+
+This is the right next campaign when nearby EWC / SI / buffer sweeps fail to beat the tuned replay baseline.
+
+### `distill_campaign_status.sh`
+One-command live status for a running distillation replay campaign.
+
+```bash
+bash scripts/distill_campaign_status.sh distill-campaign-YYYYMMDD_HHMMSS
+```
+
+Shows:
+- worker session status
+- GPU utilization
+- per-lane task / epoch stage
+- completed output counts
+- current package watcher fold-in status
+
+### `launch_distill_confirmation_campaign.sh`
+Confirmation campaign to run only if distillation replay beats tuned ER on BWT.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+DISTILL_TEMP=4.0 \
+bash scripts/launch_distill_confirmation_campaign.sh
+```
+
+This launches additional distill seeds and matched tuned-ER controls.
+
+### `launch_tuned_core_expansion_campaign.sh`
+Paper-strengthening follow-up to run only if distillation replay does not beat tuned ER.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/launch_tuned_core_expansion_campaign.sh
+```
+
+This expands the tuned-core multiseed evidence instead of introducing yet another mechanism class immediately.
+
+### `monitor_titan_campaign.sh`
+Periodic monitor for campaign health and GPU saturation.
+
+```bash
+bash scripts/monitor_titan_campaign.sh paper-campaign-YYYYMMDD_HHMMSS 60 3
+```
+
+Arguments:
+- campaign id
+- polling interval seconds (default `60`)
+- idle alert threshold in consecutive polls (default `3`)
+
+### `watch_results_package.sh`
+Poll for newly completed `distill_*` and `tuned_er_*` `results.json` files and rebuild the paper package only when the completed artifact set changes.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/watch_results_package.sh 60
+```
+
+Outputs:
+- rebuild log: `results/titan_logs/results-package-watcher.log`
+- state file: `results/titan_logs/results-package-watcher.state`
+- refreshed paper package: `paper/figures/generated/results_package/`
+
+Recommended Titan usage:
+
+```bash
+tmux new-session -d -s results-package-watcher \
+  "cd /ai/projects/Perception && PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/watch_results_package.sh 60"
+```
+
+The main Titan launchers now auto-start this watcher if it is missing, so manual startup is only needed for ad hoc experiments or recovery.
+
+### `render_titan_dashboard.py`
+Render the current Titan state as Markdown and JSON using:
+- `nvidia-smi`
+- active `run_local.py` / `run_baselines_cl.py` processes
+- live `results/titan_logs/*.log`
+- completed `results/*/results.json`
+
+Directly on Titan:
+
+```bash
+/ai/envs/perception/bin/python scripts/render_titan_dashboard.py \
+  --results-root results \
+  --log-dir results/titan_logs \
+  --md-out results/titan_dashboard.md \
+  --json-out results/titan_dashboard.json
+```
+
+### `titan_remote_dashboard.sh`
+Mac-side wrapper that SSHes to Titan and renders the dashboard remotely.
+
+One-shot:
+
+```bash
+bash scripts/titan_remote_dashboard.sh
+```
+
+Watch mode:
+
+```bash
+bash scripts/titan_remote_dashboard.sh --watch 60
+```
+
 ### `run_replay_depth_ablation.py`
 Run replay-depth ablations across three conditions:
 - `feature_only` (`--replay_mode feature`)
@@ -112,7 +253,7 @@ python scripts/report_replay_depth_ablation.py \
 **Output**:
 - `ablation_report.md` in the selected ablation directory
 
-### `run_full_benchmark.sh`
+### `run_full_benchmark.sh` (legacy bulk benchmark path)
 Execute all 3 experiments × 3 seeds with evaluation.
 
 ```bash

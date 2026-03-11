@@ -1,0 +1,10 @@
+run,source_path,seed,replay_mode,replay_weight,replay_buffer,ewc_lambda,si_lambda,CIL,BWT,FWT,task0_retention
+bwt_ewc_1_0_seed42_20260311_002625,results/bwt_ewc_1_0_seed42_20260311_002625/results.json,42,er,1.0,12000,1.0,0.0,23.029999999999998,-35.2,0.0,32.0
+bwt_replay_er_high_buffer_seed42_20260311_002625,results/bwt_replay_er_high_buffer_seed42_20260311_002625/results.json,42,er,1.0,12000,0.6,0.0,23.09,-35.231578947368426,0.0,32.0
+bwt_ewc_2_0_seed42_20260311_002625,results/bwt_ewc_2_0_seed42_20260311_002625/results.json,42,er,1.0,12000,2.0,0.0,22.96,-35.36842105263158,0.0,32.2
+bwt_si_0_1_seed42_20260311_0030_direct,results/bwt_si_0_1_seed42_20260311_0030_direct/results.json,42,er,1.0,12000,1.0,0.1,23.060000000000002,-35.41052631578947,0.0,32.2
+bwt_ewc_3_0_seed42_20260311_002625,results/bwt_ewc_3_0_seed42_20260311_002625/results.json,42,er,1.0,12000,3.0,0.0,22.729999999999997,-35.50526315789474,0.0,32.6
+bwt_si_0_5_seed42_20260311_0033_followup,results/bwt_si_0_5_seed42_20260311_0033_followup/results.json,42,er,1.0,12000,1.0,0.5,21.78,-38.789473684210535,0.0,28.6
+bwt_replay_er_seed42_20260311_002625,results/bwt_replay_er_seed42_20260311_002625/results.json,42,er,0.8,8000,0.6,0.0,21.169999999999995,-40.8421052631579,0.0,21.4
+bwt_no_parameter_isolation_seed42_20260311_0033_followup,results/bwt_no_parameter_isolation_seed42_20260311_0033_followup/results.json,42,er,1.0,12000,1.0,0.0,17.78,-46.084210526315786,0.0,19.4
+bwt_replay_contrastive_seed42_20260311_002625,results/bwt_replay_contrastive_seed42_20260311_002625/results.json,42,contrastive,0.8,8000,0.6,0.0,3.9299999999999997,-70.47368421052632,0.0,0.0

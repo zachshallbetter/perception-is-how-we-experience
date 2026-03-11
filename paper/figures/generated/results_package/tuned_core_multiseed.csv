@@ -1,0 +1,4 @@
+run,seed,source_path,CIL,BWT,FWT,task0_retention
+paper_runlocal_tuned_20t_seed42_20260310_091001_recover,42,results/paper_runlocal_tuned_20t_seed42_20260310_091001_recover/results.json,24.15,-29.400000000000002,0.0,23.4
+paper_runlocal_tuned_20t_seed43_20260310_091001_recover,43,results/paper_runlocal_tuned_20t_seed43_20260310_091001_recover/results.json,23.540000000000003,-30.736842105263165,0.0,20.0
+paper_runlocal_tuned_20t_seed44_20260310_091001_recover,44,results/paper_runlocal_tuned_20t_seed44_20260310_091001_recover/results.json,23.240000000000002,-32.70526315789473,0.0,25.6

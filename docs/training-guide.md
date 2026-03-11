@@ -1,198 +1,222 @@
-# Training Guide: Sensory Perceiver
+# Training Guide: Canonical Paper Workflow
 
-This document outlines the standard training procedures, multi-GPU orchestration, and experimental workflows for the Sensory Perceiver architecture.
+This guide defines the single paper-authoritative workflow for Split-CIFAR-100 continual learning on Titan Node.
 
-## 1. Core Training Scripts
+## 1. Canonical Contract
 
-The project utilizes several distinct training tracks depending on the experimental goal:
+Use this exact run contract for paper metrics:
 
-### A. Continual Learning Benchmark (`scripts/run_local.py`)
-This is the **primary local continual learning script** for Split-CIFAR-100. It executes 10 sequential tasks to test replay mechanisms and continual-learning metrics.
+- Core model: `scripts/run_local.py --tuned`
+- Baselines: `scripts/run_baselines_cl.py --model perceiver` and `--model perceiver_io`
+- Task schedule: `n_tasks=20`
+- Baseline batch size on 12 GB cards: `batch_size=4`
+- Core and baseline dependencies in separate Python environments
 
-```bash
-# Run Split-CIFAR-100 benchmark evaluating BWT and FWT
-# Defaults to feature replay (--replay_mode feature)
-python scripts/run_local.py --batch_size 32 --d_model 768 --num_heads 8
+The intended Titan GPU split is:
 
-# Run with the heavily tuned contrastive replay mechanism
-python scripts/run_local.py --tuned --replay_mode contrastive
-```
-It outputs Task-Incremental metrics, measuring absolute Catastrophic Forgetting, Forward Transfer (FWT), and Backward Transfer (BWT).
+- GPU 0: core model runs and replay-depth ablation
+- GPU 1: Perceiver baseline runs
+- GPU 2: Perceiver IO baseline runs
 
-### Replay-Depth and Adapter-Rollover Controls (`src.train`)
+## 2. Environment Setup
 
-The service-layer trainer supports replay-depth ablations and opt-in adapter rollover:
-
-```bash
-# Feature-only replay baseline (classifier-level replay store)
-python -m src.train --experiment continual --dataset split_cifar --replay_mode feature --epochs 5
-
-# Raw-input replay baselines
-python -m src.train --experiment continual --dataset split_cifar --replay_mode er --epochs 5
-python -m src.train --experiment continual --dataset split_cifar --replay_mode contrastive --epochs 5
-
-# Sequential adapter rollover across tasks (opt-in path)
-python -m src.train --experiment continual --dataset split_cifar --replay_mode er \
-  --adapter_rollover --continual_task_count 5 --epochs 1
-```
-
-### B. Standard Multimodal Training (`src/train.py`)
-Used for generic, single-task multimodal learning across vision, IoT streaming, or medical benchmarks.
-```bash
-python -m src.train --experiment multimodal --dataset audiovisual --d_model 768 --output_dir results/multimodal
-```
-
-For sensor-streaming runs, use experiment ID `sensor_streaming`.  
-For a lighter smoke run on bare metal, set `--dataset sensor_streaming_smoke` (smaller sequence length and fewer sequences).
-Canonical modality MIME cases are documented in `docs/sensor-streaming-mime-cases.md`.
-
-### C. Baselines (`train_perceiver_io.py`)
-Used to run identical benchmarks using the Perceiver IO architecture to establish baseline accuracy and computing efficiency.
-```bash
-python train_perceiver_io.py --experiment continual --dataset split_cifar --output_dir results/baseline
-```
-
----
-
-## 2. Multi-GPU Benchmarking Infrastructure (Primary)
-
-For complete results generation (9 model seeds + ablations), execution is parallelized across dedicated CUDA hardware (optimized for 3x 12GB TitanX GPUs or similar compute clusters).
-
-### Orchestration Scripts
-The primary benchmarking suite is located in the `scripts/` directory and managed via Python and shell/PowerShell automation.
-
-**Windows/PowerShell Orchestration:**
-```powershell
-# Quick Validation (4 hours, GPU 0 only)
-.\scripts\run_experiments.ps1 -Mode quick
-
-# Full Parallel Benchmark (14-18 hours, 3 GPUs)
-.\scripts\run_experiments.ps1 -Mode full -Parallel
-
-# Full Benchmark + Auto-push to GitHub
-.\scripts\run_experiments.ps1 -Mode full -Push
-```
-
-**Unix/Linux Orchestration:**
-```bash
-# Run the sequential benchmark bash script
-bash scripts/run_full_benchmark.sh
-```
-
-### Allocation Strategy (via `src.experiments.experiment_orchestrator`)
-When running parallel full modes:
-- **GPU 0 (`SensoryPerceiver` Primary)**: Runs benchmarks for CIFAR, Permuted MNIST, and IoT data (expected 14 hours).
-- **GPU 1 (`Perceiver IO` Baseline)**: Runs baseline comparisons matching GPU 0 data (expected 13 hours).
-- **GPU 2 (Ablations)**: Runs all ablations defined in `ablation_study_config.py` (e.g., without replay, without MIME-Type routing) (expected 18 hours).
-
----
-
-## 3. Local Soft Testing (Apple M1/MPS)
-
-For local development, debugging, and soft testing, the `scripts/run_local.py` script is optimized to run natively on Apple Silicon (M1/M2/M3) using PyTorch's MPS (Metal Performance Shaders) backend, though it works equally well on CUDA/CPU.
-
-### Running Local Tests
-```bash
-# Run the Split-CIFAR-100 benchmark locally to verify changes
-python scripts/run_local.py --batch_size 32 --d_model 768 --num_heads 8
-```
-*Note: This is strictly for local code validation. Please use the Multi-GPU Orchestration scripts for generating final paper metrics.*
-
----
-
-## 4. Cloud & Distributed Computing
-
-For production-scale training and benchmarks beyond local multi-GPU setups, the orchestration scripts can be adapted for Cloud infrastructure (AWS/GCP/Lambda Labs).
-
-### Cloud Provisioning Recommendations
-For full benchmark replication (~40 hours compute equivalent):
-- **AWS Recommendations**: `p3.8xlarge` (4x V100 16GB) or `p4d.24xlarge` (8x A100 40GB).
-- **GCP Recommendations**: `a2-highgpu-4g` (4x A100 40GB) or `n1-standard` instances with attached T4/V100 GPUs.
-- **Docker/Containerization**: To ensure consistent dependencies across cloud instances, package the repository in a PyTorch CUDA base image (e.g., `nvcr.io/nvidia/pytorch:23.10-py3`).
-
-### Distributed Execution
-When managing multiple cloud instances rather than a single multi-GPU machine:
-1. Divide the `ablation_study_config.py` runs across worker nodes.
-2. Update `--device` mapping if your cloud instance has a different GPU topology than the assumed 3 GPUs.
-3. Use the built-in `--push-to-github` flag on the orchestration scripts to continuously sync results back to the central repository from ephemeral cloud instances:
+Core environment:
 
 ```bash
-# Example for a disposable cloud instance
-bash scripts/run_full_benchmark.sh && python scripts/push_results.py --message "Cloud benchmark complete"
+pip install -r requirements.txt
 ```
 
----
-
-## 5. Ablation Studies
-
-Ablation studies isolate the impact of the Sensory Perceiver's core innovations. They are executed using:
-```bash
-python -m src.train --experiment continual --dataset split_cifar --output_dir results/ablation_[ABLATION_NAME]
-```
-
-**Key Ablations:**
-1. **`ablation_1_without_replay`**: Disables the contrastive replay buffer to measure baseline catastrophic forgetting.
-2. **`ablation_2_without_mime`**: Replaces MIME-Type modality routing with a generic embedding layer.
-3. **`ablation_3_efficiency`**: Scales model parameters down to 100M to measure accuracy vs. efficiency trade-offs.
-
-Replay-depth harness:
+Baseline environment:
 
 ```bash
-python scripts/run_replay_depth_ablation.py --experiment continual --dataset split_cifar --seeds 42,43,44
-python scripts/report_replay_depth_ablation.py --ablation_dir results/replay_depth_ablation/run_YYYYMMDD_HHMMSS
+pip install -r requirements.txt
+pip install -r requirements-baselines.txt
 ```
 
----
+`requirements-baselines.txt` is intentionally separate so `transformers` remains out of the core training environment.
 
-## 6. Monitoring & Results
+## 3. Launch Modes
 
-- **Live Dashboard**: Open `monitor_dashboard.html` in your browser during `scripts/run_experiments.ps1` to view live metric updates and estimated time of arrival (ETA).
-- **Logging**: Console output is piped to `experiment_orchestrator.log`.
-- **Artifacts**: All trained checkpoints (`best_model.pt`), evaluation metrics (`eval_results.json`), and hyperparameter configs are saved automatically to the `results/` directory under a timestamped folder.
-- **Versioned Config Schema**: Training checkpoints now include `config_schema_version` and evaluation rejects unknown/missing schema versions.
-- **Structured Service Events**: `src.services.*` emit JSON logs with `event`, `trace_id`, and typed failure metadata.
-- **Metrics Snapshots**: Service runs write `training_metrics.json`, `evaluation_metrics.json`, and `results/orchestration_metrics.json`.
-- **Direct Evaluation**:
-  ```bash
-  python -m src.eval --checkpoint results/<run>/best_model.pt --experiment continual --dataset split_cifar --output_file results/<run>/eval_results.json
-  ```
+Single 3-run paper launch:
 
-### Aggregating Results
-Once runs are complete, compile the CSV summaries and generate Matplotlib figures:
+```bash
+CORE_PYTHON=/ai/envs/perception/bin/python \
+BASELINE_PYTHON=/ai/envs/torch-cu118-smoke/bin/python \
+bash scripts/launch_paper_benchmarks_titan.sh
+```
+
+Continuous campaign (set-and-forget multi-seed queue):
+
+```bash
+CORE_PYTHON=/ai/envs/perception/bin/python \
+BASELINE_PYTHON=/ai/envs/torch-cu118-smoke/bin/python \
+CORE_SEEDS=42,43,44 \
+BASELINE_SEEDS=42,43,44 \
+bash scripts/launch_titan_continuous_campaign.sh
+```
+
+This launcher keeps each GPU busy with a sequential queue and writes per-run logs under `results/titan_logs/`.
+
+Distillation replay campaign (new mechanism class vs tuned ER control):
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/launch_distill_bwt_campaign.sh
+```
+
+This campaign compares task-boundary teacher distillation replay (`--replay_mode distill`) against additional tuned ER control seeds.
+
+## 4. Monitoring
+
+The canonical status command from your Mac is:
+
+```bash
+bash scripts/titan_remote_dashboard.sh
+```
+
+Watch mode:
+
+```bash
+bash scripts/titan_remote_dashboard.sh --watch 60
+```
+
+This renders a live dashboard from Titan with:
+
+- GPU utilization and memory
+- active run stages and ETA estimates
+- BWT leaderboard from completed runs
+- paper-core aggregate metrics
+
+To rebuild the paper package automatically whenever completed `distill_*` or `tuned_er_*` results land:
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/watch_results_package.sh 60
+```
+
+Recommended detached Titan session:
+
+```bash
+tmux new-session -d -s results-package-watcher \
+  "cd /ai/projects/Perception && PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/watch_results_package.sh 60"
+```
+
+The campaign launchers now ensure this watcher session exists automatically, so you should not need to start it manually for:
+
+- `launch_paper_benchmarks_titan.sh`
+- `launch_titan_continuous_campaign.sh`
+- `launch_distill_bwt_campaign.sh`
+- `launch_distill_confirmation_campaign.sh`
+- `launch_tuned_core_expansion_campaign.sh`
+
+Distillation campaign status:
+
+```bash
+bash scripts/distill_campaign_status.sh distill-campaign-YYYYMMDD_HHMMSS
+```
+
+Decision triggers after the current campaign:
+
+If distillation replay wins on BWT:
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+DISTILL_TEMP=4.0 \
+bash scripts/launch_distill_confirmation_campaign.sh
+```
+
+If distillation replay does not win:
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/launch_tuned_core_expansion_campaign.sh
+```
+
+Low-level commands remain useful during debugging:
+
+```bash
+tmux ls
+nvidia-smi
+tail -f results/titan_logs/<campaign-log>.log
+```
+
+Start periodic health monitoring for a running campaign:
+
+```bash
+bash scripts/monitor_titan_campaign.sh <campaign-id> 60 3
+```
+
+Attach a specific worker session:
+
+```bash
+tmux attach -t <campaign-id>-gpu0
+tmux attach -t <campaign-id>-gpu1
+tmux attach -t <campaign-id>-gpu2
+```
+
+Direct renderer on Titan:
+
+```bash
+/ai/envs/perception/bin/python scripts/render_titan_dashboard.py \
+  --results-root results \
+  --log-dir results/titan_logs \
+  --md-out results/titan_dashboard.md \
+  --json-out results/titan_dashboard.json
+```
+
+## 5. Outputs
+
+Core run artifacts:
+
+- `results/paper_runlocal_tuned_20t_*`
+- `results.json`
+- `accuracy_matrix.png`
+
+Baseline artifacts:
+
+- `results/paper_baseline_perceiver_20t_*`
+- `results/paper_baseline_perceiver_io_20t_*`
+
+Replay-depth ablation artifacts:
+
+- `results/replay_depth_ablation/run_*`
+- `ablation_runs.json`
+- `ablation_summary.csv`
+- `ablation_report.md` (after running the report script)
+
+Distillation replay artifacts:
+
+- `results/distill_t2_seed*`
+- `results/distill_t4_seed*`
+- `results/tuned_er_seed*`
+
+## 6. Result Reporting
+
+Generate a replay-depth markdown report:
+
+```bash
+python scripts/report_replay_depth_ablation.py \
+  --ablation_dir results/replay_depth_ablation/run_YYYYMMDD_HHMMSS
+```
+
+Aggregate/plot once campaigns complete:
+
 ```bash
 python scripts/aggregate_results.py --results_dir results
 python scripts/plot_results.py --results_dir results --output_dir results/plots
 ```
 
----
+## 7. Pre-Run Validation
 
-## 7. Troubleshooting Apple Silicon & CUDA Issues
-
-**CUDA Out of Memory (OOM)** on 12GB TitanX GPUs:
-- Reduce memory footprint by halving `--batch_size` (e.g., from 32 to 16).
-- If still OOM, reduce `--d_model` (e.g., from 768 to 512) and `--num_heads` (e.g., from 8 to 4).
-
-**Apple Unified Memory OOM**:
-- Unlike dedicated VRAM, PyTorch MPS shares memory with the system. Close heavy applications (like browsers) to free up RAM.
-- Set the environment variable to limit MPS memory allocation if it crashes the OS:
-  ```bash
-  export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
-  ```
-
-If processes hang or block memory:
-```bash
-# Verify process using activity monitor or kill python
-pkill -f python
-# On Windows
-taskkill /IM python.exe /F 
-```
-
----
-
-## 8. Service & Contract Test Gate
-
-Before running long training jobs, run the lightweight service/contract checks:
+Run checks before long jobs:
 
 ```bash
 python3 -m unittest test_runtime_contracts.py test_service_layer_smoke.py
+python scripts/validate_setup.py --verbose
 ```
+
+## 8. Notes and Constraints
+
+- `src.train` remains valid for service-layer and ablation studies, and now defaults continual datasets to benchmark task counts unless overridden.
+- Paper-primary continual metrics should be generated from `scripts/run_local.py --tuned` and the two baseline scripts above.
+- If GPU memory pressure occurs on Titan X cards, reduce baseline batch size before reducing task count.

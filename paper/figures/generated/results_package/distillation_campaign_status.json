@@ -1,0 +1,6 @@
+{
+  "completed_distill_runs": [],
+  "completed_control_runs": [],
+  "status": "pending",
+  "note": "Distillation replay results will be folded into the package automatically once both `results/distill_t*_seed*/results.json` and `results/tuned_er_seed*/results.json` exist."
+}

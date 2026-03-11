@@ -2,11 +2,11 @@
 
 We present **Sensory Perceiver**, a multimodal architecture that combines modality-specific towers with shared cross-modal attention for continual learning settings. The system uses explicit modality identity and canonical MIME-style input case definitions for routing semantics, with a runtime registry for `sensor_streaming` modalities.
 
-We evaluate continual learning behavior on Split-CIFAR-100 using a phase-based replay analysis. In **Phase 1** (feature-only replay), the model exhibits severe forgetting (CIL 4.86%, BWT −53.80%). In **Phase 2** (raw-input replay with Reservoir Sampling), retention improves substantially (CIL 19.54%, BWT −34.91%), including Task 0 retention recovery from 0.6% to 33.0%. These results indicate that replay signals must reach shared feature extractors, not only task heads.
+We evaluate continual learning behavior on Split-CIFAR-100 using a code-aligned progression of replay-centric experiments. In **Phase 1** (feature-only replay), the model exhibits severe forgetting (CIL 4.86%, BWT −53.80%). In **Phase 2** (raw-input replay with Reservoir Sampling), retention improves substantially (CIL 19.54%, BWT −34.91%), including Task 0 retention recovery from 0.6% to 33.0%. In the current tuned-core configuration, a 3-seed Titan Node run improves the mean result further to CIL 23.64% and BWT −30.95%. Together, these results indicate that replay signals must reach shared feature extractors, not only task heads, and that replay-path design dominates the current retention story.
 
 The implementation includes a modernized runtime/service architecture with typed contracts, structured observability, and explicit modality registries. MIME semantics are enforced at runtime-contract boundaries for modality validation and setup derivation, while model forward dispatch remains modality-key based.
 
-Parameter-isolation primitives (task adapters with freeze/rollover APIs) are implemented in the model and validated in targeted tests, but full sequential activation in the default service training loop remains partial.
+Parameter-isolation primitives (task adapters with freeze/rollover APIs) are implemented in the model and validated in targeted tests. Sequential activation is available as an opt-in service path, but current preliminary BWT sweeps with EWC and SI regularization have not yet surpassed the tuned-core replay result.
 
 Current multimodal support includes proxy audiovisual and sensor_streaming datasets. Real benchmark ingestion (for example AudioSet/Ego4D) and additional modality towers remain future-stage work.
 
@@ -21,6 +21,8 @@ In contrast, human perception operates differently. It involves parallel process
 
 Traditional neural network models face challenges in modeling human-like perception, particularly in scalability, generalizability, and integration of multimodal data. Current architectures struggle to process diverse sensory inputs simultaneously, often requiring extensive data pre-processing or model specialization. Our Sensory Perceiver addresses these challenges by introducing **MIME-style modality semantics** as a routing primitive with runtime-contract validation and setup derivation.
 
+In the present implementation, Sensory Perceiver should be understood as a machine-perception framework with two inseparable goals: (1) to represent heterogeneous sensory streams as explicit, typed modality cases that can be validated and configured at runtime, and (2) to learn over time without destroying earlier perceptual structure. The first goal motivates the modality-specific towers, shared cross-modal integration, and canonical `sensor_streaming` MIME registry; the second motivates the replay-centric continual-learning experiments that currently provide the strongest evidence base. In other words, continual learning is not separate from the project’s notion of perception, but the temporal-stability requirement inside it.
+
 ## Continual Learning and Catastrophic Forgetting
 
 Beyond the challenge of multimodal integration, real-world AI systems must handle **continual learning**—the ability to learn new tasks sequentially without losing performance on previously learned tasks. A fundamental problem in continual learning is **catastrophic forgetting**, where neural networks lose previously learned representations when trained on new data. This phenomenon, first documented in neural networks by McCloskey and Cohen (1989), represents a critical barrier to deploying learning systems in dynamic environments where new sensory streams or tasks arrive over time.
@@ -33,7 +35,7 @@ The Sensory Perceiver addresses catastrophic forgetting through replay-centric m
 
 2. **Replay Mode Variants**: The training pipeline supports (a) standard replay with cross-entropy on replayed samples and (b) contrastive replay based on NT-Xent-style feature alignment.
 
-Task-adapter parameter-isolation APIs are implemented in the model and tested in isolated benchmarks, but end-to-end activation in the default service loop remains partial.
+Task-adapter parameter-isolation APIs are implemented in the model and tested in isolated benchmarks. Sequential rollover is available in the service path as an opt-in configuration, but the strongest current evidence remains replay-centric rather than isolation-centric.
 
 ## Contributions and Scope
 
@@ -41,13 +43,13 @@ Our contributions in this paper are fourfold:
 
 1. **Architectural Innovation**: We introduce a modular PerceiverTower + cross-modal attention design with explicit modality identity and MIME-style routing semantics.
 
-2. **Replay Mechanism Analysis**: We empirically characterize feature-only replay failure versus raw-input replay with reservoir sampling on Split-CIFAR-100 (Phase 1 → Phase 2).
+2. **Replay Mechanism Analysis**: We empirically characterize feature-only replay failure, raw-input replay recovery, and the current tuned-core continual-learning regime on Split-CIFAR-100.
 
 3. **Modern Runtime Implementation**: We provide typed runtime contracts, structured errors, service-layer orchestration, and observability instrumentation suitable for reproducible experimentation.
 
 4. **Canonical `sensor_streaming` MIME Registry**: We formalize sensor_streaming input cases (modality, MIME type, feature dimensionality) as a single runtime source of truth.
 
-The remainder of this paper is organized as follows: §3 provides related work. §4 details architecture and implementation-aligned methods. §5 describes experimental setup and implementation status. §6 presents phase-based empirical results. §7 discusses implications, gaps, and next-stage roadmap. §8 concludes.
+The remainder of this paper is organized as follows: §3 provides related work. §4 details architecture and implementation-aligned methods. §5 describes experimental setup and implementation status. §6 presents the empirical progression from failure mode to current best result. §7 discusses implications, gaps, and next-stage roadmap. §8 concludes.
 
 **Scope Note**: We acknowledge that the name "Perceiver" was independently used by Jaegle et al. (2021) for a different architecture. While both architectures share the goal of general-purpose multimodal perception, our current implementation focuses on continual-learning behavior, MIME-style modality semantics, and service-oriented runtime architecture. A detailed comparison is provided in §3 (Related Work).
 # Related Work
@@ -207,10 +209,12 @@ Real benchmark ingestion pipelines (e.g., AudioSet/Ego4D) remain future-stage wo
 
 ## 5.1 Experimental Scope
 
-This paper’s empirical claims are grounded in **Split-CIFAR-100 continual learning** with phase-based replay analysis:
+This paper’s empirical claims are grounded in **Split-CIFAR-100 continual learning** with a code-aligned progression of experiments:
 
 - **Phase 1**: feature-only replay (insufficient).
 - **Phase 2**: raw-input replay + reservoir sampling (improved stability).
+- **Current tuned core**: the paper-primary `scripts/run_local.py --tuned` configuration on Titan Node.
+- **Preliminary BWT sweep**: replay-buffer, EWC, and SI follow-on ablations, interpreted as exploratory rather than final paper-primary evidence.
 
 ## 5.2 Runtime and Reproducibility Setup
 
@@ -223,6 +227,7 @@ Primary reproducibility controls:
 - fixed seed configuration,
 - persisted training config schema,
 - deterministic experiment/dataset validation via runtime contracts.
+- Titan Node execution with separate core and baseline environments as documented in `docs/training-guide.md`.
 
 ## 5.3 Datasets and Modalities
 
@@ -240,6 +245,10 @@ Primary continual-learning metrics:
 - **BWT** (backward transfer / forgetting)
 - Task-retention traces (e.g., Task 0 retention after final task)
 
+For current Titan campaigns, we also use:
+- multiseed mean comparison for the tuned-core result,
+- ablation ranking by final BWT for follow-on sweeps.
+
 ## 5.5 Implementation Status Constraints
 
 To avoid over-claiming:
@@ -247,11 +256,20 @@ To avoid over-claiming:
 1. Task-adapter rollover is implemented in the service path and can be enabled via `adapter_rollover` with `continual_task_count > 1`.
 2. MIME routing is implemented as canonical modality-case registry + validation, while model dispatch uses modality keys in input dicts.
 3. Real multimodal ingestion pipelines (AudioSet/Ego4D-scale training integration) remain future work.
+4. Preliminary BWT sweeps are interpreted as follow-on evidence only if they beat the tuned-core continual baseline; otherwise they are diagnostic evidence about what does not improve forgetting.
 
 These constraints are intentional and reflected in the Results/Discussion interpretation.
 # Results
 
-We report a phase-based continual-learning result profile on Split-CIFAR-100.
+We report a code-aligned continual-learning result progression on Split-CIFAR-100.
+
+Generated paper assets for this section are packaged under `paper/figures/generated/results_package/`:
+
+- `table_results_overview.png`
+- `figure_phase_progression.png`
+- `figure_tuned_core_multiseed.png`
+- `figure_bwt_sweep_ranked.png`
+- `package_manifest.json`
 
 ## 6.1 Phase 1: Feature-Only Replay (Failure Mode)
 
@@ -280,39 +298,79 @@ Interpretation:
 - Replaying raw inputs restores gradient flow through shared feature extractors and reduces representation drift.
 - Reservoir sampling improves long-horizon retention fairness across earlier and later tasks.
 
-## 6.3 Consolidated Table
+## 6.3 Current Tuned-Core Continual Result
+
+We next evaluate the current paper-primary continual-learning path on Titan Node using `scripts/run_local.py --tuned` over 3 seeds.
+
+Observed multiseed result:
+- CIL mean: **23.64%**
+- BWT mean: **−30.95%**
+- FWT mean: **0.00%**
+- Task 0 retention mean: **23.0%**
+
+Per-seed values:
+- seed 42: CIL **24.15%**, BWT **−29.40%**
+- seed 43: CIL **23.54%**, BWT **−30.74%**
+- seed 44: CIL **23.24%**, BWT **−32.71%**
+
+Interpretation:
+- The tuned-core path materially improves on the earlier raw-input replay phase result.
+- Variance across seeds is modest, which strengthens the implementation-level credibility of the result.
+- Forgetting remains substantial, but the strongest current evidence in this code branch is the tuned replay path rather than an isolation- or regularization-heavy alternative.
+
+## 6.4 Preliminary BWT Improvement Sweep
+
+We ran a preliminary follow-on sweep to test whether stronger replay settings or modest regularization terms improve backward transfer beyond the tuned-core result.
+
+Completed exploratory runs include:
+- EWC 1.0: CIL **23.03%**, BWT **−35.20%**
+- replay ER, larger buffer: CIL **23.09%**, BWT **−35.23%**
+- EWC 2.0: CIL **22.96%**, BWT **−35.37%**
+- SI 0.1: CIL **23.06%**, BWT **−35.41%**
+- weaker replay ER baseline: CIL **21.17%**, BWT **−40.84%**
+
+Interpretation:
+- These exploratory settings do not yet surpass the tuned-core mean BWT (**−30.95%**).
+- The current evidence therefore favors replay-path design and tuned core configuration over naive strengthening of EWC, SI, or buffer size.
+- This sweep is useful negative evidence: not every additional regularizer improves forgetting in the present architecture/runtime regime.
+
+## 6.5 Consolidated Table
 
 | Phase | Replay design | CIL | BWT | Task 0 retention |
 |---|---|---:|---:|---:|
 | 1 | Feature-only replay | 4.86% | −53.80% | 0.6% |
 | 2 | Raw-input + reservoir sampling | 19.54% | −34.91% | 33.0% |
+| 3 | Tuned core continual path (3-seed mean) | 23.64% | −30.95% | 23.0% |
 
-## 6.4 Implementation-Alignment Notes
+## 6.6 Implementation-Alignment Notes
 
 The reported phase contrast is aligned with current code capabilities:
 
 - Reservoir sampling and replay modes are implemented in model/service code.
 - Raw-input replay path is present in active training logic.
-- Task-adapter isolation APIs are implemented, but full sequential adapter-rollover integration in default service training remains future integration work.
+- Task-adapter isolation APIs are implemented, with sequential rollover available as an opt-in service path.
+- The current tuned-core benchmark path is `scripts/run_local.py --tuned` rather than the older phase-only service benchmark narrative.
 
-Therefore, this section claims a robust replay result, not a full replay+isolation combined benchmark result.
+Therefore, this section claims a robust replay-centric continual result, not a solved replay+isolation combined benchmark result.
 
-## 6.5 Limits of Current Evidence
+## 6.7 Limits of Current Evidence
 
-1. Current quantitative claim is based on a narrow benchmark setting (Split-CIFAR-100 phase analysis).
-2. Multiseed confidence intervals are still needed for stronger statistical reporting.
-3. Real multimodal dataset ingestion (AudioSet/Ego4D-scale) is not yet an active training/eval path in this code branch.
+1. Current quantitative claim is based on a narrow benchmark setting (Split-CIFAR-100 continual learning).
+2. The tuned-core result has multiseed coverage, but confidence intervals and broader statistical treatment are still needed.
+3. Preliminary BWT sweep results are diagnostic and not yet strong enough to replace the tuned-core result as the main reported configuration.
+4. Real multimodal dataset ingestion (AudioSet/Ego4D-scale) is not yet an active training/eval path in this code branch.
 # Discussion
 
 ## 7.1 Core Mechanistic Insight
 
-The phase comparison supports a practical mechanism-level conclusion:
+The current evidence supports a practical mechanism-level conclusion:
 
 - Feature-only replay under-constrains shared representation layers.
 - Raw-input replay forces replay gradients through the full feature stack.
 - Reservoir sampling improves long-horizon sample retention fairness.
+- The tuned-core continual path strengthens this result further without changing the core replay-centric story.
 
-This explains the observed transition from near-total forgetting (Phase 1) to materially reduced forgetting (Phase 2).
+This explains the observed transition from near-total forgetting (Phase 1) to materially reduced forgetting (Phase 2) and then to the stronger tuned-core result.
 
 ## 7.2 What Is Implemented vs What Is Not
 
@@ -322,8 +380,8 @@ Implemented now:
 - typed runtime/service orchestration,
 - canonical `sensor_streaming` MIME case registry and validation.
 
-Partially integrated:
-- parameter-isolation primitives (task adapters with freeze/rollover APIs) exist in model code and tests, but are not yet the dominant default service training flow.
+Integrated but not yet empirically dominant:
+- parameter-isolation primitives (task adapters with freeze/rollover APIs) exist in model code and tests, and sequential rollover is available in the service path, but these paths are not yet the strongest evidence-bearing benchmark result.
 
 Planned:
 - combined replay + full sequential adapter isolation benchmarks in the standard service path,
@@ -339,19 +397,30 @@ MIME semantics are formalized as a registry with explicit modality definitions a
 
 1. **Replay quality and gradient path design matter as much as replay existence.**
 2. **Protocolized modality definitions reduce hidden interface drift.**
-3. **Parameter isolation is promising but should be presented as partially integrated until service-path activation is complete.**
+3. **Parameter isolation is promising but should be presented as exploratory until it clearly outperforms the tuned replay-centric baseline.**
 
-## 7.5 Next Experimental Priorities
+## 7.5 What The New Titan Results Add
 
-1. Activate and benchmark sequential adapter rollover in the default service training pipeline.
-2. Run multiseed evaluation and confidence intervals for phase metrics.
-3. Add real multimodal ingestion/evaluation paths and report results separately from proxy datasets.
+The newer Titan runs sharpen the paper in two ways:
+
+1. They provide a stronger paper-primary continual baseline than the earlier raw-input replay phase result alone.
+2. They provide negative evidence that moderate EWC/SI increases and larger replay buffers do not automatically improve BWT.
+
+This second point is important. The paper should not imply that adding regularization or mild structural isolation necessarily solves forgetting in this architecture. The current evidence says the opposite: replay-path design is the validated lever, while follow-on anti-forgetting knobs remain mixed.
+
+## 7.6 Next Experimental Priorities
+
+1. Complete the current BWT sweep and identify whether any late-running variant surpasses the tuned-core BWT baseline.
+2. Run multiseed evaluation and confidence intervals for the tuned-core continual benchmark.
+3. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
+4. Add real multimodal ingestion/evaluation paths and report them separately from proxy datasets.
 # Conclusion
 
-This work establishes a code-aligned continual-learning result for Sensory Perceiver:
+This work establishes a code-aligned continual-learning result progression for Sensory Perceiver:
 
 - Phase 1 feature-only replay fails with severe forgetting.
 - Phase 2 raw-input replay with reservoir sampling materially improves retention.
+- The current tuned-core continual path improves the result further to a 3-seed mean of CIL 23.64% and BWT −30.95%.
 
 Beyond model behavior, the codebase now provides a production-style research runtime: typed contracts, explicit error semantics, service-layer training/evaluation/orchestration, and structured observability.
 
@@ -359,10 +428,10 @@ We also formalize modality protocol semantics through canonical sensor_streaming
 
 At the same time, two boundaries remain explicit:
 
-1. Parameter-isolation APIs are implemented but default sequential service-path activation remains partial.
+1. Parameter-isolation APIs and opt-in service-path activation are implemented, but current exploratory EWC/SI-style follow-on sweeps have not yet surpassed the tuned-core replay baseline.
 2. Real multimodal benchmark ingestion (beyond proxy datasets) remains future-stage work.
 
-The immediate path forward is therefore clear: complete service-path adapter-rollover integration, run multiseed continual-learning validation, and extend from proxy multimodal data to real large-scale multimodal datasets.
+The immediate path forward is therefore clear: strengthen the tuned-core result with fuller statistical treatment, test whether structural isolation can beat that baseline rather than merely exist in code, and extend from proxy multimodal data to real large-scale multimodal datasets.
 # Implementation Status Matrix (Code-Aligned)
 
 This matrix maps paper claims to current implementation status in the codebase.
@@ -419,7 +488,7 @@ This matrix maps paper claims to current implementation status in the codebase.
    - Runtime modernization and typed contract system are present.
 
 2. **Must be phrased carefully in paper**:
-   - Parameter isolation is integrated as an **opt-in service path** (not always-on by default).
+   - Parameter isolation is integrated as an **opt-in service path** (not always-on by default), and current exploratory Titan results do not yet show it outperforming the tuned replay-centric baseline.
    - MIME routing is currently a **canonical registry + boundary validation** plus modality-key dispatch, not raw MIME parsing inside `forward()`.
    - Multimodal real-benchmark ingestion (AudioSet/Ego4D) remains future/ongoing work.
 
@@ -461,12 +530,17 @@ This section compares core paper concepts against current implementation behavio
    - Reported quantitative CL outcomes are still centered on Split-CIFAR-100.
    - Interpretation: capability breadth exceeds currently published evidence breadth.
 
+4. **Isolation availability vs isolation superiority**
+   - Isolation/regularization paths are available and now directly runnable on Titan.
+   - Preliminary BWT sweeps have not yet shown superiority over the tuned-core replay-centric baseline.
+   - Interpretation: implementation availability should not be conflated with empirical dominance.
+
 ## 10.3 Normalized Claim Language (Recommended)
 
 Use these canonical phrasings in the main paper to keep claims defensible:
 
 - **Replay claim**: “Raw-input replay with reservoir sampling materially improves retention in the current Split-CIFAR-100 continual-learning setting.”
-- **Isolation claim**: “Task-adapter isolation and sequential rollover are implemented and exposed as an opt-in service path.”
+- **Isolation claim**: “Task-adapter isolation and sequential rollover are implemented and exposed as an opt-in service path, but their empirical advantage over the tuned replay-centric baseline remains under evaluation.”
 - **MIME claim**: “MIME semantics are canonicalized at runtime-contract boundaries and drive modality validation/setup; model forward dispatch currently uses modality keys.”
 - **Multimodal claim**: “Proxy multimodal support is implemented; real large-scale multimodal ingestion (e.g., AudioSet/Ego4D) remains future-stage work.”
 

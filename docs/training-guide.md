@@ -132,6 +132,21 @@ PYTHON_BIN=/ai/envs/perception/bin/python \
 bash scripts/launch_tuned_core_expansion_campaign.sh
 ```
 
+Automatic decision helper:
+
+```bash
+bash scripts/decide_distill_followup.sh
+```
+
+Trigger the chosen next campaign automatically:
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/decide_distill_followup.sh --apply
+```
+
+The helper waits for the current package to contain the full initial distillation comparison set, then chooses between the confirmation and tuned-core expansion launchers using mean BWT.
+
 Low-level commands remain useful during debugging:
 
 ```bash

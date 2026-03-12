@@ -64,6 +64,13 @@ Real-data scaffolding now plugs into the same experiment families through prepar
 
 The real-data path is also prepared for bounded autonomous progression on Titan through `scripts/run_real_sensor_sequence_autonomous.sh`, which only launches datasets that are actually prepared and reports blocked/candidate datasets explicitly. See `docs/real-sensor-datasets.md`.
 The same bounded pattern now exists for audio through `scripts/run_real_audio_sequence_autonomous.sh`, with `speech_commands`, `esc50`, and `urbansound8k` integrated into the `multimodal` experiment family.
+For reporting and paper packaging, treat the real-data sequences in two tiers:
+- bootstrap evidence:
+  - `real-audio-seq-001` for first-pass `speech_commands`
+  - `real-seq-004` for first-pass `wisdm`
+- canonical integrated evidence:
+  - `real-audio-seq-002` for `speech_commands`, `esc50`, `urbansound8k`
+  - `real-sensor-seq-001` for the integrated real-sensor lineup
 If you want one bounded sequence to hand off directly to the next without manual intervention, use the chain helpers:
 - `scripts/chain_real_sensor_sequence.sh`
 - `scripts/chain_real_audio_sequence.sh`

@@ -1,0 +1,64 @@
+{
+  "bootstrap_audio_sequence": {
+    "sequence_id": "real-audio-seq-001",
+    "status": "completed",
+    "speech_commands": {
+      "runs": 3,
+      "mean_accuracy": 0.8832231349762907,
+      "std_accuracy": 0.0018223153208631712,
+      "min_accuracy": 0.881787216990583,
+      "max_accuracy": 0.8857944299739531,
+      "seeds": [
+        42,
+        43,
+        44
+      ]
+    },
+    "notes": "Bootstrap audio evidence; historical report may still list esc50 and urbansound8k as candidates."
+  },
+  "canonical_audio_sequence": {
+    "sequence_id": "real-audio-seq-002",
+    "status": "running",
+    "completed": [],
+    "blocked": [],
+    "expected_integrated_datasets": [
+      "speech_commands",
+      "esc50",
+      "urbansound8k"
+    ]
+  },
+  "bootstrap_sensor_sequence": {
+    "sequence_id": "real-seq-004",
+    "status": "completed",
+    "wisdm": {
+      "canonical_mean_accuracy": 0.6780952380952381,
+      "merged_mean_accuracy": 0.6361904761904762,
+      "canonical_minus_merged": 0.04190476190476189
+    },
+    "notes": "Bootstrap sensor evidence from the first real WISDM routing sequence."
+  },
+  "canonical_sensor_sequence": {
+    "sequence_id": "real-sensor-seq-001",
+    "status": null,
+    "completed": [],
+    "blocked": [],
+    "expected_integrated_datasets": [
+      "wisdm",
+      "pamap2",
+      "opportunity",
+      "uci_har",
+      "hhar",
+      "mhealth",
+      "selfback",
+      "geomagnetic_wlan"
+    ]
+  },
+  "blocked_datasets": {
+    "audio": {
+      "audioset": "blocked-audio-media-missing"
+    },
+    "sensor": {
+      "ubiqlog": "blocked-task-definition-missing"
+    }
+  }
+}

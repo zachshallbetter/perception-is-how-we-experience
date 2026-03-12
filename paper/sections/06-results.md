@@ -139,3 +139,31 @@ Interpretation:
 - `noise_robot_arm` is the only completed branch where merged routing wins (**-0.0933**), so the full ladder should be described as strongly favorable to canonical routing overall, but not uniformly dominant under every stress condition.
 
 Overall supervisor state for this ladder was **`canonical-dominant`**. This should still be treated as **completed synthetic evidence** rather than a final broad perception claim. However, it is now the strongest direct support so far that typed routing matters for more than runtime hygiene on the current controlled sensor task.
+
+## 6.9 Real-Data Evidence Packaging
+
+The real-data lane is now packaged with an explicit bootstrap-versus-canonical split so the paper does not overread early runs:
+
+- **Bootstrap audio evidence**: `real-audio-seq-001` on `speech_commands`
+- **Canonical audio evidence**: `real-audio-seq-002` on `speech_commands`, `esc50`, and `urbansound8k`
+- **Bootstrap sensor evidence**: `real-seq-004` on `wisdm`
+- **Canonical sensor evidence**: `real-sensor-seq-001` on the integrated real-sensor lineup
+
+Completed bootstrap real-data results are:
+
+- `real-audio-seq-001` (`speech_commands`): mean accuracy **88.32%**
+- `real-seq-004` (`wisdm`): canonical-minus-merged routing gap **+4.19 pp**
+
+Interpretation:
+
+- These bootstrap runs establish that the first real audio and real sensor paths work end to end on Titan.
+- They are useful evidence, but they are not the canonical integrated comparison set for the next paper update.
+- The canonical real-data evidence package is promoted only from the bounded integrated sequences (`real-audio-seq-002` and `real-sensor-seq-001`) once their sequence reports complete successfully.
+
+Operationally, the generated package under `paper/figures/generated/results_package/real_data/` is the source of truth for current real-data status. It separates:
+
+- bootstrap evidence
+- canonical integrated evidence
+- explicitly blocked datasets (`audioset`, `ubiqlog`)
+
+This keeps historical bootstrap reports from being mistaken for the current integrated claim surface.

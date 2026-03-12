@@ -68,6 +68,7 @@ class Supervisor:
         self.sequence_id = args.sequence_id
         self.history: list[dict] = []
         self.active_family: str | None = None
+        self.candidate_queue_entries = self.build_candidate_queue()
 
     def log(self, message: str, **fields: object) -> None:
         payload = {
@@ -94,6 +95,16 @@ class Supervisor:
             check=True,
         )
 
+    def build_candidate_queue(self) -> list[dict]:
+        candidate_queue = []
+        for dataset in self.candidate_datasets:
+            info = CANDIDATE_DATASETS.get(
+                dataset,
+                {"source_name": dataset, "status": "candidate-not-integrated", "notes": "No metadata recorded."},
+            )
+            candidate_queue.append({"dataset": dataset, **info})
+        return candidate_queue
+
     def count_results(self, family: str) -> int:
         pattern = f"real_sensor_*_*_seed*_{family}/eval_results.json"
         return sum(1 for _ in self.results_root.glob(pattern))
@@ -110,7 +121,13 @@ class Supervisor:
             sessions = self.count_sessions(family)
             results = self.count_results(family)
             self.log("wait-family", family=family, sessions=sessions, results=results, expected=self.expected_results)
-            self.write_report(status="running", active_family=family, active_results=results, active_sessions=sessions)
+            self.write_report(
+                status="running",
+                active_family=family,
+                active_results=results,
+                active_sessions=sessions,
+                candidate_queue=self.candidate_queue_entries,
+            )
             if sessions == 0:
                 if results < self.expected_results:
                     raise RuntimeError(f"Family {family} ended with only {results}/{self.expected_results} eval_results.json artifacts")
@@ -200,6 +217,7 @@ class Supervisor:
         payload = {
             "status": status,
             "sequence_id": self.sequence_id,
+            "planned_datasets": self.datasets,
             "active_family": active_family,
             "active_results": active_results,
             "active_sessions": active_sessions,
@@ -229,20 +247,12 @@ class Supervisor:
             self.wait_for_family(family)
             completed.append(self.summarize_family(dataset, family))
 
-        candidate_queue = []
-        for dataset in self.candidate_datasets:
-            info = CANDIDATE_DATASETS.get(
-                dataset,
-                {"source_name": dataset, "status": "candidate-not-integrated", "notes": "No metadata recorded."},
-            )
-            candidate_queue.append({"dataset": dataset, **info})
-
         final_status = "completed" if completed else "blocked"
         self.write_report(
             status=final_status,
             completed=completed,
             blocked=blocked,
-            candidate_queue=candidate_queue,
+            candidate_queue=self.candidate_queue_entries,
             active_family=None,
             active_results=None,
             active_sessions=None,
@@ -261,7 +271,7 @@ def main() -> int:
             status="failed",
             completed=[],
             blocked=[],
-            candidate_queue=[],
+            candidate_queue=supervisor.candidate_queue_entries,
             active_family=supervisor.active_family,
             active_results=supervisor.count_results(supervisor.active_family) if supervisor.active_family else None,
             active_sessions=supervisor.count_sessions(supervisor.active_family) if supervisor.active_family else None,

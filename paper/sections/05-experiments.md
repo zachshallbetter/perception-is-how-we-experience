@@ -67,8 +67,7 @@ In parallel with the hardened synthetic ladder, the repository now has an explic
   - `esc50`
   - `urbansound8k`
 - explicitly blocked:
-  - `ubiqlog`, because the repository does not yet define a canonical supervised task target for those raw logs
-  - `audioset`, because only metadata CSVs are staged locally and no audio media has been acquired into the prepared-audio path
+  - the active HF-backed replacements `realworld_har` and `fsd50k`, which extend the bounded real-data lineups without inventing a new contract
 
 This path is intentionally conservative. Real-data routing experiments are only launched once prepared manifests and canonical `train.pt` / `val.pt` splits exist. A bounded Titan-local real-data supervisor is now available to:
 
@@ -79,7 +78,7 @@ This path is intentionally conservative. Real-data routing experiments are only 
 Audio is now part of the runnable real-data path, but only in a narrow first form. The repository now defines:
 
 - one prepared audio contract under `data/real-audio/`,
-- working parsers for `speech_commands`, `esc50`, and `urbansound8k`,
+- working parsers for `speech_commands`, `esc50`, `urbansound8k`, and `fsd50k`,
 - and one bounded Titan-local audio supervisor for launching prepared audio runs.
 
 These real-data integrations are not yet part of the main paper-primary results. They exist to extend the empirical coverage beyond synthetic routing and to make the next evidence steps executable on Titan without inventing a second runtime or supervision stack.
@@ -101,7 +100,7 @@ To avoid over-claiming:
 
 1. Task-adapter rollover is implemented in the service path and can be enabled via `adapter_rollover` with `continual_task_count > 1`.
 2. MIME routing is implemented as canonical modality-case registry + validation, while model dispatch uses modality keys in input dicts.
-3. Real-data evidence is split into bootstrap and canonical integrated stages. Speech Commands and WISDM bootstrap runs are includable now; integrated canonical sequences remain pending until their bounded reports complete successfully, while blocked datasets (`audioset`, `ubiqlog`) stay explicit.
+3. Real-data evidence is split into bootstrap and canonical integrated stages. Speech Commands and WISDM bootstrap runs are includable now; integrated canonical sequences remain pending until their bounded reports complete successfully. The active integrated lineups now include HF-backed `fsd50k` and `realworld_har`, while legacy `audioset` and `ubiqlog` stay outside the bounded chain.
 4. Preliminary BWT sweeps are interpreted as follow-on evidence only if they beat the tuned-core continual baseline; otherwise they are diagnostic evidence about what does not improve forgetting.
 5. The sensor/MIME lane is bounded by explicit decision states (`canonical-dominant`, `capacity-confounded`, `competitive`, `merged-favored`) and should not be described as an unconstrained autonomous search for perfect results.
 

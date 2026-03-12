@@ -545,7 +545,7 @@ def main() -> int:
                 "status": None if real_audio_seq002_report is None else real_audio_seq002_report.get("status"),
                 "completed": [] if real_audio_seq002_report is None else real_audio_seq002_report.get("completed", []),
                 "blocked": [] if real_audio_seq002_report is None else real_audio_seq002_report.get("blocked", []),
-                "expected_integrated_datasets": ["speech_commands", "esc50", "urbansound8k"],
+                "expected_integrated_datasets": ["speech_commands", "esc50", "urbansound8k", "fsd50k"],
             },
             "bootstrap_sensor_sequence": {
                 "sequence_id": "real-seq-004",
@@ -567,11 +567,12 @@ def main() -> int:
                     "mhealth",
                     "selfback",
                     "geomagnetic_wlan",
+                    "realworld_har",
                 ],
             },
-            "blocked_datasets": {
-                "audio": {"audioset": "blocked-audio-media-missing"},
-                "sensor": {"ubiqlog": "blocked-task-definition-missing"},
+            "deferred_legacy_datasets": {
+                "audio": {"audioset": "replaced-operationally-by-fsd50k"},
+                "sensor": {"ubiqlog": "replaced-operationally-by-realworld_har"},
             },
         },
     )
@@ -604,6 +605,7 @@ def main() -> int:
                 "- The BWT sweep uses the completed `results/bwt_*/results.json` runs synchronized from Titan.",
                 "- The completed synthetic sensor routing ladder is reported from canonical section text and synchronized sequence summaries.",
                 "- Real-data evidence is split into bootstrap (`real-audio-seq-001`, `real-seq-004`) and canonical integrated (`real-audio-seq-002`, `real-sensor-seq-001`) stages.",
+                "- The active integrated lineups now extend to `fsd50k` and `realworld_har`; `audioset` and `ubiqlog` remain deferred legacy sources outside the bounded chain.",
                 "",
                 "## Included artifacts",
                 "",

@@ -24,7 +24,8 @@
     "expected_integrated_datasets": [
       "speech_commands",
       "esc50",
-      "urbansound8k"
+      "urbansound8k",
+      "fsd50k"
     ]
   },
   "bootstrap_sensor_sequence": {
@@ -50,15 +51,16 @@
       "hhar",
       "mhealth",
       "selfback",
-      "geomagnetic_wlan"
+      "geomagnetic_wlan",
+      "realworld_har"
     ]
   },
-  "blocked_datasets": {
+  "deferred_legacy_datasets": {
     "audio": {
-      "audioset": "blocked-audio-media-missing"
+      "audioset": "replaced-operationally-by-fsd50k"
     },
     "sensor": {
-      "ubiqlog": "blocked-task-definition-missing"
+      "ubiqlog": "replaced-operationally-by-realworld_har"
     }
   }
 }

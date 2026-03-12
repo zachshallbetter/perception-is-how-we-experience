@@ -40,10 +40,10 @@ REAL_AUDIO_DATASET_SPECS: Dict[str, RealAudioDatasetSpec] = {
         source_name="UrbanSound8K",
         description="Urban event audio classification scaffold.",
     ),
-    "audioset": RealAudioDatasetSpec(
-        dataset_id="audioset",
-        source_name="AudioSet",
-        description="Large-scale audio event scaffold.",
+    "fsd50k": RealAudioDatasetSpec(
+        dataset_id="fsd50k",
+        source_name="FSD50K",
+        description="Large-scale environmental audio classification projected into the canonical prepared-audio contract.",
     ),
 }
 

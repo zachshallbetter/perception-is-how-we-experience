@@ -337,14 +337,12 @@ python scripts/validate_setup.py --verbose
     - `mhealth`
     - `selfback`
     - `geomagnetic_wlan`
-  - blocked sensor dataset:
-    - `ubiqlog` until a canonical supervised task is defined
+    - `realworld_har`
   - integrated real-audio datasets:
     - `speech_commands`
     - `esc50`
     - `urbansound8k`
-  - blocked audio dataset:
-    - `audioset` until local audio media is acquired
+    - `fsd50k`
 - Prepare an integrated real-sensor dataset with:
   - `python3 scripts/prepare_real_sensor_dataset.py --dataset wisdm --raw-dir data/raw/wisdm`
 - Launch one real-data routing comparison with:
@@ -355,11 +353,12 @@ python scripts/validate_setup.py --verbose
   - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/chain_real_sensor_sequence.sh real-seq-001 real-seq-002`
 - Check the real-data supervisor with:
   - `bash scripts/real_sensor_sequence_status.sh real-seq-001`
-- The real-data supervisor only launches datasets that are actually prepared. It auto-prepares integrated datasets whose raw roots exist locally and reports blocked datasets explicitly instead of pretending they are runnable.
+- The real-data supervisor only launches datasets that are actually prepared. It auto-prepares integrated datasets whose raw roots exist locally and can bootstrap the HF-backed `realworld_har` and `fsd50k` replacements if needed.
 - Audio now has three runnable Titan paths:
   - `speech_commands`
   - `esc50`
   - `urbansound8k`
+  - `fsd50k`
 - `urbansound8k` requires the local `ffmpeg` fallback for non-PCM WAV files; the prepared-audio path now handles that automatically.
 - Run the bounded real-audio supervisor with:
   - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/run_real_audio_sequence_autonomous.sh real-audio-seq-001`
@@ -376,5 +375,6 @@ python scripts/validate_setup.py --verbose
   - `speech_commands`
   - `esc50`
   - `urbansound8k`
+  - `fsd50k`
 - Treat `real-seq-004` as bootstrap WISDM evidence.
-- Treat `real-sensor-seq-001` as the canonical integrated real-sensor sequence.
+- Treat `real-sensor-seq-001` as the canonical integrated real-sensor sequence, including `realworld_har`.

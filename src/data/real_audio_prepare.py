@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import csv
 import json
+import tempfile
+from io import BytesIO
 from pathlib import Path
 import subprocess
 from typing import Dict, Iterable, List, Tuple
@@ -11,6 +13,7 @@ import wave
 
 import numpy as np
 import torch
+import soundfile as sf
 
 from .real_audio import (
     PREPARED_AUDIO_SCHEMA_VERSION,
@@ -62,6 +65,26 @@ def _find_urbansound_root(raw_dir: Path) -> Path:
         if (candidate / "metadata" / "UrbanSound8K.csv").exists():
             return candidate
     raise FileNotFoundError(f"Could not locate UrbanSound8K under {raw_dir}")
+
+
+def _find_fsd50k_root(raw_dir: Path) -> Path:
+    candidates = [raw_dir, raw_dir / "fsd50k", raw_dir.parent / "fsd50k"]
+    for candidate in candidates:
+        if (candidate / "ground_truth" / "dev.csv").exists() and any((candidate / "data").glob("*.parquet")):
+            return candidate
+    raise FileNotFoundError(f"Could not locate FSD50K under {raw_dir}")
+
+
+def _bootstrap_fsd50k_raw(raw_dir: Path) -> Path:
+    from huggingface_hub import snapshot_download
+
+    snapshot_download(
+        repo_id="philgzl/fsd50k",
+        repo_type="dataset",
+        local_dir=str(raw_dir),
+        allow_patterns=["data/*.parquet", "ground_truth/*.csv", "README.md"],
+    )
+    return raw_dir
 
 
 def _resample_waveform(waveform: np.ndarray, target_length: int) -> torch.Tensor:
@@ -140,6 +163,22 @@ def _decode_with_ffmpeg(path: Path) -> np.ndarray:
     if waveform.size == 0:
         raise ValueError(f"ffmpeg decoded empty waveform for {path}")
     return waveform
+
+
+def _decode_audio_bytes(payload: bytes, suffix: str) -> np.ndarray:
+    try:
+        waveform, _sample_rate = sf.read(BytesIO(payload), dtype="float32")
+        waveform = np.asarray(waveform, dtype=np.float32)
+        if waveform.ndim == 2:
+            waveform = waveform.mean(axis=1)
+        if waveform.size == 0:
+            raise ValueError("decoded empty waveform from in-memory payload")
+        return waveform
+    except Exception:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as temp_file:
+            temp_file.write(payload)
+            temp_file.flush()
+            return _decode_with_ffmpeg(Path(temp_file.name))
 
 
 def _decode_wave_file(path: Path) -> np.ndarray:
@@ -385,6 +424,153 @@ def prepare_urbansound8k_dataset(raw_dir: Path, output_root: Path, sequence_leng
     )
 
 
+def prepare_fsd50k_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+    import pyarrow.parquet as pq
+
+    resolved_raw = raw_dir.resolve()
+    try:
+        root = _find_fsd50k_root(resolved_raw)
+    except FileNotFoundError:
+        root = _find_fsd50k_root(_bootstrap_fsd50k_raw(resolved_raw))
+    vocabulary_path = root / "ground_truth" / "vocabulary.csv"
+    dev_truth_path = root / "ground_truth" / "dev.csv"
+    eval_truth_path = root / "ground_truth" / "eval.csv"
+    if not vocabulary_path.exists() or not dev_truth_path.exists() or not eval_truth_path.exists():
+        raise FileNotFoundError(f"FSD50K metadata is incomplete under {root}")
+
+    vocabulary: Dict[int, str] = {}
+    with vocabulary_path.open(encoding="utf-8") as fh:
+        reader = csv.reader(fh)
+        for row in reader:
+            if not row:
+                continue
+            vocabulary[int(row[0])] = row[1]
+
+    def first_label_index(labels_csv: str) -> int:
+        first_label = labels_csv.split(",", 1)[0].strip()
+        for index, name in vocabulary.items():
+            if name == first_label:
+                return index
+        raise ValueError(f"Unknown FSD50K label '{first_label}'")
+
+    train_lookup: Dict[str, int] = {}
+    val_lookup: Dict[str, int] = {}
+    with dev_truth_path.open(encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        for row in reader:
+            label = first_label_index(row["labels"])
+            if row["split"] == "train":
+                train_lookup[row["fname"]] = label
+            elif row["split"] == "val":
+                val_lookup[row["fname"]] = label
+    eval_lookup: Dict[str, int] = {}
+    with eval_truth_path.open(encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        for row in reader:
+            eval_lookup[row["fname"]] = first_label_index(row["labels"])
+
+    train_audio: List[torch.Tensor] = []
+    train_labels: List[int] = []
+    val_audio: List[torch.Tensor] = []
+    val_labels: List[int] = []
+
+    for parquet_path in sorted((root / "data").glob("dev-*.parquet")):
+        table = pq.read_table(parquet_path, columns=["audio", "name"])
+        for row in table.to_pylist():
+            stem = Path(row["name"]).stem.split("_", 1)[0]
+            if stem in train_lookup:
+                target_audio = train_audio
+                target_labels = train_labels
+                label = train_lookup[stem]
+            elif stem in val_lookup:
+                target_audio = val_audio
+                target_labels = val_labels
+                label = val_lookup[stem]
+            else:
+                continue
+            waveform = _decode_audio_bytes(row["audio"], Path(row["name"]).suffix or ".ogg")
+            waveform_tensor = _resample_waveform(waveform, sequence_length)
+            target_audio.append(_waveform_to_log_spectrogram(waveform_tensor))
+            target_labels.append(label)
+
+    for parquet_path in sorted((root / "data").glob("eval-*.parquet")):
+        table = pq.read_table(parquet_path, columns=["audio", "name"])
+        for row in table.to_pylist():
+            stem = Path(row["name"]).stem.split("_", 1)[0]
+            label = eval_lookup.get(stem)
+            if label is None:
+                continue
+            waveform = _decode_audio_bytes(row["audio"], Path(row["name"]).suffix or ".ogg")
+            waveform_tensor = _resample_waveform(waveform, sequence_length)
+            val_audio.append(_waveform_to_log_spectrogram(waveform_tensor))
+            val_labels.append(label)
+
+    if not train_audio or not val_audio:
+        raise ValueError("FSD50K preparation produced an empty train or val split")
+
+    train_audio_tensor = torch.stack(train_audio)
+    val_audio_tensor = torch.stack(val_audio)
+    train_labels_tensor = torch.tensor(train_labels, dtype=torch.long)
+    val_labels_tensor = torch.tensor(val_labels, dtype=torch.long)
+    train_audio_tensor, val_audio_tensor = _standardize_audio(train_audio_tensor, val_audio_tensor)
+
+    class_names = [name for _, name in sorted(vocabulary.items())]
+    dataset_dir = get_real_audio_dataset_dir("fsd50k", output_root)
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    torch.save({"audio": train_audio_tensor, "labels": train_labels_tensor}, dataset_dir / "train.pt")
+    torch.save({"audio": val_audio_tensor, "labels": val_labels_tensor}, dataset_dir / "val.pt")
+    manifest = {
+        "schema_version": PREPARED_AUDIO_SCHEMA_VERSION,
+        "dataset": "fsd50k",
+        "source_name": REAL_AUDIO_DATASET_SPECS["fsd50k"].source_name,
+        "description": REAL_AUDIO_DATASET_SPECS["fsd50k"].description,
+        "raw_dir": str(root),
+        "sequence_length": sequence_length,
+        "feature_dim": REAL_AUDIO_FEATURE_DIM,
+        "feature_type": "log_spectrogram",
+        "n_classes": len(class_names),
+        "class_names": class_names,
+        "splits": {"train": "train.pt", "val": "val.pt"},
+        "notes": [
+            "Prepared from Hugging Face FSD50K parquet shards.",
+            "Multi-label annotations are projected deterministically to the first listed label to preserve the canonical single-label contract.",
+            "Development train/val plus eval are merged into the validation side to keep the current bounded audio classification protocol simple.",
+        ],
+    }
+    (dataset_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (dataset_dir / "README.md").write_text(
+        "\n".join(
+            [
+                "# FSD50K Prepared Dataset Card",
+                "",
+                f"Raw source: {root}",
+                "",
+                "Prepared output contract:",
+                "- manifest: `manifest.json`",
+                "- train split: `train.pt`",
+                "- val split: `val.pt`",
+                "",
+                "Projection:",
+                "- HF parquet audio bytes decoded to mono waveforms",
+                "- fixed-length waveform",
+                "- `torch.stft()` log-spectrogram",
+                "- deterministic single-label projection using the first listed class",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return {
+        "dataset": "fsd50k",
+        "output_dir": str(dataset_dir),
+        "train_samples": int(train_labels_tensor.shape[0]),
+        "val_samples": int(val_labels_tensor.shape[0]),
+        "n_classes": len(class_names),
+        "class_names": class_names,
+        "manifest": str(dataset_dir / "manifest.json"),
+    }
+
+
 def prepare_real_audio_dataset(dataset: str, raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
     if dataset == "speech_commands":
         return prepare_speech_commands_dataset(raw_dir, output_root, sequence_length)
@@ -392,4 +578,6 @@ def prepare_real_audio_dataset(dataset: str, raw_dir: Path, output_root: Path, s
         return prepare_esc50_dataset(raw_dir, output_root, sequence_length)
     if dataset == "urbansound8k":
         return prepare_urbansound8k_dataset(raw_dir, output_root, sequence_length)
+    if dataset == "fsd50k":
+        return prepare_fsd50k_dataset(raw_dir, output_root, sequence_length)
     raise ValueError(f"Unsupported real audio dataset preparation target: {dataset}")

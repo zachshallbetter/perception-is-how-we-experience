@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 RUN_RE = re.compile(
-    r"^sensor_streaming_(?P<variant>.+)_(?P<routing>canonical|merged)_seed(?P<seed>\d+)_(?P<family>\d{8}_\d{6})$"
+    r"^sensor_streaming_(?:(?P<variant>.+)_)?(?P<routing>canonical|merged)_seed(?P<seed>\d+)_(?P<family>\d{8}_\d{6})$"
 )
 
 
@@ -38,7 +38,7 @@ def collect_rows(results_root: Path, family: str | None) -> list[dict]:
             {
                 "run": path.parent.name,
                 "family": match.group("family"),
-                "variant": match.group("variant"),
+                "variant": match.group("variant") or "baseline",
                 "routing": match.group("routing"),
                 "seed": int(match.group("seed")),
                 "overall_accuracy": float(payload["overall_accuracy"]),

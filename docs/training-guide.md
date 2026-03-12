@@ -1,6 +1,10 @@
-# Training Guide: Canonical Paper Workflow
+# Training Guide: Canonical Titan Workflow
 
-This guide defines the single paper-authoritative workflow for Split-CIFAR-100 continual learning on Titan Node.
+This guide defines the paper-authoritative workflow for Titan Node and separates three experiment lanes clearly:
+
+1. continual-learning paper lane,
+2. exploratory mechanism lane,
+3. sensor/MIME perception lane.
 
 ## 1. Canonical Contract
 
@@ -65,6 +69,29 @@ bash scripts/launch_distill_bwt_campaign.sh
 ```
 
 This campaign compares task-boundary teacher distillation replay (`--replay_mode distill`) against additional tuned ER control seeds.
+
+Sensor/MIME baseline routing campaign:
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/launch_sensor_mime_ablation_titan.sh
+```
+
+Bounded autonomous sensor follow-on:
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/run_sensor_sequence_autonomous.sh <baseline-family-id>
+```
+
+This supervisor waits for the baseline family to finish, summarizes the canonical-vs-merged result, and then launches the next sensor evidence stages in order:
+
+- capacity-matched control
+- leave-one-modality-out
+- MIME binding corruption
+- single-modality noise robustness
+
+It is intentionally bounded. It does not run forever or recursively chase "perfect" scores, and it treats the capacity-matched comparison as a required gate before promoting a positive routing claim.
 
 ## 4. Monitoring
 
@@ -147,6 +174,24 @@ bash scripts/decide_distill_followup.sh --apply
 
 The helper waits for the current package to contain the full initial distillation comparison set, then chooses between the confirmation and tuned-core expansion launchers using mean BWT.
 
+Sensor sequence supervisor status:
+
+```bash
+tail -f results/titan_logs/sensor-sequence-supervisor.log
+```
+
+One-command sensor ladder status:
+
+```bash
+bash scripts/sensor_sequence_status.sh <family>
+```
+
+Autonomy report output:
+
+```bash
+cat results/sensor_sequence_summaries/<family>-autonomy-report.json
+```
+
 Low-level commands remain useful during debugging:
 
 ```bash
@@ -209,6 +254,8 @@ Sensor/MIME ablation artifacts:
 
 - `results/sensor_streaming_canonical_seed*`
 - `results/sensor_streaming_merged_seed*`
+- `results/sensor_streaming_<variant>_<routing>_seed*`
+- `results/sensor_sequence_summaries/*.json`
 
 ## 6. Result Reporting
 
@@ -238,12 +285,22 @@ python scripts/validate_setup.py --verbose
 ## 8. Notes and Constraints
 
 - `src.train` remains valid for service-layer and ablation studies, and now defaults continual datasets to benchmark task counts unless overridden.
+- The 6-seed tuned-core family is now the canonical current continual-learning evidence, not the earlier 3-seed snapshot.
+- Sensor/MIME results should only be promoted into the main paper once the canonical-vs-merged aggregation completes and the follow-on stress tests are interpreted together.
+- The current `sensor_streaming` benchmark is hardened beyond the earlier random-label scaffold: compositional class codes, shared nuisance variation, and a shifted validation regime are now part of the generator. It is still synthetic and should be described that way.
 - Paper-primary continual metrics should be generated from `scripts/run_local.py --tuned` and the two baseline scripts above.
 - If GPU memory pressure occurs on Titan X cards, reduce baseline batch size before reducing task count.
-- The canonical perception-side follow-up is `scripts/launch_sensor_mime_ablation_titan.sh`, which compares typed sensor modalities against a merged generic stream on the same `sensor_streaming` benchmark using class-conditioned synthetic sensor patterns and seed-matched evaluation. On 12 GB Titan X cards, keep the launcher at its conservative default `BATCH_SIZE=2` unless you have verified larger batches fit both canonical and merged lanes.
+- The canonical perception-side follow-up is `scripts/launch_sensor_mime_ablation_titan.sh`, which compares typed sensor modalities against a merged generic stream on the same `sensor_streaming` benchmark using a hardened synthetic generator with compositional class codes, shared nuisance variation, and a shifted validation regime. On 12 GB Titan X cards, keep the launcher at its conservative default `BATCH_SIZE=2` unless you have verified larger batches fit both canonical and merged lanes.
 - The next sensor experiment sequence is:
   - aggregate canonical vs merged routing results with `python3 scripts/summarize_sensor_routing_results.py`
   - leave-one-modality-out with `bash scripts/launch_sensor_leave_one_out_titan.sh`
   - MIME-binding corruption with `bash scripts/launch_sensor_mime_corruption_titan.sh`
   - single-modality noise robustness with `bash scripts/launch_sensor_noise_robustness_titan.sh`
   - capacity-matched canonical vs merged control with `bash scripts/launch_sensor_capacity_matched_control_titan.sh`
+- To queue that whole sequence behind a currently running baseline family on Titan, use:
+  - `bash scripts/run_sensor_sequence_autonomous.sh <family>`
+- The autonomous supervisor is bounded. It does not loop forever chasing “perfect” results; it stops in one of four decision states:
+  - `canonical-dominant`
+  - `capacity-confounded`
+  - `competitive`
+  - `merged-favored`

@@ -26,6 +26,13 @@ This is the cleanest practical approximation of:
 - with explicit typed modality routing
 - without explicit typed modality routing
 
+The current generator is intentionally harder than the earlier random-label scaffold:
+
+- labels map to compositional modality codes rather than one globally unique per-modality signature
+- each modality is individually ambiguous for some classes
+- samples include shared nuisance structure
+- validation uses a shifted generator regime rather than the exact same train distribution
+
 ## What This Experiment Can Support
 
 If `canonical` outperforms `merged`, especially with similar or lower latency, that supports:
@@ -38,6 +45,8 @@ If the result is neutral or negative, that is also useful:
 
 - the broader claim should be narrowed
 - MIME semantics may still be valuable for governance/runtime correctness, but not yet demonstrated as a performance lever
+
+Even with these hardenings, this remains synthetic evidence. It should be interpreted as controlled perception-side support, not as a substitute for a real large-scale multimodal benchmark suite.
 
 ## Launcher
 
@@ -79,6 +88,19 @@ Secondary:
 - latency summary from `eval_results.json`
 - train/validation curves from `train_log.csv`
 
+Current operational policy:
+
+- run the baseline canonical-vs-merged family first
+- run a capacity-matched control before promoting any positive routing claim
+- aggregate before interpretation
+- then run the bounded follow-on sequence:
+  - leave-one-out
+  - corruption
+  - noise robustness
+  - capacity-matched control as a required gate for positive results
+
+This sequence is now automatable through `scripts/run_sensor_sequence_autonomous.sh` and `scripts/sensor_ai_supervisor.py`.
+
 ## Interpretation Rules
 
 - If canonical mean accuracy is higher than merged with comparable latency, promote this as the key perception-side result.
@@ -94,3 +116,21 @@ This experiment is the shortest path from:
 to:
 
 - "architecture story with a directly measured perception-side result"
+
+## Decision States
+
+The bounded Titan-local supervisor reduces the baseline comparison to one of three states:
+
+1. `canonical-dominant`
+   - typed routing wins clearly
+   - capacity-matched control remains positive
+   - most stress variants still favor canonical
+2. `capacity-confounded`
+   - baseline canonical win does not survive the capacity-matched control
+   - architectural claim should be narrowed before promotion
+3. `competitive`
+   - canonical and merged are close
+   - or stress results are mixed enough that the claim remains provisional
+4. `merged-favored`
+   - generic merged routing is stronger
+   - the paper claim must narrow toward runtime/governance value rather than model-performance advantage

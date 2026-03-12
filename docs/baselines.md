@@ -1,6 +1,6 @@
 # Sensory Perceiver Baselines
 
-This document defines the paper-primary baseline workflow for continual learning comparisons.
+This document defines the paper-primary baseline workflow for continual-learning comparisons and makes the scope explicit: these are comparison models for the Split-CIFAR-100 continual lane, not for the sensor/MIME perception lane.
 
 ## 1. Canonical Baselines
 
@@ -71,3 +71,9 @@ bash scripts/launch_titan_continuous_campaign.sh
 ```
 
 This launcher queues baseline seeds on GPU 1 and GPU 2 while GPU 0 runs core-model seeds and replay-depth ablation.
+
+## 5. Interpretation Notes
+
+- Baselines are useful for benchmarking the continual-learning story.
+- They are not the primary evidence path for the sensor/MIME routing question.
+- The current paper-primary result remains the tuned-core Sensory Perceiver path, with baseline models used as contextual comparisons rather than as the architectural centerpiece.

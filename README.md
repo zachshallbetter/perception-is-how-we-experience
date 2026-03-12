@@ -1,10 +1,11 @@
 # Sensory Perceiver
 
-Sensory Perceiver is a multimodal training/evaluation codebase centered on:
+Sensory Perceiver is a research codebase for machine perception under continual adaptation. The repository combines:
 - modality-specific towers,
-- cross-modal attention fusion,
-- replay-aware continual learning workflows,
-- service-oriented runtime entrypoints.
+- shared cross-modal attention,
+- replay-aware continual-learning workflows,
+- typed runtime contracts and service-layer entrypoints,
+- Titan-oriented experiment automation and paper packaging.
 
 ## What This Project Is
 
@@ -42,7 +43,7 @@ To keep the claims honest:
 - it is not yet a paper where the broadest sensor/MIME claims have more evidence than the continual-learning core
 - it is not a claim that MIME strings are parsed directly inside model `forward()`
 
-The strongest current evidence is still replay-centric continual learning. The next most important evidence path is the sensor/MIME canonical-vs-merged ablation now exposed through `scripts/launch_sensor_mime_ablation_titan.sh`, which now uses class-conditioned synthetic sensor patterns instead of random labels. The follow-on sequence is also wired: leave-one-out, MIME-binding corruption, single-modality noise robustness, and capacity-matched controls.
+The strongest current evidence is still replay-centric continual learning. The next most important evidence path is the sensor/MIME canonical-vs-merged ablation now exposed through `scripts/launch_sensor_mime_ablation_titan.sh`, which uses a harder synthetic sensor task with compositional class codes, shared nuisance structure, and a shifted validation regime instead of random labels. The follow-on sequence is also wired: leave-one-out, MIME-binding corruption, single-modality noise robustness, and capacity-matched controls, with a bounded Titan-local supervisor to drive the sequence autonomously.
 
 ## Repository Layout
 
@@ -54,7 +55,19 @@ The strongest current evidence is still replay-centric continual learning. The n
 - `src/runtime/` — runtime config, validation, typed errors
 - `src/observability/` — structured events + metrics collection
 - `scripts/` — utility scripts for setup, orchestration, result processing
-- `docs/` — usage and benchmark documentation
+- `docs/` — operator guides, benchmark plans, and review/rebuttal notes
+- `paper/sections/` — canonical paper source of truth
+- `paper/figures/generated/results_package/` — current paper-ready tables/figures package
+
+## Canonical Reading Order
+
+If you are orienting yourself to the project, read in this order:
+
+1. `README.md` for project scope and operating model.
+2. `docs/README.md` for the documentation map.
+3. `docs/training-guide.md` for the canonical Titan workflow.
+4. `docs/sensor-mime-experiment-plan.md` for the current perception-side evidence ladder.
+5. `paper/sections/README.md` plus `paper/sections/06-results.md` and `paper/sections/07-discussion.md` for the current paper-aligned claim surface.
 
 ## Quick Start
 
@@ -85,6 +98,18 @@ Exploratory distillation replay campaign:
 ```bash
 PYTHON_BIN=/ai/envs/perception/bin/python \
 bash scripts/launch_distill_bwt_campaign.sh
+```
+
+Canonical sensor/MIME baseline routing comparison:
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/launch_sensor_mime_ablation_titan.sh
+```
+
+Autonomous bounded sensor evidence ladder:
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/run_sensor_sequence_autonomous.sh <baseline-family-id>
 ```
 
 Periodic campaign monitor:
@@ -129,6 +154,26 @@ Run environment preflight checks:
 python scripts/validate_setup.py --verbose
 ```
 
+## Current Canonical Results
+
+The current paper-primary continual result is the tuned-core Split-CIFAR-100 path on Titan Node:
+
+- `scripts/run_local.py --tuned`
+- 6-seed mean: `CIL 23.96%`
+- 6-seed mean: `BWT -30.39%`
+- Task 0 retention mean: `25.1%`
+
+The current paper package is under:
+
+- `paper/figures/generated/results_package/`
+- `paper/sections/06-results.md`
+
+The strongest validated conclusion remains replay-centric:
+
+- feature-only replay fails badly,
+- raw-input replay with reservoir sampling materially improves retention,
+- the tuned-core replay path remains better than the current exploratory EWC/SI/distillation variants.
+
 ## Notes
 
 - Use module entrypoints (`python -m src.*`) as the canonical execution path.
@@ -139,5 +184,6 @@ python scripts/validate_setup.py --verbose
 - The canonical live status surface is `scripts/render_titan_dashboard.py`, typically via `scripts/titan_remote_dashboard.sh` from the Mac.
 - Baseline workflows are documented in `docs/baselines.md` and scripts under `scripts/`.
 - Sensor-streaming MIME input cases are defined in `docs/sensor-streaming-mime-cases.md` and `src/runtime/mime_cases.py`.
+- Sensor/MIME follow-on experiments can now be driven by a bounded Titan-local supervisor rather than a manual queue, with results recorded under `results/sensor_sequence_summaries/`.
 - Continual `src.train` jobs follow the dataset benchmark task count by default. Split-CIFAR-100 and Permuted MNIST therefore run 20 sequential tasks unless `--continual_task_count` is overridden.
 - Use a separate environment for baselines and install [requirements-baselines.txt](/Users/zachshallbetter/Projects/Perception/requirements-baselines.txt) there.

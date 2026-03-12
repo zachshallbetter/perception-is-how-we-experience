@@ -34,7 +34,7 @@ Our contributions in this paper are fourfold:
 
 3. **Modern Runtime Implementation**: We provide typed runtime contracts, structured errors, service-layer orchestration, and observability instrumentation suitable for reproducible experimentation.
 
-4. **Canonical `sensor_streaming` MIME Registry**: We formalize sensor_streaming input cases (modality, MIME type, feature dimensionality) as a single runtime source of truth.
+4. **Canonical `sensor_streaming` MIME Registry and Evidence Ladder**: We formalize `sensor_streaming` input cases (modality, MIME type, feature dimensionality) as a single runtime source of truth and expose a bounded perception-side experiment ladder comparing typed routing against merged routing and subsequent stress tests.
 
 The remainder of this paper is organized as follows: §3 provides related work. §4 details architecture and implementation-aligned methods. §5 describes experimental setup and implementation status. §6 presents the empirical progression from failure mode to current best result. §7 discusses implications, gaps, and next-stage roadmap. §8 concludes.
 

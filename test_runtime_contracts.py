@@ -257,17 +257,23 @@ class RuntimeContractsTest(unittest.TestCase):
             seed=7,
         )
 
-        class_means = []
+        class_signatures = []
         for label in range(5):
             indices = (dataset.labels == label).nonzero(as_tuple=False).flatten()
             self.assertGreater(len(indices), 0)
             smartwatch_mean = dataset.data["smartwatch"][indices, :, 0].mean().item()
             room_mean = dataset.data["room_env"][indices, :, 2].mean().item()
             robot_mean = dataset.data["robot_arm"][indices, :, 0].mean().item()
-            class_means.append((smartwatch_mean, room_mean, robot_mean))
+            class_signatures.append((smartwatch_mean, room_mean, robot_mean))
 
-        rounded = {tuple(round(value, 2) for value in means) for means in class_means}
+        rounded = {tuple(round(value, 2) for value in means) for means in class_signatures}
         self.assertEqual(len(rounded), 5)
+        smartwatch_codes = {dataset._binding_label(label, "smartwatch") for label in range(5)}
+        room_codes = {dataset._binding_label(label, "room_env") for label in range(5)}
+        robot_codes = {dataset._binding_label(label, "robot_arm") for label in range(5)}
+        self.assertLess(len(smartwatch_codes), 5)
+        self.assertLess(len(room_codes), 5)
+        self.assertLess(len(robot_codes), 5)
 
     def test_sensor_streaming_dataset_merged_mode_preserves_label(self):
         dataset = SensorStreamingDataset(
@@ -309,6 +315,25 @@ class RuntimeContractsTest(unittest.TestCase):
         )
         self.assertTrue(torch.allclose(baseline.data["smartwatch"], noisy.data["smartwatch"]))
         self.assertFalse(torch.allclose(baseline.data["robot_arm"], noisy.data["robot_arm"]))
+
+    def test_sensor_streaming_validation_split_uses_shifted_generator(self):
+        train_ds = SensorStreamingDataset(
+            n_sequences=32,
+            sequence_length=48,
+            n_classes=5,
+            seed=13,
+            split="train",
+        )
+        val_ds = SensorStreamingDataset(
+            n_sequences=32,
+            sequence_length=48,
+            n_classes=5,
+            seed=13,
+            split="val",
+        )
+        self.assertFalse(torch.allclose(train_ds.data["smartwatch"], val_ds.data["smartwatch"]))
+        self.assertFalse(torch.allclose(train_ds.data["room_env"], val_ds.data["room_env"]))
+        self.assertFalse(torch.allclose(train_ds.data["robot_arm"], val_ds.data["robot_arm"]))
 
 
 if __name__ == "__main__":

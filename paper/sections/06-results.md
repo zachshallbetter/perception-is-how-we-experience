@@ -12,6 +12,8 @@ Generated paper assets for this section are packaged under `paper/figures/genera
 - `latex_results_package.tex`
 - `package_manifest.json`
 
+At present, the packaged quantitative story is still centered on the continual-learning lane. The active `sensor_streaming` routing ladder is the next perception-side evidence path, but those results are not claimed here until the baseline aggregation and stress-test sequence complete.
+
 ## 6.1 Phase 1: Feature-Only Replay (Failure Mode)
 
 Observed metrics:
@@ -102,4 +104,5 @@ Therefore, this section claims a robust replay-centric continual result, not a s
 1. Current quantitative claim is based on a narrow benchmark setting (Split-CIFAR-100 continual learning).
 2. The tuned-core result has multiseed coverage, but confidence intervals and broader statistical treatment are still needed.
 3. Preliminary BWT sweep results are diagnostic and not yet strong enough to replace the tuned-core result as the main reported configuration.
-4. Real multimodal dataset ingestion (AudioSet/Ego4D-scale) is not yet an active training/eval path in this code branch.
+4. The active sensor/MIME routing ladder is not yet complete, so the present quantitative section should still be read as the continual-learning evidence core rather than the final perception-side evidence picture.
+5. Real multimodal dataset ingestion (AudioSet/Ego4D-scale) is not yet an active training/eval path in this code branch.

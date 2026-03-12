@@ -47,10 +47,20 @@ The newer Titan runs sharpen the paper in two ways:
 
 This second point is important. The paper should not imply that adding regularization or mild structural isolation necessarily solves forgetting in this architecture. The current evidence says the opposite: replay-path design is the validated lever, while follow-on anti-forgetting knobs remain mixed.
 
-## 7.6 Next Experimental Priorities
+## 7.6 What The Active Sensor Ladder Adds
 
-1. Complete the current BWT sweep and identify whether any late-running variant surpasses the tuned-core BWT baseline.
-2. Run multiseed evaluation and confidence intervals for the tuned-core continual benchmark.
-3. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
-4. Add real multimodal ingestion/evaluation paths and report them separately from proxy datasets.
-5. Prioritize the `sensor_streaming` canonical-vs-merged routing ablation, because it is the fastest experiment that can either justify or sharply narrow the broader perception/MIME claim.
+The next decisive question is no longer "can we tweak BWT a little more with nearby regularizers?" It is:
+
+- does typed sensor routing beat a merged generic stream?
+- if so, does that advantage survive leave-one-out, binding-corruption, and noise stress tests?
+
+This matters because it is the shortest path from architectural argument to measured perception-side evidence. The bounded Titan-local supervisor is useful here not as an optimization oracle, but as a way to execute that evidence ladder in a fixed, interpretable order with explicit stop states.
+
+## 7.7 Next Experimental Priorities
+
+1. Complete and aggregate the active `sensor_streaming` canonical-vs-merged routing family.
+2. Interpret the follow-on sensor stress tests together: leave-one-out, corruption, and noise robustness.
+3. Run a capacity-matched canonical-vs-merged control if the baseline gap is small enough that capacity confounds remain plausible.
+4. Add confidence intervals and fuller statistical treatment to the tuned-core continual benchmark.
+5. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
+6. Add real multimodal ingestion/evaluation paths and report them separately from proxy datasets.

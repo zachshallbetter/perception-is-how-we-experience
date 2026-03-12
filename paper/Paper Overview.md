@@ -1,6 +1,6 @@
 # Paper
 
-This overview tracks the authoritative paper corpus under `paper/sections/`.
+This overview tracks the authoritative paper corpus under `paper/sections/` and the generated results package under `paper/figures/generated/results_package/`.
 
 ## Canonical Authority Model
 
@@ -24,11 +24,21 @@ Authoritative claim files:
 - MIME semantics are framed as runtime-contract validation and modality setup derivation.
 - Model forward dispatch is framed as modality-key based.
 - Parameter isolation is framed as implemented model capability with opt-in service-path integration.
+- The current paper-primary quantitative evidence is the 6-seed tuned-core Split-CIFAR-100 result.
+- The current perception-side evidence path is the active `sensor_streaming` canonical-vs-merged ladder plus bounded follow-on stress tests.
 
 ## Monolith Policy
 
 `paper/Perception Is How We Experience.md` is a generated monolith assembled from canonical section files.
 Do not hand-edit the monolith as a source of truth.
+
+## Current Paper Package
+
+The paper-ready tables, plots, captions, and provenance manifest are generated under:
+
+- `paper/figures/generated/results_package/`
+
+These assets are the canonical figure/table bundle for the current results section and should stay synchronized with `paper/sections/06-results.md`.
 
 ## Supplementary Tracks
 

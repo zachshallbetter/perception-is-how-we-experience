@@ -2,13 +2,13 @@
 
 We present **Sensory Perceiver**, a multimodal architecture that combines modality-specific towers with shared cross-modal attention for continual learning settings. The system uses explicit modality identity and canonical MIME-style input case definitions for routing semantics, with a runtime registry for `sensor_streaming` modalities.
 
-We evaluate continual learning behavior on Split-CIFAR-100 using a code-aligned progression of replay-centric experiments. In **Phase 1** (feature-only replay), the model exhibits severe forgetting (CIL 4.86%, BWT −53.80%). In **Phase 2** (raw-input replay with Reservoir Sampling), retention improves substantially (CIL 19.54%, BWT −34.91%), including Task 0 retention recovery from 0.6% to 33.0%. In the current tuned-core configuration, a 3-seed Titan Node run improves the mean result further to CIL 23.64% and BWT −30.95%. Together, these results indicate that replay signals must reach shared feature extractors, not only task heads, and that replay-path design dominates the current retention story.
+We evaluate continual learning behavior on Split-CIFAR-100 using a code-aligned progression of replay-centric experiments. In **Phase 1** (feature-only replay), the model exhibits severe forgetting (CIL 4.86%, BWT −53.80%). In **Phase 2** (raw-input replay with Reservoir Sampling), retention improves substantially (CIL 19.54%, BWT −34.91%), including Task 0 retention recovery from 0.6% to 33.0%. In the current tuned-core configuration, a 6-seed Titan Node run improves the mean result further to CIL 23.96% and BWT −30.39%. Together, these results indicate that replay signals must reach shared feature extractors, not only task heads, and that replay-path design dominates the current retention story.
 
 The implementation includes a modernized runtime/service architecture with typed contracts, structured observability, and explicit modality registries. MIME semantics are enforced at runtime-contract boundaries for modality validation and setup derivation, while model forward dispatch remains modality-key based.
 
 Parameter-isolation primitives (task adapters with freeze/rollover APIs) are implemented in the model and validated in targeted tests. Sequential activation is available as an opt-in service path, but current preliminary BWT sweeps with EWC and SI regularization have not yet surpassed the tuned-core replay result.
 
-Current multimodal support includes proxy audiovisual and sensor_streaming datasets. Real benchmark ingestion (for example AudioSet/Ego4D) and additional modality towers remain future-stage work.
+Current multimodal support includes proxy audiovisual and `sensor_streaming` datasets. The active perception-side evidence ladder now evaluates canonical typed sensor routing against a merged generic stream, followed by leave-one-out, corruption, noise, and capacity-matched controls. Real benchmark ingestion (for example AudioSet/Ego4D) and additional modality towers remain future-stage work.
 
 **Keywords:** multimodal perception, continual learning, catastrophic forgetting, reservoir sampling, MIME-type routing, parameter isolation
 # Introduction
@@ -47,7 +47,7 @@ Our contributions in this paper are fourfold:
 
 3. **Modern Runtime Implementation**: We provide typed runtime contracts, structured errors, service-layer orchestration, and observability instrumentation suitable for reproducible experimentation.
 
-4. **Canonical `sensor_streaming` MIME Registry**: We formalize sensor_streaming input cases (modality, MIME type, feature dimensionality) as a single runtime source of truth.
+4. **Canonical `sensor_streaming` MIME Registry and Evidence Ladder**: We formalize `sensor_streaming` input cases (modality, MIME type, feature dimensionality) as a single runtime source of truth and expose a bounded perception-side experiment ladder comparing typed routing against merged routing and subsequent stress tests.
 
 The remainder of this paper is organized as follows: §3 provides related work. §4 details architecture and implementation-aligned methods. §5 describes experimental setup and implementation status. §6 presents the empirical progression from failure mode to current best result. §7 discusses implications, gaps, and next-stage roadmap. §8 concludes.
 
@@ -238,17 +238,21 @@ Primary reproducibility controls:
 - `sensor_streaming` generated dataset (`experiment=sensor_streaming`, `dataset=sensor_streaming`)
 - Audio-visual proxy dataset (`experiment=multimodal`, `dataset=audiovisual`)
 
-### Immediate next perception-side benchmark
+### Active perception-side benchmark ladder
 - `sensor_streaming` canonical-vs-merged routing ablation
   - `canonical`: typed sensor modalities (`smartwatch`, `room_env`, `robot_arm`) derived from the MIME registry
   - `merged`: a single generic 20-feature sensor stream without typed modality separation
+  - generator properties:
+    - compositional class codes rather than one globally unique signal per modality
+    - shared nuisance structure across samples
+    - shifted validation regime rather than exact train-distribution reuse
 - follow-on sensor stress tests:
   - leave-one-modality-out (`drop_smartwatch`, `drop_room_env`, `drop_robot_arm`)
   - MIME-binding corruption (`corrupt_bindings`)
   - single-modality noise robustness (`noise_smartwatch`, `noise_room_env`, `noise_robot_arm`)
   - capacity-matched canonical-vs-merged control
 
-This is the most direct experiment for testing whether the typed modality semantics materially matter beyond runtime correctness.
+This is the most direct experiment for testing whether the typed modality semantics materially matter beyond runtime correctness. The follow-on sequence can now be driven by a bounded Titan-local supervisor, which waits for the baseline family to finish, aggregates the comparison, and then launches stress tests in a fixed order rather than an open-ended search.
 
 ## 5.4 Evaluation Metrics
 
@@ -269,6 +273,7 @@ To avoid over-claiming:
 2. MIME routing is implemented as canonical modality-case registry + validation, while model dispatch uses modality keys in input dicts.
 3. Real multimodal ingestion pipelines (AudioSet/Ego4D-scale training integration) remain future work.
 4. Preliminary BWT sweeps are interpreted as follow-on evidence only if they beat the tuned-core continual baseline; otherwise they are diagnostic evidence about what does not improve forgetting.
+5. The sensor/MIME lane is bounded by explicit decision states (`canonical-dominant`, `capacity-confounded`, `competitive`, `merged-favored`) and should not be described as an unconstrained autonomous search for perfect results.
 
 These constraints are intentional and reflected in the Results/Discussion interpretation.
 # Results
@@ -284,6 +289,8 @@ Generated paper assets for this section are packaged under `paper/figures/genera
 - `captions.md`
 - `latex_results_package.tex`
 - `package_manifest.json`
+
+At present, the packaged quantitative story is still centered on the continual-learning lane. The active `sensor_streaming` routing ladder is the next perception-side evidence path, but those results are not claimed here until the baseline aggregation and stress-test sequence complete.
 
 ## 6.1 Phase 1: Feature-Only Replay (Failure Mode)
 
@@ -375,7 +382,8 @@ Therefore, this section claims a robust replay-centric continual result, not a s
 1. Current quantitative claim is based on a narrow benchmark setting (Split-CIFAR-100 continual learning).
 2. The tuned-core result has multiseed coverage, but confidence intervals and broader statistical treatment are still needed.
 3. Preliminary BWT sweep results are diagnostic and not yet strong enough to replace the tuned-core result as the main reported configuration.
-4. Real multimodal dataset ingestion (AudioSet/Ego4D-scale) is not yet an active training/eval path in this code branch.
+4. The active sensor/MIME routing ladder is not yet complete, so the present quantitative section should still be read as the continual-learning evidence core rather than the final perception-side evidence picture.
+5. Real multimodal dataset ingestion (AudioSet/Ego4D-scale) is not yet an active training/eval path in this code branch.
 # Discussion
 
 ## 7.1 Core Mechanistic Insight
@@ -425,31 +433,41 @@ The newer Titan runs sharpen the paper in two ways:
 
 This second point is important. The paper should not imply that adding regularization or mild structural isolation necessarily solves forgetting in this architecture. The current evidence says the opposite: replay-path design is the validated lever, while follow-on anti-forgetting knobs remain mixed.
 
-## 7.6 Next Experimental Priorities
+## 7.6 What The Active Sensor Ladder Adds
 
-1. Complete the current BWT sweep and identify whether any late-running variant surpasses the tuned-core BWT baseline.
-2. Run multiseed evaluation and confidence intervals for the tuned-core continual benchmark.
-3. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
-4. Add real multimodal ingestion/evaluation paths and report them separately from proxy datasets.
-5. Prioritize the `sensor_streaming` canonical-vs-merged routing ablation, because it is the fastest experiment that can either justify or sharply narrow the broader perception/MIME claim.
+The next decisive question is no longer "can we tweak BWT a little more with nearby regularizers?" It is:
+
+- does typed sensor routing beat a merged generic stream?
+- if so, does that advantage survive leave-one-out, binding-corruption, and noise stress tests?
+
+This matters because it is the shortest path from architectural argument to measured perception-side evidence. The bounded Titan-local supervisor is useful here not as an optimization oracle, but as a way to execute that evidence ladder in a fixed, interpretable order with explicit stop states.
+
+## 7.7 Next Experimental Priorities
+
+1. Complete and aggregate the active `sensor_streaming` canonical-vs-merged routing family.
+2. Interpret the follow-on sensor stress tests together: leave-one-out, corruption, and noise robustness.
+3. Run a capacity-matched canonical-vs-merged control if the baseline gap is small enough that capacity confounds remain plausible.
+4. Add confidence intervals and fuller statistical treatment to the tuned-core continual benchmark.
+5. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
+6. Add real multimodal ingestion/evaluation paths and report them separately from proxy datasets.
 # Conclusion
 
 This work establishes a code-aligned continual-learning result progression for Sensory Perceiver:
 
 - Phase 1 feature-only replay fails with severe forgetting.
 - Phase 2 raw-input replay with reservoir sampling materially improves retention.
-- The current tuned-core continual path improves the result further to a 3-seed mean of CIL 23.64% and BWT −30.95%.
+- The current tuned-core continual path improves the result further to a 6-seed mean of CIL 23.96% and BWT −30.39%.
 
 Beyond model behavior, the codebase now provides a production-style research runtime: typed contracts, explicit error semantics, service-layer training/evaluation/orchestration, and structured observability.
 
-We also formalize modality protocol semantics through canonical sensor_streaming MIME input cases and runtime-contract validation for modality setup derivation, while model forward dispatch remains modality-key based.
+We also formalize modality protocol semantics through canonical `sensor_streaming` MIME input cases and runtime-contract validation for modality setup derivation, while model forward dispatch remains modality-key based. The next evidence-bearing stage is an active canonical-vs-merged sensor routing ladder with bounded follow-on stress tests rather than an open-ended search loop.
 
 At the same time, two boundaries remain explicit:
 
 1. Parameter-isolation APIs and opt-in service-path activation are implemented, but current exploratory EWC/SI-style follow-on sweeps have not yet surpassed the tuned-core replay baseline.
 2. Real multimodal benchmark ingestion (beyond proxy datasets) remains future-stage work.
 
-The immediate path forward is therefore clear: strengthen the tuned-core result with fuller statistical treatment, test whether structural isolation can beat that baseline rather than merely exist in code, and extend from proxy multimodal data to real large-scale multimodal datasets.
+The immediate path forward is therefore clear: complete the sensor routing ladder and use it to either justify or narrow the broader perception claim, strengthen the tuned-core result with fuller statistical treatment, test whether structural isolation can beat that baseline rather than merely exist in code, and extend from proxy multimodal data to real large-scale multimodal datasets.
 # Implementation Status Matrix (Code-Aligned)
 
 This matrix maps paper claims to current implementation status in the codebase.

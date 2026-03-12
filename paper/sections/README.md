@@ -2,6 +2,12 @@
 
 This directory is the canonical source for paper claims, scope, and implementation alignment.
 
+Current emphasis:
+
+- main validated quantitative evidence: tuned-core 6-seed Split-CIFAR-100 continual-learning result
+- main active perception-side evidence path: `sensor_streaming` canonical-vs-merged routing ladder
+- generated artifacts live under `../figures/generated/results_package/`
+
 ## Canonical Claim Sources
 
 Authoritative files for current paper claims:

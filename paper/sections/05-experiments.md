@@ -31,17 +31,21 @@ Primary reproducibility controls:
 - `sensor_streaming` generated dataset (`experiment=sensor_streaming`, `dataset=sensor_streaming`)
 - Audio-visual proxy dataset (`experiment=multimodal`, `dataset=audiovisual`)
 
-### Immediate next perception-side benchmark
+### Active perception-side benchmark ladder
 - `sensor_streaming` canonical-vs-merged routing ablation
   - `canonical`: typed sensor modalities (`smartwatch`, `room_env`, `robot_arm`) derived from the MIME registry
   - `merged`: a single generic 20-feature sensor stream without typed modality separation
+  - generator properties:
+    - compositional class codes rather than one globally unique signal per modality
+    - shared nuisance structure across samples
+    - shifted validation regime rather than exact train-distribution reuse
 - follow-on sensor stress tests:
   - leave-one-modality-out (`drop_smartwatch`, `drop_room_env`, `drop_robot_arm`)
   - MIME-binding corruption (`corrupt_bindings`)
   - single-modality noise robustness (`noise_smartwatch`, `noise_room_env`, `noise_robot_arm`)
   - capacity-matched canonical-vs-merged control
 
-This is the most direct experiment for testing whether the typed modality semantics materially matter beyond runtime correctness.
+This is the most direct experiment for testing whether the typed modality semantics materially matter beyond runtime correctness. The follow-on sequence can now be driven by a bounded Titan-local supervisor, which waits for the baseline family to finish, aggregates the comparison, and then launches stress tests in a fixed order rather than an open-ended search.
 
 ## 5.4 Evaluation Metrics
 
@@ -62,5 +66,6 @@ To avoid over-claiming:
 2. MIME routing is implemented as canonical modality-case registry + validation, while model dispatch uses modality keys in input dicts.
 3. Real multimodal ingestion pipelines (AudioSet/Ego4D-scale training integration) remain future work.
 4. Preliminary BWT sweeps are interpreted as follow-on evidence only if they beat the tuned-core continual baseline; otherwise they are diagnostic evidence about what does not improve forgetting.
+5. The sensor/MIME lane is bounded by explicit decision states (`canonical-dominant`, `capacity-confounded`, `competitive`, `merged-favored`) and should not be described as an unconstrained autonomous search for perfect results.
 
 These constraints are intentional and reflected in the Results/Discussion interpretation.

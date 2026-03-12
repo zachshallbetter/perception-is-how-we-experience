@@ -228,6 +228,50 @@ PYTHON_BIN=/ai/envs/perception/bin/python \
 bash scripts/launch_sensor_capacity_matched_control_titan.sh
 ```
 
+### `run_sensor_sequence_autonomous.sh`
+Wait for the current baseline sensor family to finish, aggregate it, then run the full follow-on sequence automatically via the Titan-local strategy supervisor:
+- capacity-matched control
+- leave-one-out
+- MIME-binding corruption
+- single-modality noise robustness
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/run_sensor_sequence_autonomous.sh 20260312_001338
+```
+
+### `sensor_ai_supervisor.py`
+Bounded Titan-local supervisor for the sensor evidence ladder.
+
+Decision states:
+- `canonical-dominant`
+- `capacity-confounded`
+- `competitive`
+- `merged-favored`
+
+Stop conditions:
+- baseline family aggregated
+- capacity-matched control completed before any positive routing claim is promoted
+- all stress-test families completed
+
+Outputs:
+- progress log: `results/titan_logs/sensor-sequence-supervisor.log`
+- autonomy report: `results/sensor_sequence_summaries/<family>-autonomy-report.json`
+
+### `sensor_sequence_status.sh`
+One-command status view for the live sensor ladder.
+
+```bash
+bash scripts/sensor_sequence_status.sh 20260312_011301
+```
+
+Outputs:
+- baseline result progress
+- any active branch-family progress
+- current GPU snapshot
+- final autonomy state and gap summary when available
+- recent supervisor log lines for that family
+
 ### `decide_distill_followup.sh`
 Choose the next launcher automatically once the current distillation replay comparison has enough completed runs.
 

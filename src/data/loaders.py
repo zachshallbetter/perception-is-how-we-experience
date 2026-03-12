@@ -175,6 +175,7 @@ class SensorStreamingDataset(Dataset):
         seed: int = 42,
         merge_modalities: bool = False,
         sensor_variant: str = "baseline",
+        split: str = "train",
     ):
         super().__init__()
         np.random.seed(seed)
@@ -185,6 +186,7 @@ class SensorStreamingDataset(Dataset):
         self.n_classes = n_classes
         self.merge_modalities = merge_modalities
         self.sensor_variant = sensor_variant
+        self.split = split
 
         self.labels = torch.randint(0, n_classes, (n_sequences,))
         self.data = self._build_class_conditioned_streams()
@@ -201,15 +203,22 @@ class SensorStreamingDataset(Dataset):
         t = torch.linspace(0.0, 1.0, self.sequence_length, dtype=torch.float32)
         for index in range(self.n_sequences):
             label = int(self.labels[index].item())
+            context = self._sample_context(index)
 
             smartwatch[index] = self._make_smartwatch_stream(
-                t, *self._class_dynamics(self._binding_label(label, "smartwatch"))
+                t,
+                *self._class_dynamics(self._binding_label(label, "smartwatch"), "smartwatch"),
+                context,
             )
             room_env[index] = self._make_room_env_stream(
-                t, *self._class_dynamics(self._binding_label(label, "room_env"))
+                t,
+                *self._class_dynamics(self._binding_label(label, "room_env"), "room_env"),
+                context,
             )
             robot_arm[index] = self._make_robot_arm_stream(
-                t, *self._class_dynamics(self._binding_label(label, "robot_arm"))
+                t,
+                *self._class_dynamics(self._binding_label(label, "robot_arm"), "robot_arm"),
+                context,
             )
 
         return {
@@ -218,17 +227,40 @@ class SensorStreamingDataset(Dataset):
             "robot_arm": robot_arm,
         }
 
-    def _class_dynamics(self, label: int) -> Tuple[float, float, float]:
-        phase = 0.35 * label
-        freq = float(label + 1)
-        swing = 1.0 + 0.15 * label
+    def _class_dynamics(self, label: int, modality: str) -> Tuple[float, float, float]:
+        modality_bias = {"smartwatch": 0.0, "room_env": 0.18, "robot_arm": 0.36}[modality]
+        split_freq_scale = 1.0 if self.split == "train" else 1.08
+        split_phase_shift = 0.0 if self.split == "train" else 0.22
+        split_swing_scale = 1.0 if self.split == "train" else 0.92
+        phase = (0.35 * label + modality_bias + split_phase_shift) % (2.0 * np.pi)
+        freq = float((label + 1) * split_freq_scale)
+        swing = (1.0 + 0.15 * label) * split_swing_scale
         return freq, phase, swing
 
     def _binding_label(self, label: int, modality: str) -> int:
+        codebook = {
+            0: {"smartwatch": 0, "room_env": 0, "robot_arm": 0},
+            1: {"smartwatch": 0, "room_env": 1, "robot_arm": 1},
+            2: {"smartwatch": 1, "room_env": 0, "robot_arm": 1},
+            3: {"smartwatch": 1, "room_env": 1, "robot_arm": 0},
+            4: {"smartwatch": 0, "room_env": 0, "robot_arm": 1},
+        }
+        base_label = codebook[label][modality]
         if self.sensor_variant != "corrupt_bindings":
-            return label
+            return base_label
         offsets = {"smartwatch": 1, "room_env": 2, "robot_arm": 3}
-        return int((label + offsets[modality]) % self.n_classes)
+        return int((base_label + offsets[modality]) % 3)
+
+    def _sample_context(self, index: int) -> Dict[str, float]:
+        split_noise_scale = 1.0 if self.split == "train" else 1.35
+        split_drift_scale = 1.0 if self.split == "train" else 1.2
+        return {
+            "tempo_bias": 0.85 + 0.25 * torch.rand(1).item(),
+            "amplitude_bias": 0.8 + 0.4 * torch.rand(1).item(),
+            "drift_bias": (-0.12 + 0.24 * torch.rand(1).item()) * split_drift_scale,
+            "noise_scale": split_noise_scale,
+            "context_id": float(index % 4),
+        }
 
     def _apply_sensor_variant(self) -> None:
         if self.sensor_variant.startswith("drop_"):
@@ -250,55 +282,74 @@ class SensorStreamingDataset(Dataset):
         return tensor + noise_scale * torch.randn_like(tensor) + drift_scale * drift * direction
 
     def _make_smartwatch_stream(
-        self, t: torch.Tensor, freq: float, phase: float, swing: float
+        self,
+        t: torch.Tensor,
+        freq: float,
+        phase: float,
+        swing: float,
+        context: Dict[str, float],
     ) -> torch.Tensor:
-        noise = 0.02 * torch.randn(self.sequence_length, 7)
-        waveform = 2.0 * np.pi * freq * t + phase
+        noise = 0.02 * context["noise_scale"] * torch.randn(self.sequence_length, 7)
+        waveform = 2.0 * np.pi * freq * context["tempo_bias"] * t + phase
+        shared_drift = context["drift_bias"] * t
         stream = torch.stack(
             [
-                68.0 + 7.0 * swing + 8.0 * torch.sin(waveform),
-                0.6 * swing * torch.sin(waveform),
-                0.4 * swing * torch.cos(waveform * 0.8),
-                0.3 * swing * torch.sin(waveform * 1.3 + 0.4),
-                0.35 + 0.08 * swing + 0.05 * torch.cos(waveform * 0.5),
-                0.2 * label_band(freq) + 0.1 * torch.sin(waveform * 0.25),
-                0.15 * label_band(freq + phase) + 0.1 * torch.cos(waveform * 0.35),
+                68.0 + 5.5 * swing + 4.0 * torch.sin(waveform) + 1.4 * shared_drift,
+                0.45 * swing * torch.sin(waveform) + 0.08 * context["context_id"],
+                0.35 * swing * torch.cos(waveform * 0.8) + 0.05 * shared_drift,
+                0.25 * swing * torch.sin(waveform * 1.3 + 0.4),
+                0.32 + 0.05 * swing + 0.04 * torch.cos(waveform * 0.5),
+                0.16 * label_band(freq) + 0.08 * torch.sin(waveform * 0.25),
+                0.12 * label_band(freq + phase) + 0.06 * torch.cos(waveform * 0.35),
             ],
             dim=1,
         )
         return stream + noise
 
     def _make_room_env_stream(
-        self, t: torch.Tensor, freq: float, phase: float, swing: float
+        self,
+        t: torch.Tensor,
+        freq: float,
+        phase: float,
+        swing: float,
+        context: Dict[str, float],
     ) -> torch.Tensor:
-        noise = 0.015 * torch.randn(self.sequence_length, 4)
-        waveform = 2.0 * np.pi * freq * t + phase
+        noise = 0.015 * context["noise_scale"] * torch.randn(self.sequence_length, 4)
+        waveform = 2.0 * np.pi * freq * context["tempo_bias"] * t + phase
+        shared_drift = context["drift_bias"] * t
         stream = torch.stack(
             [
-                20.0 + 0.9 * swing + 1.8 * torch.sin(waveform * 0.2),
-                45.0 + 5.0 * swing + 6.5 * torch.cos(waveform * 0.17),
-                430.0 + 55.0 * swing + 35.0 * torch.sin(waveform * 0.12 + 0.3),
-                220.0 + 28.0 * swing + 42.0 * torch.relu(torch.sin(waveform * 0.4)),
+                20.0 + 0.6 * swing + 1.2 * torch.sin(waveform * 0.2) + 0.8 * shared_drift,
+                45.0 + 3.2 * swing + 4.2 * torch.cos(waveform * 0.17),
+                430.0 + 35.0 * swing + 25.0 * torch.sin(waveform * 0.12 + 0.3),
+                220.0 + 20.0 * swing + 28.0 * torch.relu(torch.sin(waveform * 0.4)),
             ],
             dim=1,
         )
         return stream + noise
 
     def _make_robot_arm_stream(
-        self, t: torch.Tensor, freq: float, phase: float, swing: float
+        self,
+        t: torch.Tensor,
+        freq: float,
+        phase: float,
+        swing: float,
+        context: Dict[str, float],
     ) -> torch.Tensor:
-        noise = 0.02 * torch.randn(self.sequence_length, 9)
-        waveform = 2.0 * np.pi * freq * t + phase
+        noise = 0.02 * context["noise_scale"] * torch.randn(self.sequence_length, 9)
+        waveform = 2.0 * np.pi * freq * context["tempo_bias"] * t + phase
+        shared_drift = context["drift_bias"] * t
         joints = []
         for joint in range(6):
             joints.append(
                 0.2 * joint
-                + 0.4 * swing * torch.sin(waveform * (0.45 + 0.04 * joint) + joint * 0.3)
+                + 0.28 * swing * torch.sin(waveform * (0.45 + 0.04 * joint) + joint * 0.3)
+                + (0.02 * joint) * shared_drift
             )
         forces = [
-            0.8 * swing * torch.cos(waveform * 0.7),
-            0.6 * swing * torch.sin(waveform * 0.9 + 0.2),
-            0.5 * swing * torch.cos(waveform * 1.1 + 0.4),
+            0.55 * swing * torch.cos(waveform * 0.7),
+            0.45 * swing * torch.sin(waveform * 0.9 + 0.2),
+            0.38 * swing * torch.cos(waveform * 1.1 + 0.4),
         ]
         stream = torch.stack(joints + forces, dim=1)
         return stream + noise
@@ -383,6 +434,7 @@ def create_dataloaders(
             seed=seed,
             merge_modalities=(modality_routing_mode == "merged"),
             sensor_variant=sensor_variant,
+            split="train",
         )
         val_ds = SensorStreamingDataset(
             n_sequences=max(20, n_sequences // 4),
@@ -391,6 +443,7 @@ def create_dataloaders(
             seed=seed + 1,
             merge_modalities=(modality_routing_mode == "merged"),
             sensor_variant=sensor_variant,
+            split="val",
         )
 
     elif experiment == "multimodal":

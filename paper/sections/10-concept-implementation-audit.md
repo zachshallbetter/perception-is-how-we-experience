@@ -15,7 +15,10 @@ This section compares core paper concepts against current implementation behavio
 | MIME-style modality semantics as runtime source of truth | Canonical modality-case registry and validation at boundaries | `src/runtime/mime_cases.py`, `src/runtime/contracts.py` | Implemented | Low |
 | MIME-string-driven dispatch inside model forward | Architectural ideal of semantic routing in-model | `src/models/core.py` forward dispatches by modality keys in input dict, not MIME strings | Partial by design | Medium |
 | Modern runtime/service/observability architecture | Typed contracts + services + structured metrics/logging | `src/runtime/*`, `src/services/*`, `src/observability/*` | Implemented | Low |
-| Real multimodal benchmark ingestion (AudioSet/Ego4D scale) | Future work, not claimed as active benchmark path | Absent from active loaders/services; status already constrained in `05-experiments.md` and status matrix | Planned | Medium |
+| Bootstrap real-data benchmark ingestion | Bootstrap evidence is includable now | Speech Commands and WISDM sequence reports are present and packaged as bootstrap evidence | Implemented | Low |
+| Canonical integrated real-data benchmark ingestion | Promoted only after bounded sequence completion | `real-audio-seq-002` and `real-sensor-seq-001` remain pending until completed | Partial / Pending | Medium |
+| AudioSet media-backed integration | Explicit blocked state | Metadata present, media missing in active runtime path | Blocked | Medium |
+| UbiqLog supervised integration | Explicit blocked state | Raw logs present, but no canonical supervised task definition | Blocked | Medium |
 
 ## 10.2 Concept-to-Concept Tensions
 
@@ -46,7 +49,7 @@ Use these canonical phrasings in the main paper to keep claims defensible:
 - **Replay claim**: “Raw-input replay with reservoir sampling materially improves retention in the current Split-CIFAR-100 continual-learning setting.”
 - **Isolation claim**: “Task-adapter isolation and sequential rollover are implemented and exposed as an opt-in service path, but their empirical advantage over the tuned replay-centric baseline remains under evaluation.”
 - **MIME claim**: “MIME semantics are canonicalized at runtime-contract boundaries and drive modality validation/setup; model forward dispatch currently uses modality keys.”
-- **Multimodal claim**: “Proxy multimodal support is implemented; real large-scale multimodal ingestion (e.g., AudioSet/Ego4D) remains future-stage work.”
+- **Multimodal claim**: “Completed synthetic routing evidence exists, bootstrap real-data evidence exists on Speech Commands and WISDM, canonical integrated real-data sequences are pending, and blocked datasets remain explicit.”
 
 ## 10.4 Immediate Paper Synchronization Actions
 

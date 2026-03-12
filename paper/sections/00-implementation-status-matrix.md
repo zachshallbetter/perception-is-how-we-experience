@@ -44,8 +44,11 @@ This matrix maps paper claims to current implementation status in the codebase.
 |---|---|---|---|
 | Sensor streaming dataset in dataloader factory | Implemented | `src/data/loaders.py` (`SensorStreamingDataset`, `create_dataloaders`) | Uses generated streams. |
 | Audio-visual multimodal support in dataloader factory | Implemented (proxy) | `src/data/loaders.py` (`AudioVisualProxyDataset`) | Proxy dataset, not production ingestion. |
-| Real AudioSet/Ego4D training pipeline integration | Planned | N/A in active runtime code | Not present in current loaders/services. |
-| Additional IMU/text towers in active model config | Planned | N/A in `resolve_modality_setup` | Current multimodal setup includes vision + audio only. |
+| Real-data bootstrap evidence on Speech Commands and WISDM | Implemented | `results/real_audio_sequence_summaries/real-audio-seq-001-report.json`, `results/real_sensor_sequence_summaries/real-seq-004-report.json` | Bootstrap evidence only; not the canonical integrated package. |
+| Canonical integrated real-data sequences | Partial / Pending | `real-audio-seq-002`, `real-sensor-seq-001` supervisor reports | Promoted only after bounded sequence completion. |
+| AudioSet media-backed training pipeline integration | Blocked | Metadata staged locally; no local audio media in active runtime path | Preserve blocked state explicitly. |
+| UbiqLog supervised benchmark integration | Blocked | Raw logs present, but no canonical supervised task definition | Preserve blocked state explicitly. |
+| Additional IMU/text towers in active model config | Planned | N/A in `resolve_modality_setup` | Current active multimodal setup is still bounded and dataset-specific. |
 
 ## Paper Alignment Notes
 
@@ -56,7 +59,7 @@ This matrix maps paper claims to current implementation status in the codebase.
 2. **Must be phrased carefully in paper**:
    - Parameter isolation is integrated as an **opt-in service path** (not always-on by default), and current exploratory Titan results do not yet show it outperforming the tuned replay-centric baseline.
    - MIME routing is currently a **canonical registry + boundary validation** plus modality-key dispatch, not raw MIME parsing inside `forward()`.
-   - Multimodal real-benchmark ingestion (AudioSet/Ego4D) remains future/ongoing work.
+   - Real-data evidence is now bootstrap-plus-canonical staged; blocked datasets remain explicit rather than being described vaguely as future work.
 
 3. **Canonical naming**:
    - Use `sensor_streaming` consistently (experiment ID, dataset ID, docs, scripts).

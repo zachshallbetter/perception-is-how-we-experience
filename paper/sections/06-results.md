@@ -106,8 +106,8 @@ Therefore, this section claims a robust replay-centric continual result, not a s
 1. Current quantitative claim is based on a narrow benchmark setting (Split-CIFAR-100 continual learning).
 2. The tuned-core result has multiseed coverage, but confidence intervals and broader statistical treatment are still needed.
 3. Preliminary BWT sweep results are diagnostic and not yet strong enough to replace the tuned-core result as the main reported configuration.
-4. The active sensor/MIME routing ladder is not yet fully complete, so the present quantitative section should still be read as the continual-learning evidence core rather than the final perception-side evidence picture.
-5. Real multimodal dataset ingestion (AudioSet/Ego4D-scale) is not yet an active training/eval path in this code branch.
+4. The synthetic sensor/MIME routing ladder is complete and reportable, but it remains controlled synthetic evidence rather than the final real-domain perception claim.
+5. Real-data evidence is now split into bootstrap and canonical integrated stages. Bootstrap WISDM and Speech Commands runs are includable; the bounded integrated sequences remain pending until their reports complete successfully.
 
 ## 6.8 Completed Sensor/MIME Routing Summary
 

@@ -25,7 +25,7 @@ Authoritative claim files:
 - Model forward dispatch is framed as modality-key based.
 - Parameter isolation is framed as implemented model capability with opt-in service-path integration.
 - The current paper-primary quantitative evidence is the 6-seed tuned-core Split-CIFAR-100 result.
-- The current perception-side evidence path is the active `sensor_streaming` canonical-vs-merged ladder plus bounded follow-on stress tests.
+- The current perception-side evidence path is the completed synthetic `sensor_streaming` canonical-vs-merged ladder plus bounded real-data follow-on sequences.
 
 ## Reader Map
 
@@ -41,7 +41,7 @@ If you want to understand what a user or product team can actually do with the r
 - `README.md`
 - `docs/productization-roadmap.md`
 
-This is important because the current strongest evidence remains replay-centric continual learning, while the broader perception-side sensor/MIME claim is still being strengthened through the active routing ladder.
+This is important because the current strongest evidence remains replay-centric continual learning, while the broader perception-side sensor/MIME claim is now supported by a completed synthetic routing ladder and only partially supported by bootstrap real-data evidence.
 
 ## Practical Reader Takeaway
 
@@ -67,11 +67,16 @@ Current strong evidence:
 - tuned-core 6-seed Titan result
 - negative evidence from the BWT follow-on sweep
 
-Current active but not yet promotable evidence:
+Current completed perception-side evidence:
 
 - `sensor_streaming` canonical-vs-merged routing
 - leave-one-out, corruption, and noise stress tests
 - capacity-matched routing control
+
+Current active but not yet promotable evidence:
+
+- `real-audio-seq-002`
+- `real-sensor-seq-001`
 
 ## Monolith Policy
 

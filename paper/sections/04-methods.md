@@ -75,4 +75,4 @@ Implemented in dataloader factory:
 - `sensor_streaming` (generated multistream sensor dataset)
 - `multimodal` (audio-visual proxy dataset)
 
-Real benchmark ingestion pipelines (e.g., AudioSet/Ego4D) remain future-stage work and are not yet in the active runtime path.
+Real benchmark ingestion is now bounded explicitly. Bootstrap real-data paths exist for WISDM and Speech Commands, while integrated canonical sequences remain pending and blocked datasets are preserved as explicit blocked states (for example `audioset` media missing and `ubiqlog` task definition missing).

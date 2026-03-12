@@ -8,7 +8,7 @@ The implementation includes a modernized runtime/service architecture with typed
 
 Parameter-isolation primitives (task adapters with freeze/rollover APIs) are implemented in the model and validated in targeted tests. Sequential activation is available as an opt-in service path, but current preliminary BWT sweeps with EWC and SI regularization have not yet surpassed the tuned-core replay result.
 
-Current multimodal support includes proxy audiovisual and `sensor_streaming` datasets. The active perception-side evidence ladder now evaluates canonical typed sensor routing against a merged generic stream, followed by leave-one-out, corruption, noise, and capacity-matched controls. Real benchmark ingestion (for example AudioSet/Ego4D) and additional modality towers remain future-stage work.
+Current multimodal support includes completed synthetic `sensor_streaming` evidence plus bootstrap real-data evidence on WISDM and Speech Commands. The completed synthetic perception-side ladder shows that typed canonical routing outperforms merged routing across the baseline, capacity-matched, leave-one-out, corruption, and most single-modality noise conditions, with `noise_robot_arm` as the principal exception. Real integrated benchmark sequences are now bounded explicitly: bootstrap evidence is reportable, while canonical integrated real-data sequences remain pending until their sequence reports complete successfully. Broader blocked states such as AudioSet media acquisition and UbiqLog task definition remain explicit rather than being promoted as evidence.
 
 Practically, the present contribution is therefore best understood as a blueprint for domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone rather than only late task heads. If the broader concept continues to validate, the user-facing result is a structured multimodal perception engine that can watch, listen, track, and adapt without constantly starting over.
 
@@ -208,7 +208,7 @@ Implemented in dataloader factory:
 - `sensor_streaming` (generated multistream sensor dataset)
 - `multimodal` (audio-visual proxy dataset)
 
-Real benchmark ingestion pipelines (e.g., AudioSet/Ego4D) remain future-stage work and are not yet in the active runtime path.
+Real benchmark ingestion is now bounded explicitly. Bootstrap real-data paths exist for WISDM and Speech Commands, while integrated canonical sequences remain pending and blocked datasets are preserved as explicit blocked states (for example `audioset` media missing and `ubiqlog` task definition missing).
 # Experiments
 
 ## 5.1 Experimental Scope
@@ -312,7 +312,7 @@ To avoid over-claiming:
 
 1. Task-adapter rollover is implemented in the service path and can be enabled via `adapter_rollover` with `continual_task_count > 1`.
 2. MIME routing is implemented as canonical modality-case registry + validation, while model dispatch uses modality keys in input dicts.
-3. Real multimodal ingestion pipelines (AudioSet/Ego4D-scale training integration) remain future work.
+3. Real-data evidence is split into bootstrap and canonical integrated stages. Speech Commands and WISDM bootstrap runs are includable now; integrated canonical sequences remain pending until their bounded reports complete successfully, while blocked datasets (`audioset`, `ubiqlog`) stay explicit.
 4. Preliminary BWT sweeps are interpreted as follow-on evidence only if they beat the tuned-core continual baseline; otherwise they are diagnostic evidence about what does not improve forgetting.
 5. The sensor/MIME lane is bounded by explicit decision states (`canonical-dominant`, `capacity-confounded`, `competitive`, `merged-favored`) and should not be described as an unconstrained autonomous search for perfect results.
 
@@ -425,8 +425,8 @@ Therefore, this section claims a robust replay-centric continual result, not a s
 1. Current quantitative claim is based on a narrow benchmark setting (Split-CIFAR-100 continual learning).
 2. The tuned-core result has multiseed coverage, but confidence intervals and broader statistical treatment are still needed.
 3. Preliminary BWT sweep results are diagnostic and not yet strong enough to replace the tuned-core result as the main reported configuration.
-4. The active sensor/MIME routing ladder is not yet fully complete, so the present quantitative section should still be read as the continual-learning evidence core rather than the final perception-side evidence picture.
-5. Real multimodal dataset ingestion (AudioSet/Ego4D-scale) is not yet an active training/eval path in this code branch.
+4. The synthetic sensor/MIME routing ladder is complete and reportable, but it remains controlled synthetic evidence rather than the final real-domain perception claim.
+5. Real-data evidence is now split into bootstrap and canonical integrated stages. Bootstrap WISDM and Speech Commands runs are includable; the bounded integrated sequences remain pending until their reports complete successfully.
 
 ## 6.8 Completed Sensor/MIME Routing Summary
 
@@ -621,14 +621,14 @@ This work establishes a code-aligned continual-learning result progression for S
 
 Beyond model behavior, the codebase now provides a production-style research runtime: typed contracts, explicit error semantics, service-layer training/evaluation/orchestration, and structured observability.
 
-We also formalize modality protocol semantics through canonical `sensor_streaming` MIME input cases and runtime-contract validation for modality setup derivation, while model forward dispatch remains modality-key based. The next evidence-bearing stage is an active canonical-vs-merged sensor routing ladder with bounded follow-on stress tests rather than an open-ended search loop.
+We also formalize modality protocol semantics through canonical `sensor_streaming` MIME input cases and runtime-contract validation for modality setup derivation, while model forward dispatch remains modality-key based. The completed synthetic canonical-vs-merged routing ladder now provides the strongest perception-side evidence in the repository, while the bounded real-data sequences provide bootstrap WISDM and Speech Commands evidence and keep integrated canonical runs explicitly pending until they complete.
 
 At the same time, two boundaries remain explicit:
 
 1. Parameter-isolation APIs and opt-in service-path activation are implemented, but current exploratory EWC/SI-style follow-on sweeps have not yet surpassed the tuned-core replay baseline.
-2. Real multimodal benchmark ingestion (beyond proxy datasets) remains future-stage work.
+2. Real multimodal benchmark coverage is underway but still bounded: bootstrap WISDM and Speech Commands evidence exists, while the canonical integrated real-data sequences remain pending and blocked datasets stay explicit.
 
-The immediate path forward is therefore clear: complete the sensor routing ladder and use it to either justify or narrow the broader perception claim, strengthen the tuned-core result with fuller statistical treatment, test whether structural isolation can beat that baseline rather than merely exist in code, and extend from proxy multimodal data to real large-scale multimodal datasets. If those steps succeed, the practical output is a disciplined blueprint for building domain-specific perception systems that can ingest typed sensory inputs and keep learning over time without fully retraining from scratch.
+The immediate path forward is therefore clear: complete the bounded integrated real-data sequences, promote them into the canonical results package only after successful sequence completion, strengthen the tuned-core result with fuller statistical treatment, test whether structural isolation can beat that baseline rather than merely exist in code, and extend from bootstrap real-domain evidence to broader integrated multimodal benchmarks. If those steps succeed, the practical output is a disciplined blueprint for building domain-specific perception systems that can ingest typed sensory inputs and keep learning over time without fully retraining from scratch.
 
 In a live environment, that user-facing result would not be "a better benchmark." It would be a system that can combine multiple sensory channels, tolerate degraded or missing modalities, and continue adapting to new users, rooms, or tasks without repeatedly rebuilding the model from zero. The present repository is not that full live product yet, but it now makes the path toward it concrete enough to reason about, build toward, and test honestly.
 # Implementation Status Matrix (Code-Aligned)
@@ -677,8 +677,11 @@ This matrix maps paper claims to current implementation status in the codebase.
 |---|---|---|---|
 | Sensor streaming dataset in dataloader factory | Implemented | `src/data/loaders.py` (`SensorStreamingDataset`, `create_dataloaders`) | Uses generated streams. |
 | Audio-visual multimodal support in dataloader factory | Implemented (proxy) | `src/data/loaders.py` (`AudioVisualProxyDataset`) | Proxy dataset, not production ingestion. |
-| Real AudioSet/Ego4D training pipeline integration | Planned | N/A in active runtime code | Not present in current loaders/services. |
-| Additional IMU/text towers in active model config | Planned | N/A in `resolve_modality_setup` | Current multimodal setup includes vision + audio only. |
+| Real-data bootstrap evidence on Speech Commands and WISDM | Implemented | `results/real_audio_sequence_summaries/real-audio-seq-001-report.json`, `results/real_sensor_sequence_summaries/real-seq-004-report.json` | Bootstrap evidence only; not the canonical integrated package. |
+| Canonical integrated real-data sequences | Partial / Pending | `real-audio-seq-002`, `real-sensor-seq-001` supervisor reports | Promoted only after bounded sequence completion. |
+| AudioSet media-backed training pipeline integration | Blocked | Metadata staged locally; no local audio media in active runtime path | Preserve blocked state explicitly. |
+| UbiqLog supervised benchmark integration | Blocked | Raw logs present, but no canonical supervised task definition | Preserve blocked state explicitly. |
+| Additional IMU/text towers in active model config | Planned | N/A in `resolve_modality_setup` | Current active multimodal setup is still bounded and dataset-specific. |
 
 ## Paper Alignment Notes
 
@@ -689,7 +692,7 @@ This matrix maps paper claims to current implementation status in the codebase.
 2. **Must be phrased carefully in paper**:
    - Parameter isolation is integrated as an **opt-in service path** (not always-on by default), and current exploratory Titan results do not yet show it outperforming the tuned replay-centric baseline.
    - MIME routing is currently a **canonical registry + boundary validation** plus modality-key dispatch, not raw MIME parsing inside `forward()`.
-   - Multimodal real-benchmark ingestion (AudioSet/Ego4D) remains future/ongoing work.
+   - Real-data evidence is now bootstrap-plus-canonical staged; blocked datasets remain explicit rather than being described vaguely as future work.
 
 3. **Canonical naming**:
    - Use `sensor_streaming` consistently (experiment ID, dataset ID, docs, scripts).
@@ -710,7 +713,10 @@ This section compares core paper concepts against current implementation behavio
 | MIME-style modality semantics as runtime source of truth | Canonical modality-case registry and validation at boundaries | `src/runtime/mime_cases.py`, `src/runtime/contracts.py` | Implemented | Low |
 | MIME-string-driven dispatch inside model forward | Architectural ideal of semantic routing in-model | `src/models/core.py` forward dispatches by modality keys in input dict, not MIME strings | Partial by design | Medium |
 | Modern runtime/service/observability architecture | Typed contracts + services + structured metrics/logging | `src/runtime/*`, `src/services/*`, `src/observability/*` | Implemented | Low |
-| Real multimodal benchmark ingestion (AudioSet/Ego4D scale) | Future work, not claimed as active benchmark path | Absent from active loaders/services; status already constrained in `05-experiments.md` and status matrix | Planned | Medium |
+| Bootstrap real-data benchmark ingestion | Bootstrap evidence is includable now | Speech Commands and WISDM sequence reports are present and packaged as bootstrap evidence | Implemented | Low |
+| Canonical integrated real-data benchmark ingestion | Promoted only after bounded sequence completion | `real-audio-seq-002` and `real-sensor-seq-001` remain pending until completed | Partial / Pending | Medium |
+| AudioSet media-backed integration | Explicit blocked state | Metadata present, media missing in active runtime path | Blocked | Medium |
+| UbiqLog supervised integration | Explicit blocked state | Raw logs present, but no canonical supervised task definition | Blocked | Medium |
 
 ## 10.2 Concept-to-Concept Tensions
 
@@ -741,7 +747,7 @@ Use these canonical phrasings in the main paper to keep claims defensible:
 - **Replay claim**: “Raw-input replay with reservoir sampling materially improves retention in the current Split-CIFAR-100 continual-learning setting.”
 - **Isolation claim**: “Task-adapter isolation and sequential rollover are implemented and exposed as an opt-in service path, but their empirical advantage over the tuned replay-centric baseline remains under evaluation.”
 - **MIME claim**: “MIME semantics are canonicalized at runtime-contract boundaries and drive modality validation/setup; model forward dispatch currently uses modality keys.”
-- **Multimodal claim**: “Proxy multimodal support is implemented; real large-scale multimodal ingestion (e.g., AudioSet/Ego4D) remains future-stage work.”
+- **Multimodal claim**: “Completed synthetic routing evidence exists, bootstrap real-data evidence exists on Speech Commands and WISDM, canonical integrated real-data sequences are pending, and blocked datasets remain explicit.”
 
 ## 10.4 Immediate Paper Synchronization Actions
 

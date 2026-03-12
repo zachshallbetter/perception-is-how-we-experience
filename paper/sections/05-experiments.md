@@ -101,7 +101,7 @@ To avoid over-claiming:
 
 1. Task-adapter rollover is implemented in the service path and can be enabled via `adapter_rollover` with `continual_task_count > 1`.
 2. MIME routing is implemented as canonical modality-case registry + validation, while model dispatch uses modality keys in input dicts.
-3. Real multimodal ingestion pipelines (AudioSet/Ego4D-scale training integration) remain future work.
+3. Real-data evidence is split into bootstrap and canonical integrated stages. Speech Commands and WISDM bootstrap runs are includable now; integrated canonical sequences remain pending until their bounded reports complete successfully, while blocked datasets (`audioset`, `ubiqlog`) stay explicit.
 4. Preliminary BWT sweeps are interpreted as follow-on evidence only if they beat the tuned-core continual baseline; otherwise they are diagnostic evidence about what does not improve forgetting.
 5. The sensor/MIME lane is bounded by explicit decision states (`canonical-dominant`, `capacity-confounded`, `competitive`, `merged-favored`) and should not be described as an unconstrained autonomous search for perfect results.
 

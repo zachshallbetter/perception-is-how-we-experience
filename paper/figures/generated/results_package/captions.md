@@ -13,7 +13,7 @@ Tuned-core multiseed stability on Titan Node. Each point is one full 20-task Spl
 Exploratory BWT sweep ranked by final BWT. The dashed reference line marks the tuned-core multiseed mean. None of the completed EWC, SI, larger-buffer ER, or contrastive replay runs surpass the tuned-core baseline.
 
 ## Figure 4
-Real-data evidence overview. Bootstrap evidence comes from `real-audio-seq-001` on Speech Commands and `real-seq-004` on WISDM. Canonical evidence is promoted from `real-audio-seq-002` and `real-sensor-seq-001` as those bounded integrated sequences complete. Historical bootstrap reports may still list newly integrated datasets as candidates, so the package treats sequence stage and current supervisor defaults as the canonical source of truth.
+Real-data evidence overview. Bootstrap evidence comes from `real-audio-seq-001` on Speech Commands and `real-seq-004` on WISDM. Canonical evidence is promoted only from `real-audio-seq-002` and `real-sensor-seq-001` after those bounded integrated sequences complete successfully. Historical bootstrap reports may still list newly integrated datasets as candidates, so the package treats sequence stage, supervisor defaults, and blocked-state reports as the canonical source of truth.
 
 ## Source Matrices
 The copied accuracy-matrix images provide the underlying per-task retention structure for the reported Phase 2 raw-input replay run and the three tuned-core Titan runs.

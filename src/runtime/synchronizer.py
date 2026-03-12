@@ -4,13 +4,14 @@ from typing import Dict, Iterable, List, Tuple
 
 import torch
 
-from src.runtime.schema import (
+from src.runtime.live_schema import (
     CANONICAL_MODALITIES,
     FrameEnvelope,
     ModalityType,
     SensorWindow,
     StreamStatus,
 )
+from src.runtime.errors import AppError, ErrorCode
 
 
 class BaseSynchronizer:
@@ -36,7 +37,8 @@ class BaseSynchronizer:
         into a synchronized map of sensor windows. Follows strict mapping and no-silent defaults.
         """
         if window_end_ms - window_start_ms != self.window_size_ms:
-            raise ValueError(
+            raise AppError(
+                ErrorCode.INVALID_ARGUMENT,
                 f"Window bounds diff {window_end_ms - window_start_ms} "
                 f"does not match expected {self.window_size_ms}"
             )
@@ -70,6 +72,7 @@ class BaseSynchronizer:
                 status = StreamStatus.DEGRADED
 
             tensor = torch.zeros((1, self.required_steps, feature_dim), dtype=torch.float32)
+            valid_mask = torch.zeros((1, self.required_steps), dtype=torch.bool)
 
             if status != StreamStatus.MISSING:
                 # We align the envelopes to discrete buckets within the window
@@ -78,19 +81,12 @@ class BaseSynchronizer:
                     bucket_idx = (ts - window_start_ms) // self.step_ms
                     if 0 <= bucket_idx < self.required_steps:
                         tensor[0, bucket_idx, :] = torch.tensor(payload, dtype=torch.float32)
-
-                # Forward-fill purely deterministically for explicitly missing buckets inside a DEGRADED/NOMINAL window
-                # Instead of silently doing it, we consider it part of the explicit synchronizer logic
-                last_val = torch.zeros(feature_dim, dtype=torch.float32)
-                for t in range(self.required_steps):
-                    if (tensor[0, t, :] == 0).all():
-                        tensor[0, t, :] = last_val
-                    else:
-                        last_val = tensor[0, t, :]
+                        valid_mask[0, bucket_idx] = True
 
             results[mod_type] = SensorWindow(
                 modality=mod_type,
                 tensor=tensor,
+                valid_mask=valid_mask,
                 status=status,
             )
 

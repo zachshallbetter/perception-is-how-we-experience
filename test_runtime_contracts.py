@@ -37,9 +37,139 @@ from src.runtime import (
     validate_experiment_dataset,
     validate_training_config_schema,
 )
+from src.runtime.live_schema import FrameEnvelope, ModalityType, StreamStatus
+from src.runtime.synchronizer import BaseSynchronizer
+from src.services.inference import (
+    LiveTensorAdapter,
+    build_live_model_inputs,
+    resolve_inference_plan,
+)
 
 
 class RuntimeContractsTest(unittest.TestCase):
+    def test_live_synchronizer_outputs_valid_mask_without_forward_fill(self):
+        synchronizer = BaseSynchronizer(window_size_ms=1000, sampling_rate_hz=4)
+        envelopes = [
+            FrameEnvelope(
+                trace_id="trace-1",
+                timestamp_ms=0,
+                modality_id="smartwatch",
+                payload=[1.0] * 7,
+            ),
+            FrameEnvelope(
+                trace_id="trace-1",
+                timestamp_ms=500,
+                modality_id="smartwatch",
+                payload=[2.0] * 7,
+            ),
+        ]
+
+        windows = synchronizer.build_frozen_window(envelopes, window_start_ms=0, window_end_ms=1000)
+        smartwatch = windows[ModalityType.SMARTWATCH]
+
+        self.assertEqual(smartwatch.status, StreamStatus.NOMINAL)
+        self.assertEqual(smartwatch.valid_mask.tolist(), [[True, False, True, False]])
+        self.assertTrue(torch.allclose(smartwatch.tensor[0, 1, :], torch.zeros(7)))
+        self.assertTrue(torch.allclose(smartwatch.tensor[0, 3, :], torch.zeros(7)))
+
+    def test_build_live_model_inputs_preserves_mask_and_status(self):
+        window = self._make_sensor_window(
+            modality=ModalityType.SMARTWATCH,
+            feature_dim=7,
+            status=StreamStatus.DEGRADED,
+            valid_mask=torch.tensor([[True, False, True]], dtype=torch.bool),
+        )
+
+        payload = build_live_model_inputs({ModalityType.SMARTWATCH: window})
+
+        self.assertIn("smartwatch", payload)
+        self.assertTrue(torch.equal(payload["smartwatch"]["valid_mask"], window.valid_mask))
+        self.assertEqual(payload["smartwatch"]["status"], "degraded")
+
+    def test_resolve_inference_plan_requires_live_capable_model(self):
+        class LegacyModel(torch.nn.Module):
+            def forward(self, _inputs):
+                return torch.randn(1, 3)
+
+        windows = {
+            ModalityType.SMARTWATCH: self._make_sensor_window(
+                modality=ModalityType.SMARTWATCH,
+                feature_dim=7,
+            )
+        }
+
+        with self.assertRaises(AppError) as context:
+            resolve_inference_plan(windows, LegacyModel(), {ModalityType.SMARTWATCH})
+        self.assertEqual(context.exception.code, ErrorCode.INVALID_ARGUMENT)
+
+    def test_resolve_inference_plan_passes_structured_live_payload(self):
+        class LiveCapableModel(torch.nn.Module):
+            supports_live_valid_mask = True
+
+            def forward(self, inputs):
+                smartwatch = inputs["smartwatch"]
+                assert set(smartwatch.keys()) == {"tensor", "valid_mask", "status"}
+                assert smartwatch["status"] == "nominal"
+                assert smartwatch["tensor"].shape == (1, 3, 7)
+                assert smartwatch["valid_mask"].shape == (1, 3)
+                return torch.tensor([[0.1, 0.9]], dtype=torch.float32)
+
+        windows = {
+            ModalityType.SMARTWATCH: self._make_sensor_window(
+                modality=ModalityType.SMARTWATCH,
+                feature_dim=7,
+                valid_mask=torch.tensor([[True, True, False]], dtype=torch.bool),
+            )
+        }
+
+        plan = resolve_inference_plan(windows, LiveCapableModel(), {ModalityType.SMARTWATCH})
+        self.assertIsNone(plan.error_code)
+        self.assertTrue(plan.is_safe)
+        self.assertGreater(plan.confidence_score, 0.65)
+
+    def test_live_tensor_adapter_applies_valid_mask_before_forward(self):
+        captured = {}
+
+        class LegacyTensorModel(torch.nn.Module):
+            def forward(self, inputs):
+                captured.update(inputs)
+                return torch.tensor([[0.2, 0.8]], dtype=torch.float32)
+
+        adapter = LiveTensorAdapter(LegacyTensorModel())
+        windows = {
+            ModalityType.SMARTWATCH: self._make_sensor_window(
+                modality=ModalityType.SMARTWATCH,
+                feature_dim=7,
+                valid_mask=torch.tensor([[True, False, True]], dtype=torch.bool),
+            )
+        }
+
+        plan = resolve_inference_plan(windows, adapter, {ModalityType.SMARTWATCH})
+
+        self.assertIn("smartwatch", captured)
+        self.assertTrue(torch.allclose(captured["smartwatch"][0, 1, :], torch.zeros(7)))
+        self.assertIsNone(plan.error_code)
+
+    @staticmethod
+    def _make_sensor_window(
+        *,
+        modality: ModalityType,
+        feature_dim: int,
+        status: StreamStatus = StreamStatus.NOMINAL,
+        valid_mask: torch.Tensor | None = None,
+    ):
+        from src.runtime.live_schema import SensorWindow
+
+        tensor = torch.ones((1, 3, feature_dim), dtype=torch.float32)
+        if valid_mask is None:
+            valid_mask = torch.ones((1, 3), dtype=torch.bool)
+        return SensorWindow(
+            modality=modality,
+            tensor=tensor,
+            valid_mask=valid_mask,
+            status=status,
+        )
+
     def test_validate_experiment_dataset_rejects_mismatch(self):
         with self.assertRaises(AppError) as context:
             validate_experiment_dataset("continual", "audiovisual")

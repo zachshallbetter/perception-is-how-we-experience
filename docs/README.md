@@ -18,6 +18,8 @@ This directory is the operator and research bridge between the codebase and the 
    - canonical vs merged routing rationale
 5. `sensor-streaming-mime-cases.md`
    - authoritative sensor modality cases
+6. `real-sensor-datasets.md`
+   - prepared-data scaffold for WISDM, PAMAP2, and OPPORTUNITY
 
 ## How To Read These Docs
 

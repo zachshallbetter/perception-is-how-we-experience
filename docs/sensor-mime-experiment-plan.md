@@ -61,9 +61,9 @@ bash scripts/launch_sensor_mime_ablation_titan.sh
 
 - GPU 0:
   - canonical seed 42
-  - canonical seed 43
-- GPU 1:
   - merged seed 42
+- GPU 1:
+  - canonical seed 43
   - merged seed 43
 - GPU 2:
   - canonical seed 44
@@ -106,6 +106,32 @@ This sequence is now automatable through `scripts/run_sensor_sequence_autonomous
 - If canonical mean accuracy is higher than merged with comparable latency, promote this as the key perception-side result.
 - If canonical and merged are effectively tied, treat MIME semantics as a runtime/architecture contribution rather than a demonstrated model-performance contribution.
 - If merged wins, narrow the paper’s modality-routing claim sharply.
+
+## Current Provisional Reading
+
+Completed ladder branches currently show:
+
+- baseline gap: `+0.4583`
+- capacity-matched baseline gap: `+0.3767`
+- corruption gap: `+0.2717`
+- leave-one-out gaps:
+  - `drop_smartwatch`: `+0.3317`
+  - `drop_room_env`: `+0.7950`
+  - `drop_robot_arm`: `+0.6333`
+- noise gaps:
+  - `noise_smartwatch`: `+0.0633`
+  - `noise_room_env`: `+0.0617`
+
+Pending:
+
+- `noise_robot_arm`
+
+So the current honest reading is:
+
+- typed canonical routing is leading on every completed branch,
+- that lead survives a capacity-matched control,
+- but the margin becomes much smaller under single-modality noise stress,
+- which means the result is promising and useful, but still not a license to overclaim robustness.
 
 ## Why This Matters
 

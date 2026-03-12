@@ -56,13 +56,29 @@ The next decisive question is no longer "can we tweak BWT a little more with nea
 
 This matters because it is the shortest path from architectural argument to measured perception-side evidence. The bounded Titan-local supervisor is useful here not as an optimization oracle, but as a way to execute that evidence ladder in a fixed, interpretable order with explicit stop states.
 
+The completed branches already give a meaningful provisional answer. Canonical typed routing is ahead on:
+
+- the baseline comparison,
+- the capacity-matched control,
+- all completed leave-one-out branches,
+- the binding-corruption branch,
+- and the completed single-modality noise branches.
+
+The pattern is not uniform in magnitude. The strongest support appears in the baseline, capacity-matched, and leave-one-out branches. The weakest support appears under single-modality noise, where the merged route recovers much of the gap. That is exactly the kind of nuance we want: it suggests typed routing is helpful, but not magically robust to every stressor.
+
+The right current discussion stance is therefore:
+
+1. typed routing now has stronger direct evidence than it did before this ladder,
+2. capacity confounding is no longer the leading explanation for the baseline gap,
+3. the claim should still be framed as controlled synthetic support until the final branch completes and until a real-domain benchmark exists.
+
 ## 7.7 Next Experimental Priorities
 
-1. Complete and aggregate the active `sensor_streaming` canonical-vs-merged routing family.
-2. Interpret the follow-on sensor stress tests together: leave-one-out, corruption, and noise robustness.
-3. Run a capacity-matched canonical-vs-merged control if the baseline gap is small enough that capacity confounds remain plausible.
-4. Add confidence intervals and fuller statistical treatment to the tuned-core continual benchmark.
-5. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
+1. Finish and aggregate the final pending `noise_robot_arm` branch.
+2. Turn the completed sensor ladder into a paper-ready figure/table package alongside the continual-learning package.
+3. Add confidence intervals and fuller statistical treatment to the tuned-core continual benchmark.
+4. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
+5. Replace or augment synthetic `sensor_streaming` evidence with at least one real-domain sensor benchmark.
 6. Add real multimodal ingestion/evaluation paths and report them separately from proxy datasets.
 
 ## 7.8 Practical Implications

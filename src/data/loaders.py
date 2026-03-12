@@ -14,6 +14,8 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, Tuple, List, Optional
 
+from .real_sensor import PreparedRealSensorDataset, is_real_sensor_dataset
+
 
 class MultimodalDataset(Dataset):
     """Base class for multimodal datasets."""
@@ -419,7 +421,18 @@ def create_dataloaders(
             raise ValueError(f"Unknown continual dataset: {dataset_name}")
 
     elif experiment == "sensor_streaming":
-        if dataset_name in {"sensor_streaming_smoke", "sensor_streaming_small"}:
+        if is_real_sensor_dataset(dataset_name):
+            train_ds = PreparedRealSensorDataset(
+                dataset_name,
+                "train",
+                merge_modalities=(modality_routing_mode == "merged"),
+            )
+            val_ds = PreparedRealSensorDataset(
+                dataset_name,
+                "val",
+                merge_modalities=(modality_routing_mode == "merged"),
+            )
+        elif dataset_name in {"sensor_streaming_smoke", "sensor_streaming_small"}:
             if dataset_name == "sensor_streaming_smoke":
                 n_sequences, sequence_length = 80, 100
             else:
@@ -427,24 +440,24 @@ def create_dataloaders(
         else:
             n_sequences, sequence_length = 800, 500
 
-        train_ds = SensorStreamingDataset(
-            n_sequences=n_sequences,
-            sequence_length=sequence_length,
-            n_classes=5,
-            seed=seed,
-            merge_modalities=(modality_routing_mode == "merged"),
-            sensor_variant=sensor_variant,
-            split="train",
-        )
-        val_ds = SensorStreamingDataset(
-            n_sequences=max(20, n_sequences // 4),
-            sequence_length=sequence_length,
-            n_classes=5,
-            seed=seed + 1,
-            merge_modalities=(modality_routing_mode == "merged"),
-            sensor_variant=sensor_variant,
-            split="val",
-        )
+            train_ds = SensorStreamingDataset(
+                n_sequences=n_sequences,
+                sequence_length=sequence_length,
+                n_classes=5,
+                seed=seed,
+                merge_modalities=(modality_routing_mode == "merged"),
+                sensor_variant=sensor_variant,
+                split="train",
+            )
+            val_ds = SensorStreamingDataset(
+                n_sequences=max(20, n_sequences // 4),
+                sequence_length=sequence_length,
+                n_classes=5,
+                seed=seed + 1,
+                merge_modalities=(modality_routing_mode == "merged"),
+                sensor_variant=sensor_variant,
+                split="val",
+            )
 
     elif experiment == "multimodal":
         if dataset_name == "audiovisual":

@@ -9,5 +9,7 @@ CLAUDE.md
 .venv
 .reports/
 data/
+!src/data/
+!src/data/*.py
 monitor_dashboard.html
 experiment_orchestrator.log

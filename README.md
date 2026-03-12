@@ -44,6 +44,7 @@ To keep the claims honest:
 - it is not a claim that MIME strings are parsed directly inside model `forward()`
 
 The strongest current evidence is still replay-centric continual learning. The next most important evidence path is the sensor/MIME canonical-vs-merged ablation now exposed through `scripts/launch_sensor_mime_ablation_titan.sh`, which uses a harder synthetic sensor task with compositional class codes, shared nuisance structure, and a shifted validation regime instead of random labels. The follow-on sequence is also wired: leave-one-out, MIME-binding corruption, single-modality noise robustness, and capacity-matched controls, with a bounded Titan-local supervisor to drive the sequence autonomously.
+Real-data scaffolding for `wisdm`, `pamap2`, and `opportunity` now plugs into the same `sensor_streaming` experiment family through prepared canonical manifests under `data/real-sensor/`; see `docs/real-sensor-datasets.md` and `scripts/prepare_real_sensor_dataset.py`.
 
 ## Who This Is For
 

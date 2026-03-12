@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
+import shutil
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -54,6 +55,28 @@ def _resolve_candidate_root(raw_dir: Path, candidates: Sequence[str]) -> Path:
         if candidate.exists():
             return candidate
     raise FileNotFoundError(f"Could not resolve raw dataset root under {raw_dir}")
+
+
+def _bootstrap_realworld_har_raw(raw_dir: Path) -> Path:
+    from huggingface_hub import hf_hub_download
+
+    files = [
+        "downstream/har/realworld/x_train.npy",
+        "downstream/har/realworld/y_train.npy",
+        "downstream/har/realworld/x_valid.npy",
+        "downstream/har/realworld/y_valid.npy",
+    ]
+    for filename in files:
+        downloaded = hf_hub_download(
+            repo_id="sha-ce/SensorData",
+            repo_type="dataset",
+            filename=filename,
+        )
+        target = raw_dir / Path(filename).name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not target.exists():
+            shutil.copyfile(downloaded, target)
+    return raw_dir
 
 
 def _resample_timeseries(values: np.ndarray, sequence_length: int) -> np.ndarray:
@@ -593,8 +616,19 @@ def prepare_mhealth_dataset(raw_dir: Path, output_root: Path, sequence_length: i
 
 
 def prepare_pamap2_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
-    root = _resolve_candidate_root(raw_dir.resolve(), ["", "PAMAP2_Dataset", "PAMAP2_Dataset/Protocol", "Protocol"])
-    protocol_dir = root if root.name == "Protocol" else root / "Protocol"
+    raw_root = raw_dir.resolve()
+    protocol_candidates = [
+        raw_root / "Protocol",
+        raw_root / "PAMAP2_Dataset" / "Protocol",
+        raw_root,
+    ]
+    protocol_dir = None
+    for candidate in protocol_candidates:
+        if candidate.exists() and any(candidate.glob("subject*.dat")):
+            protocol_dir = candidate
+            break
+    if protocol_dir is None:
+        protocol_dir = raw_root / "Protocol"
     files = sorted(protocol_dir.glob("subject*.dat"))
     if not files:
         raise FileNotFoundError(f"No PAMAP2 protocol files found under {protocol_dir}")
@@ -848,6 +882,56 @@ def prepare_geomagnetic_wlan_dataset(raw_dir: Path, output_root: Path, sequence_
     )
 
 
+def prepare_realworld_har_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+    resolved_raw = raw_dir.resolve()
+    required = ["x_train.npy", "y_train.npy", "x_valid.npy", "y_valid.npy"]
+    if not all((resolved_raw / name).exists() for name in required):
+        resolved_raw = _bootstrap_realworld_har_raw(resolved_raw)
+
+    x_train = np.load(resolved_raw / "x_train.npy").astype(np.float32)
+    y_train = np.load(resolved_raw / "y_train.npy").astype(np.int64)
+    x_val = np.load(resolved_raw / "x_valid.npy").astype(np.float32)
+    y_val = np.load(resolved_raw / "y_valid.npy").astype(np.int64)
+
+    def build_sample(window: np.ndarray) -> Dict[str, np.ndarray]:
+        if window.shape[0] == 3 and window.shape[1] != 3:
+            window = window.transpose(1, 0)
+        window = _resample_timeseries(window, sequence_length)
+        delta = np.diff(window, axis=0, prepend=window[:1])
+        sq = np.square(window, dtype=np.float32)
+        return {
+            "smartwatch": np.concatenate([window, delta, _vector_norm(window)], axis=1),
+            "room_env": np.concatenate([window, _vector_norm(window)], axis=1),
+            "robot_arm": np.concatenate([window, delta, sq], axis=1),
+        }
+
+    train_samples = [build_sample(sample) for sample in x_train]
+    val_samples = [build_sample(sample) for sample in x_val]
+    max_label = int(max(int(np.max(y_train)) if y_train.size else 0, int(np.max(y_val)) if y_val.size else 0))
+    class_names = [f"activity_{idx}" for idx in range(max_label + 1)]
+    return _finalize_sensor_dataset(
+        dataset_id="realworld_har",
+        raw_dir=resolved_raw,
+        output_root=output_root,
+        sequence_length=sequence_length,
+        train_samples=train_samples,
+        train_labels=[int(label) for label in y_train],
+        val_samples=val_samples,
+        val_labels=[int(label) for label in y_val],
+        class_names=class_names,
+        notes=[
+            "Prepared from the HF sha-ce/SensorData realworld HAR split.",
+            "The source is single-stream accelerometer data; room_env and robot_arm remain explicit proxy projections to preserve the canonical sensor contract.",
+        ],
+        projection_strategy={
+            "smartwatch": "accelerometer xyz + timestep delta xyz + accel norm",
+            "room_env": "accelerometer xyz + accel norm",
+            "robot_arm": "accelerometer xyz + timestep delta xyz + squared accel xyz",
+        },
+        split_strategy={"type": "hf-downstream-holdout", "train_split": "x_train/y_train", "val_split": "x_valid/y_valid"},
+    )
+
+
 def prepare_real_sensor_dataset(dataset: str, raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
     if dataset == "wisdm":
         return prepare_wisdm_dataset(raw_dir, output_root, sequence_length)
@@ -865,4 +949,6 @@ def prepare_real_sensor_dataset(dataset: str, raw_dir: Path, output_root: Path, 
         return prepare_selfback_dataset(raw_dir, output_root, sequence_length)
     if dataset == "geomagnetic_wlan":
         return prepare_geomagnetic_wlan_dataset(raw_dir, output_root, sequence_length)
+    if dataset == "realworld_har":
+        return prepare_realworld_har_dataset(raw_dir, output_root, sequence_length)
     raise ValueError(f"Unsupported real sensor dataset preparation target: {dataset}")

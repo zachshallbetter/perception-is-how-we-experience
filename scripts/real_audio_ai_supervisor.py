@@ -19,13 +19,7 @@ if str(ROOT_DIR) not in sys.path:
 from src.data.real_audio import REAL_AUDIO_DATASET_SPECS, real_audio_dataset_is_prepared
 
 
-CANDIDATE_DATASETS = {
-    "audioset": {
-        "source_name": "AudioSet",
-        "status": "blocked-audio-media-missing",
-        "notes": "Only metadata CSVs are present locally; audio clips have not been acquired into the prepared-audio path.",
-    },
-}
+CANDIDATE_DATASETS: dict[str, dict[str, str]] = {}
 
 
 def parse_args() -> argparse.Namespace:
@@ -33,8 +27,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("sequence_id")
     parser.add_argument("--root", default=ROOT_DIR)
     parser.add_argument("--python-bin", default=os.environ.get("PYTHON_BIN", "python3"))
-    parser.add_argument("--datasets", default="speech_commands,esc50,urbansound8k")
-    parser.add_argument("--candidate-datasets", default="audioset")
+    parser.add_argument("--datasets", default="speech_commands,esc50,urbansound8k,fsd50k")
+    parser.add_argument("--candidate-datasets", default="")
     parser.add_argument("--results-root", default="results")
     parser.add_argument("--prepared-root", default="data/real-audio")
     parser.add_argument("--raw-root", default="data/raw/audio")
@@ -133,7 +127,7 @@ class Supervisor:
         raw_dir = self.resolve_raw_dir(dataset)
         if prepared:
             return {"dataset": dataset, "status": "prepared"}
-        if dataset in {"speech_commands", "esc50", "urbansound8k"} and raw_dir.exists():
+        if dataset in {"speech_commands", "esc50", "urbansound8k", "fsd50k"} and (raw_dir.exists() or dataset == "fsd50k"):
             self.log("prepare-dataset", dataset=dataset, raw_dir=str(raw_dir))
             self.run(
                 self.python_bin,
@@ -173,6 +167,11 @@ class Supervisor:
             for candidate in candidates:
                 if candidate.exists():
                     return candidate
+        if dataset == "fsd50k":
+            candidates = [self.raw_root / "fsd50k", self.raw_root / "fsd50k_hf"]
+            for candidate in candidates:
+                if candidate.exists():
+                    return candidate
         return self.raw_root / dataset
 
     def summarize_family(self, dataset: str, family: str) -> dict:
@@ -192,6 +191,18 @@ class Supervisor:
         payload = json.loads(output_file.read_text(encoding="utf-8"))
         self.log("summary-written", dataset=dataset, family=family, output=str(output_file))
         return {"dataset": dataset, "family": family, "summary_file": str(output_file), "summary": payload.get("summary")}
+
+    def load_existing_summary(self, dataset: str, family: str) -> dict | None:
+        output_file = self.summary_dir / f"{family}.json"
+        if not output_file.exists():
+            return None
+        payload = json.loads(output_file.read_text(encoding="utf-8"))
+        return {
+            "dataset": dataset,
+            "family": family,
+            "summary_file": str(output_file),
+            "summary": payload.get("summary"),
+        }
 
     def launch_dataset(self, dataset: str, family: str) -> None:
         env = {
@@ -239,13 +250,19 @@ class Supervisor:
         blocked: list[dict] = []
 
         for dataset in self.datasets:
+            family = f"{self.sequence_id}-{dataset}"
+            existing_summary = self.load_existing_summary(dataset, family)
+            if existing_summary is not None and self.count_sessions(family) == 0:
+                completed.append(existing_summary)
+                self.log("reuse-summary", dataset=dataset, family=family, output=existing_summary["summary_file"])
+                continue
+
             prep_state = self.maybe_prepare_dataset(dataset)
             if prep_state["status"] != "prepared":
                 blocked.append(prep_state)
                 self.log("dataset-blocked", **prep_state)
                 continue
 
-            family = f"{self.sequence_id}-{dataset}"
             self.launch_dataset(dataset, family)
             self.wait_for_family(family)
             completed.append(self.summarize_family(dataset, family))

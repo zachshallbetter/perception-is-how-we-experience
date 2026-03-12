@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     raw_dir = Path(args.raw_dir).resolve()
-    if args.dataset in REAL_SENSOR_DATASET_SPECS and args.dataset != "ubiqlog" and not args.bootstrap_only:
+    if args.dataset in REAL_SENSOR_DATASET_SPECS and not args.bootstrap_only:
         result = prepare_real_sensor_dataset(args.dataset, raw_dir, Path(args.output_root), args.sequence_length)
         print(json.dumps(result, indent=2))
         return 0

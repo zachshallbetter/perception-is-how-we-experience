@@ -69,6 +69,11 @@ REAL_SENSOR_DATASET_SPECS: Dict[str, RealSensorDatasetSpec] = {
         source_name="Geo-magnetic + WLAN",
         description="Indoor localization dataset projected into the canonical sensor contract.",
     ),
+    "realworld_har": RealSensorDatasetSpec(
+        dataset_id="realworld_har",
+        source_name="RealWorld HAR (HF)",
+        description="HF-hosted wearable accelerometer activity benchmark projected into the canonical sensor contract.",
+    ),
 }
 
 

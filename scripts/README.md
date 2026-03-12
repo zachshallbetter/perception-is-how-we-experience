@@ -24,6 +24,7 @@ Prepare or bootstrap a prepared real-sensor dataset for:
 - `mhealth`
 - `selfback`
 - `geomagnetic_wlan`
+- `realworld_har`
 
 ```bash
 python3 scripts/prepare_real_sensor_dataset.py \
@@ -33,7 +34,7 @@ python3 scripts/prepare_real_sensor_dataset.py \
 
 Behavior:
 - integrated real-sensor datasets parse raw files and write prepared canonical `train.pt` / `val.pt`
-- `ubiqlog` remains blocked because a canonical supervised task definition does not exist yet
+- `realworld_har` is the active HF-backed replacement for the old `ubiqlog` candidate slot
 
 Prepared outputs:
 - `data/real-sensor/<dataset>/manifest.json`
@@ -86,7 +87,7 @@ Real-data supervisor for prepared datasets.
 Current policy:
 - auto-prepares integrated sensor datasets if raw files exist
 - runs canonical vs merged once a dataset is prepared
-- leaves `ubiqlog` explicitly blocked until a canonical supervised task is defined
+- includes `realworld_har` in the bounded default lineup
 
 ### `real_sensor_sequence_status.sh`
 Print the live/final status of a real-data supervision sequence.
@@ -100,7 +101,7 @@ Prepare or bootstrap a prepared real-audio dataset for:
 - `speech_commands`
 - `esc50`
 - `urbansound8k`
-- `audioset`
+- `fsd50k`
 
 ```bash
 python3 scripts/prepare_real_audio_dataset.py \
@@ -112,7 +113,7 @@ Behavior:
 - `speech_commands`: parses the saved Hugging Face dataset and writes prepared canonical `train.pt` / `val.pt`
 - `esc50`: prepares canonical `train.pt` / `val.pt` from the extracted ESC-50 archive
 - `urbansound8k`: prepares canonical `train.pt` / `val.pt` from the extracted UrbanSound8K archive, using `ffmpeg` fallback for non-PCM WAVs
-- `audioset`: remains blocked because only metadata is staged locally
+- `fsd50k`: prepares canonical `train.pt` / `val.pt` from the Hugging Face parquet shards using a deterministic single-label projection
 
 Prepared outputs:
 - `data/real-audio/<dataset>/manifest.json`
@@ -169,9 +170,8 @@ bash scripts/chain_audio_to_sensor_sequence.sh real-audio-seq-002 real-sensor-se
 Real-audio supervisor for prepared datasets.
 
 Current policy:
-- auto-prepares `speech_commands`, `esc50`, and `urbansound8k` if raw files exist
+- auto-prepares `speech_commands`, `esc50`, `urbansound8k`, and `fsd50k`
 - runs the prepared `multimodal` audio benchmark once a dataset is prepared
-- leaves `audioset` explicitly blocked until local audio media exists
 - can be chained into a sensor sequence with `chain_audio_to_sensor_sequence.sh` once the bounded audio sequence completes
 - treats `real-audio-seq-001` as bootstrap evidence and `real-audio-seq-002` onward as the canonical integrated audio lane
 

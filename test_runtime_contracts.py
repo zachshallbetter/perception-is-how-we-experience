@@ -389,6 +389,7 @@ class RuntimeContractsTest(unittest.TestCase):
         validate_experiment_dataset("sensor_streaming", "mhealth")
         validate_experiment_dataset("sensor_streaming", "selfback")
         validate_experiment_dataset("sensor_streaming", "geomagnetic_wlan")
+        validate_experiment_dataset("sensor_streaming", "realworld_har")
 
     def test_real_sensor_dataset_registry_includes_integrated_datasets(self):
         self.assertEqual(
@@ -402,13 +403,14 @@ class RuntimeContractsTest(unittest.TestCase):
                 "mhealth",
                 "selfback",
                 "geomagnetic_wlan",
+                "realworld_har",
             },
         )
 
     def test_real_audio_dataset_registry_includes_integrated_audio_datasets(self):
         self.assertEqual(
             set(get_real_audio_dataset_ids()),
-            {"speech_commands", "esc50", "urbansound8k", "audioset"},
+            {"speech_commands", "esc50", "urbansound8k", "fsd50k"},
         )
 
     @patch("src.runtime.contracts.get_real_sensor_n_classes", return_value=6)

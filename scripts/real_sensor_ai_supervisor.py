@@ -19,13 +19,7 @@ if str(ROOT_DIR) not in sys.path:
 from src.data.real_sensor import REAL_SENSOR_DATASET_SPECS, real_sensor_dataset_is_prepared
 
 
-CANDIDATE_DATASETS = {
-    "ubiqlog": {
-        "source_name": "UbiqLog",
-        "status": "blocked-task-definition-missing",
-        "notes": "Raw logs are present, but there is no canonical supervised target task defined for the current sensor-streaming contract.",
-    },
-}
+CANDIDATE_DATASETS: dict[str, dict[str, str]] = {}
 
 
 def parse_args() -> argparse.Namespace:
@@ -33,8 +27,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("sequence_id")
     parser.add_argument("--root", default=ROOT_DIR)
     parser.add_argument("--python-bin", default=os.environ.get("PYTHON_BIN", "python3"))
-    parser.add_argument("--datasets", default="wisdm,pamap2,opportunity,uci_har,hhar,mhealth,selfback,geomagnetic_wlan")
-    parser.add_argument("--candidate-datasets", default="ubiqlog")
+    parser.add_argument("--datasets", default="wisdm,pamap2,opportunity,uci_har,hhar,mhealth,selfback,geomagnetic_wlan,realworld_har")
+    parser.add_argument("--candidate-datasets", default="")
     parser.add_argument("--results-root", default="results")
     parser.add_argument("--prepared-root", default="data/real-sensor")
     parser.add_argument("--raw-root", default="data/raw")
@@ -140,7 +134,7 @@ class Supervisor:
         raw_dir = self.raw_root / dataset
         if prepared:
             return {"dataset": dataset, "status": "prepared"}
-        if raw_dir.exists():
+        if raw_dir.exists() or dataset == "realworld_har":
             self.log("prepare-dataset", dataset=dataset, raw_dir=str(raw_dir))
             self.run(
                 self.python_bin,
@@ -183,6 +177,18 @@ class Supervisor:
         )
         payload = json.loads(output_file.read_text(encoding="utf-8"))
         self.log("summary-written", dataset=dataset, family=family, output=str(output_file))
+        return {
+            "dataset": dataset,
+            "family": family,
+            "summary_file": str(output_file),
+            "paired_comparison": payload.get("paired_comparison"),
+        }
+
+    def load_existing_summary(self, dataset: str, family: str) -> dict | None:
+        output_file = self.summary_dir / f"{family}.json"
+        if not output_file.exists():
+            return None
+        payload = json.loads(output_file.read_text(encoding="utf-8"))
         return {
             "dataset": dataset,
             "family": family,
@@ -236,13 +242,19 @@ class Supervisor:
         blocked: list[dict] = []
 
         for dataset in self.datasets:
+            family = f"{self.sequence_id}-{dataset}"
+            existing_summary = self.load_existing_summary(dataset, family)
+            if existing_summary is not None and self.count_sessions(family) == 0:
+                completed.append(existing_summary)
+                self.log("reuse-summary", dataset=dataset, family=family, output=existing_summary["summary_file"])
+                continue
+
             prep_state = self.maybe_prepare_dataset(dataset)
             if prep_state["status"] != "prepared":
                 blocked.append(prep_state)
                 self.log("dataset-blocked", **prep_state)
                 continue
 
-            family = f"{self.sequence_id}-{dataset}"
             self.launch_dataset(dataset, family)
             self.wait_for_family(family)
             completed.append(self.summarize_family(dataset, family))

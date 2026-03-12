@@ -164,6 +164,6 @@ Operationally, the generated package under `paper/figures/generated/results_pack
 
 - bootstrap evidence
 - canonical integrated evidence
-- explicitly blocked datasets (`audioset`, `ubiqlog`)
+- deferred legacy sources outside the active bounded chain
 
 This keeps historical bootstrap reports from being mistaken for the current integrated claim surface.

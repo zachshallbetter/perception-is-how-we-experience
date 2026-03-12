@@ -106,13 +106,13 @@ The real-data lane is intentionally conservative. Bootstrap evidence is includab
 \end{itemize}
 Canonical integrated evidence is still pending:
 \begin{itemize}[leftmargin=*]
-  \item \texttt{real-audio-seq-002} on \texttt{speech\_commands}, \texttt{esc50}, and \texttt{urbansound8k}
-  \item \texttt{real-sensor-seq-001} on the integrated real-sensor lineup
+  \item \texttt{real-audio-seq-002} on \texttt{speech\_commands}, \texttt{esc50}, \texttt{urbansound8k}, and \texttt{fsd50k}
+  \item \texttt{real-sensor-seq-001} on the integrated real-sensor lineup including \texttt{realworld\_har}
 \end{itemize}
-Blocked states remain explicit:
+Deferred legacy sources remain explicit but are no longer part of the active bounded chain:
 \begin{itemize}[leftmargin=*]
-  \item \texttt{audioset}: blocked because local media is missing
-  \item \texttt{ubiqlog}: blocked because no canonical supervised task has been defined
+  \item \texttt{audioset}: replaced operationally by \texttt{fsd50k}
+  \item \texttt{ubiqlog}: replaced operationally by \texttt{realworld\_har}
 \end{itemize}
 
 \section{Results}

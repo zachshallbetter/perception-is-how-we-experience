@@ -75,4 +75,4 @@ Implemented in dataloader factory:
 - `sensor_streaming` (generated multistream sensor dataset)
 - `multimodal` (audio-visual proxy dataset)
 
-Real benchmark ingestion is now bounded explicitly. Bootstrap real-data paths exist for WISDM and Speech Commands, while integrated canonical sequences remain pending and blocked datasets are preserved as explicit blocked states (for example `audioset` media missing and `ubiqlog` task definition missing).
+Real benchmark ingestion is now bounded explicitly. Bootstrap real-data paths exist for WISDM and Speech Commands, while integrated canonical sequences remain pending. The active bounded lineups now extend beyond those bootstrap runs to include HF-backed replacements `fsd50k` and `realworld_har`, while the older `audioset` and `ubiqlog` options remain deferred outside the active chain.

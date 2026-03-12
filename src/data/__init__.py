@@ -9,6 +9,7 @@ from .real_audio import (
 )
 from .real_audio_prepare import (
     prepare_esc50_dataset,
+    prepare_fsd50k_dataset,
     prepare_real_audio_dataset,
     prepare_speech_commands_dataset,
     prepare_urbansound8k_dataset,
@@ -26,6 +27,7 @@ from .real_sensor_prepare import (
     prepare_opportunity_dataset,
     prepare_pamap2_dataset,
     prepare_real_sensor_dataset,
+    prepare_realworld_har_dataset,
     prepare_selfback_dataset,
     prepare_uci_har_dataset,
     prepare_wisdm_dataset,
@@ -38,6 +40,7 @@ __all__ = [
     "get_real_audio_dataset_ids",
     "real_audio_dataset_is_prepared",
     "prepare_esc50_dataset",
+    "prepare_fsd50k_dataset",
     "prepare_real_audio_dataset",
     "prepare_speech_commands_dataset",
     "prepare_urbansound8k_dataset",
@@ -51,6 +54,7 @@ __all__ = [
     "prepare_opportunity_dataset",
     "prepare_pamap2_dataset",
     "prepare_real_sensor_dataset",
+    "prepare_realworld_har_dataset",
     "prepare_selfback_dataset",
     "prepare_uci_har_dataset",
     "prepare_wisdm_dataset",

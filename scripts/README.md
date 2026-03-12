@@ -157,6 +157,14 @@ PYTHON_BIN=/ai/envs/perception/bin/python \
 bash scripts/chain_real_audio_sequence.sh real-audio-seq-001 real-audio-seq-002
 ```
 
+### `chain_audio_to_sensor_sequence.sh`
+Wait for one bounded real-audio sequence to finish, then launch the next bounded real-sensor sequence automatically.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/chain_audio_to_sensor_sequence.sh real-audio-seq-002 real-sensor-seq-001
+```
+
 ### `real_audio_ai_supervisor.py`
 Real-audio supervisor for prepared datasets.
 
@@ -164,6 +172,7 @@ Current policy:
 - auto-prepares `speech_commands`, `esc50`, and `urbansound8k` if raw files exist
 - runs the prepared `multimodal` audio benchmark once a dataset is prepared
 - leaves `audioset` explicitly blocked until local audio media exists
+- can be chained into a sensor sequence with `chain_audio_to_sensor_sequence.sh` once the bounded audio sequence completes
 
 ### `real_audio_sequence_status.sh`
 Print the live/final status of a real-audio supervision sequence.

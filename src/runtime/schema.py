@@ -54,3 +54,77 @@ def validate_training_config_schema(config: Dict) -> None:
                 "expected_schema_version": TRAIN_CONFIG_SCHEMA_VERSION,
             },
         )
+
+# --- Live Streaming Schemas ---
+
+from dataclasses import dataclass
+from enum import Enum
+from typing import List
+
+import torch
+
+
+# Exhaustive discriminators for allowed modalities
+class ModalityType(Enum):
+    SMARTWATCH = "smartwatch"
+    ROOM_ENV = "room_env"
+    ROBOT_ARM = "robot_arm"
+
+
+class StreamStatus(Enum):
+    NOMINAL = "nominal"
+    DEGRADED = "degraded"
+    MISSING = "missing"
+
+
+@dataclass(frozen=True)
+class ModalityConfig:
+    feature_dim: int
+
+
+# SSoT for modality dimensions
+CANONICAL_MODALITIES: Dict[ModalityType, ModalityConfig] = {
+    ModalityType.SMARTWATCH: ModalityConfig(feature_dim=7),
+    ModalityType.ROOM_ENV: ModalityConfig(feature_dim=4),
+    ModalityType.ROBOT_ARM: ModalityConfig(feature_dim=9),
+}
+
+
+@dataclass(frozen=True)
+class SensorWindow:
+    """A purely constructed, frozen chunk of synchronized data for a single modality."""
+    modality: ModalityType
+    tensor: torch.Tensor  # shape: [B, time_steps, feature_dim]
+    status: StreamStatus
+
+    def __post_init__(self) -> None:
+        expected_dim = CANONICAL_MODALITIES[self.modality].feature_dim
+        if self.tensor.ndim != 3:
+            raise AppError(
+                ErrorCode.SCHEMA_VALIDATION_FAILED,
+                f"SensorWindow for {self.modality} must be rank-3 [B, T, C]. Got: {self.tensor.shape}"
+            )
+        if self.tensor.shape[2] != expected_dim:
+            raise AppError(
+                ErrorCode.SCHEMA_VALIDATION_FAILED,
+                f"SensorWindow for {self.modality} must have feature dim {expected_dim}. Got: {self.tensor.shape[2]}"
+            )
+
+
+@dataclass(frozen=True)
+class FrameEnvelope:
+    """Canonical input event format from the ingest pipeline."""
+    trace_id: str
+    timestamp_ms: int
+    modality_id: str
+    payload: List[float]
+
+    def get_modality_type(self) -> ModalityType:
+        try:
+            return ModalityType(self.modality_id)
+        except ValueError:
+            # No-fallback: hard error on unknown discriminator
+            raise AppError(
+                ErrorCode.SCHEMA_VALIDATION_FAILED,
+                f"SCHEMA_CHANGED: Unknown modality discriminator encountered: {self.modality_id}"
+            )

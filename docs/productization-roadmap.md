@@ -2,6 +2,12 @@
 
 This document explains how the current research result can become a usable system.
 
+It should be read together with:
+
+- `live-deployment-architecture.md` for the concrete runtime shape of a live system
+- `training-guide.md` for the current Titan execution path
+- `paper/sections/07-discussion.md` for the current evidence boundary
+
 ## What A User Can Actually Take From The Current Results
 
 Assuming the current paper claims hold up, the most practical outputs are:
@@ -19,6 +25,11 @@ Assuming the current paper claims hold up, the most practical outputs are:
    - define modalities canonically at the boundary
    - derive routing/setup from that canonical registry
    - treat the registry as operational infrastructure, not just metadata
+
+4. **A live-system operating model**
+   - inference can be continuous
+   - learning should be bounded, staged, and auditable
+   - adaptation should only happen behind explicit evaluation and rollback gates
 
 ## Who Should Actually Use This Now
 
@@ -67,6 +78,14 @@ Requirements:
 
 This is the highest-value next practical step.
 
+At this stage, the system should already behave like a narrow live perception service:
+
+- ingest typed sensor streams
+- build rolling windows
+- produce current-state predictions
+- expose modality health and confidence
+- remain useful under partial sensor degradation
+
 Suggested first proof domains:
 
 1. wearable + room sensing for context/activity inference
@@ -87,6 +106,8 @@ Requirements:
 
 At this stage, the replay findings become operational rather than purely academic.
 
+This is the stage where the current continual-learning contribution becomes product-relevant. The question stops being "does replay help on a benchmark?" and becomes "can the deployed system adapt without wiping out prior competence?"
+
 ### Stage 4: User-Facing Product Surface
 
 Goal:
@@ -104,6 +125,12 @@ Requirements:
 - privacy and retention policy for collected signals
 - failure-state behavior when one modality becomes unavailable
 
+This is the first stage where a normal user should feel the result directly. They should experience a system that can:
+
+- understand richer context than a single-modality detector,
+- stay useful when one signal is noisy or missing,
+- and improve over time without full system resets.
+
 ## What Must Be True Before Strong Product Claims
 
 Before claiming more than “research prototype,” the following should be true:
@@ -119,7 +146,12 @@ Before claiming more than “research prototype,” the following should be true
 1. Finish the active bounded sensor evidence ladder.
 2. Decide whether typed routing remains favorable after the capacity-matched and stress-test gates.
 3. Choose one real sensor domain and build a narrow prototype there.
-4. Treat the current continual-learning result as the stability mechanism inside that prototype.
+4. Add a live deployment layer for that domain:
+   - capture
+   - synchronization
+   - rolling inference
+   - confidence/fallback handling
+5. Treat the current continual-learning result as the stability mechanism inside that prototype.
 
 That path turns the current work from “interesting research platform” into “credible domain-specific perception system.”
 
@@ -132,3 +164,4 @@ Before turning this repository into a real deployed service, the minimum checkli
 3. a replay-store policy with retention and rollback rules
 4. capacity-matched routing evidence if canonical routing is being used as a product rationale
 5. user-facing metrics that describe system usefulness, not only paper metrics like CIL/BWT
+6. a live inference path with explicit modality health and degraded-operation behavior

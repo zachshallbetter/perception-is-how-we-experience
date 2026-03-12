@@ -356,5 +356,7 @@ python scripts/validate_setup.py --verbose
   - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/run_real_audio_sequence_autonomous.sh real-audio-seq-001`
 - To continue automatically into the next bounded real-audio sequence after one finishes:
   - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/chain_real_audio_sequence.sh real-audio-seq-001 real-audio-seq-002`
+- To hand off from the expanded audio sequence into the real-sensor lineup automatically:
+  - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/chain_audio_to_sensor_sequence.sh real-audio-seq-002 real-sensor-seq-001`
 - Check the real-audio supervisor with:
   - `bash scripts/real_audio_sequence_status.sh real-audio-seq-001`

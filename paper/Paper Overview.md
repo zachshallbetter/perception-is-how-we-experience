@@ -43,6 +43,22 @@ If you want to understand what a user or product team can actually do with the r
 
 This is important because the current strongest evidence remains replay-centric continual learning, while the broader perception-side sensor/MIME claim is still being strengthened through the active routing ladder.
 
+## Practical Reader Takeaway
+
+The practical takeaway should be read at two levels:
+
+1. **What the project currently proves**
+   - replay placement matters for continual retention
+   - typed routing has meaningful synthetic perception-side support
+   - real wearable and audio evidence is now moving from scaffold to executable benchmark path
+
+2. **What a future user would actually get if the architecture continues to validate**
+   - a perception system that can combine multiple sensory channels,
+   - stay coherent when one modality is noisy or missing,
+   - and keep adapting to new environments or users without full retraining.
+
+That is the right user-facing interpretation of the paper. The current value lies in the architecture and update discipline, not in claiming a finished universal perception product.
+
 ## What Currently Counts As Evidence
 
 Current strong evidence:

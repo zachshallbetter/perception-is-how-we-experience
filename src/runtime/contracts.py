@@ -7,7 +7,11 @@ from typing import Dict, Optional, Tuple
 import torch
 
 from src.data.real_audio import get_real_audio_dataset_ids, get_real_audio_n_classes, is_real_audio_dataset
-from src.data.real_sensor import get_real_sensor_dataset_ids, get_real_sensor_n_classes
+from src.data.real_sensor import (
+    get_real_sensor_dataset_ids,
+    get_real_sensor_n_classes,
+    is_real_sensor_dataset,
+)
 
 from .errors import AppError, ErrorCode
 from .mime_cases import (
@@ -127,7 +131,7 @@ def resolve_modality_setup(
         return {"vision": {"input_dim": 3, "use_conv": True}}, 5
     if experiment == SENSOR_STREAMING_EXPERIMENT_ID:
         n_classes = 5
-        if dataset is not None and dataset not in {"sensor_streaming", "sensor_streaming_smoke", "sensor_streaming_small"}:
+        if dataset is not None and is_real_sensor_dataset(dataset):
             n_classes = get_real_sensor_n_classes(dataset)
         if modality_routing_mode == "merged":
             return ({"sensor_stream": {"input_dim": 20, "use_conv": False}}, n_classes)

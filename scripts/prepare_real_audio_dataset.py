@@ -17,7 +17,7 @@ from src.data.real_audio import (
     REAL_AUDIO_DATASET_SPECS,
     get_real_audio_dataset_dir,
 )
-from src.data.real_audio_prepare import prepare_speech_commands_dataset
+from src.data.real_audio_prepare import prepare_real_audio_dataset
 
 
 def parse_args() -> argparse.Namespace:
@@ -46,8 +46,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     raw_dir = Path(args.raw_dir).resolve()
-    if args.dataset == "speech_commands" and not args.bootstrap_only:
-        result = prepare_speech_commands_dataset(raw_dir, Path(args.output_root), args.sequence_length)
+    if args.dataset in {"speech_commands", "esc50", "urbansound8k"} and not args.bootstrap_only:
+        result = prepare_real_audio_dataset(args.dataset, raw_dir, Path(args.output_root), args.sequence_length)
         print(json.dumps(result, indent=2))
         return 0
 

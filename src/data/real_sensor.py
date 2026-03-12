@@ -44,6 +44,31 @@ REAL_SENSOR_DATASET_SPECS: Dict[str, RealSensorDatasetSpec] = {
         source_name="OPPORTUNITY",
         description="Wearable + ambient + object sensing scaffold.",
     ),
+    "uci_har": RealSensorDatasetSpec(
+        dataset_id="uci_har",
+        source_name="UCI HAR",
+        description="Smartphone inertial activity recognition projected into the canonical sensor contract.",
+    ),
+    "hhar": RealSensorDatasetSpec(
+        dataset_id="hhar",
+        source_name="HHAR",
+        description="Phone/watch heterogeneity activity recognition projected into the canonical sensor contract.",
+    ),
+    "mhealth": RealSensorDatasetSpec(
+        dataset_id="mhealth",
+        source_name="MHEALTH",
+        description="Body-worn multimodal activity monitoring projected into the canonical sensor contract.",
+    ),
+    "selfback": RealSensorDatasetSpec(
+        dataset_id="selfback",
+        source_name="SELFBACK",
+        description="Phone/watch-style accelerometer activity dataset projected into the canonical sensor contract.",
+    ),
+    "geomagnetic_wlan": RealSensorDatasetSpec(
+        dataset_id="geomagnetic_wlan",
+        source_name="Geo-magnetic + WLAN",
+        description="Indoor localization dataset projected into the canonical sensor contract.",
+    ),
 }
 
 

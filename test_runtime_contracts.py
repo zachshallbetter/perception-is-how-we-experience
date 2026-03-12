@@ -9,8 +9,16 @@ from unittest.mock import patch
 import torch
 
 from src.data.loaders import SensorStreamingDataset
-from src.data.real_audio import PreparedRealAudioDataset, real_audio_dataset_is_prepared
-from src.data.real_sensor import PreparedRealSensorDataset, real_sensor_dataset_is_prepared
+from src.data.real_audio import (
+    PreparedRealAudioDataset,
+    get_real_audio_dataset_ids,
+    real_audio_dataset_is_prepared,
+)
+from src.data.real_sensor import (
+    PreparedRealSensorDataset,
+    get_real_sensor_dataset_ids,
+    real_sensor_dataset_is_prepared,
+)
 from src.data.real_audio_prepare import prepare_speech_commands_dataset
 from src.data.real_sensor_prepare import prepare_wisdm_dataset
 from src.runtime import (
@@ -144,6 +152,8 @@ class RuntimeContractsTest(unittest.TestCase):
 
     def test_validate_experiment_dataset_accepts_real_audio_dataset(self):
         validate_experiment_dataset("multimodal", "speech_commands")
+        validate_experiment_dataset("multimodal", "esc50")
+        validate_experiment_dataset("multimodal", "urbansound8k")
 
     @patch("src.runtime.contracts.get_real_audio_n_classes", return_value=35)
     def test_resolve_training_setup_real_audio_dataset_uses_manifest_class_count(self, _mock_n_classes):
@@ -215,6 +225,34 @@ class RuntimeContractsTest(unittest.TestCase):
 
     def test_validate_experiment_dataset_accepts_real_sensor_dataset(self):
         validate_experiment_dataset("sensor_streaming", "wisdm")
+        validate_experiment_dataset("sensor_streaming", "pamap2")
+        validate_experiment_dataset("sensor_streaming", "opportunity")
+        validate_experiment_dataset("sensor_streaming", "uci_har")
+        validate_experiment_dataset("sensor_streaming", "hhar")
+        validate_experiment_dataset("sensor_streaming", "mhealth")
+        validate_experiment_dataset("sensor_streaming", "selfback")
+        validate_experiment_dataset("sensor_streaming", "geomagnetic_wlan")
+
+    def test_real_sensor_dataset_registry_includes_integrated_datasets(self):
+        self.assertEqual(
+            set(get_real_sensor_dataset_ids()),
+            {
+                "wisdm",
+                "pamap2",
+                "opportunity",
+                "uci_har",
+                "hhar",
+                "mhealth",
+                "selfback",
+                "geomagnetic_wlan",
+            },
+        )
+
+    def test_real_audio_dataset_registry_includes_integrated_audio_datasets(self):
+        self.assertEqual(
+            set(get_real_audio_dataset_ids()),
+            {"speech_commands", "esc50", "urbansound8k", "audioset"},
+        )
 
     @patch("src.runtime.contracts.get_real_sensor_n_classes", return_value=6)
     def test_resolve_training_setup_real_sensor_dataset_uses_manifest_class_count(self, _mock_n_classes):

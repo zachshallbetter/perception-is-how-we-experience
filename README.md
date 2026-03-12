@@ -44,16 +44,29 @@ To keep the claims honest:
 - it is not a claim that MIME strings are parsed directly inside model `forward()`
 
 The strongest current evidence is still replay-centric continual learning. The next most important evidence path is the sensor/MIME canonical-vs-merged ablation now exposed through `scripts/launch_sensor_mime_ablation_titan.sh`, which uses a harder synthetic sensor task with compositional class codes, shared nuisance structure, and a shifted validation regime instead of random labels. The follow-on sequence is also wired: leave-one-out, MIME-binding corruption, single-modality noise robustness, and capacity-matched controls, with a bounded Titan-local supervisor to drive the sequence autonomously.
-Real-data scaffolding now plugs into the same `sensor_streaming` experiment family through prepared canonical manifests under `data/real-sensor/`. Current real-data status is explicit:
-- `wisdm`: first working raw-to-canonical converter
-- `pamap2`, `opportunity`: scaffolded in the runtime, parser pending
-- sensor candidates only: `uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`
-- audio status:
-  - `speech_commands`: first working prepared-audio path
-  - `esc50`, `urbansound8k`, `audioset`: candidate/scaffold status
+Real-data scaffolding now plugs into the same experiment families through prepared canonical manifests under `data/real-sensor/` and `data/real-audio/`. Current real-data status is explicit:
+- integrated real sensor datasets:
+  - `wisdm`
+  - `pamap2`
+  - `opportunity`
+  - `uci_har`
+  - `hhar`
+  - `mhealth`
+  - `selfback`
+  - `geomagnetic_wlan`
+- integrated real audio datasets:
+  - `speech_commands`
+  - `esc50`
+  - `urbansound8k`
+- explicitly blocked:
+  - `ubiqlog` because a canonical supervised task definition is still missing
+  - `audioset` because only metadata CSVs are present locally and no audio clips have been acquired
 
 The real-data path is also prepared for bounded autonomous progression on Titan through `scripts/run_real_sensor_sequence_autonomous.sh`, which only launches datasets that are actually prepared and reports blocked/candidate datasets explicitly. See `docs/real-sensor-datasets.md`.
-The same bounded pattern now exists for audio through `scripts/run_real_audio_sequence_autonomous.sh`, with `speech_commands` as the first integrated audio dataset in the `multimodal` experiment family.
+The same bounded pattern now exists for audio through `scripts/run_real_audio_sequence_autonomous.sh`, with `speech_commands`, `esc50`, and `urbansound8k` integrated into the `multimodal` experiment family.
+If you want one bounded sequence to hand off directly to the next without manual intervention, use the chain helpers:
+- `scripts/chain_real_sensor_sequence.sh`
+- `scripts/chain_real_audio_sequence.sh`
 
 ## Who This Is For
 

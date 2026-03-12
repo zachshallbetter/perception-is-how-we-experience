@@ -30,6 +30,9 @@ This directory is the operator and research bridge between the codebase and the 
 7. `real-sensor-datasets.md`
    - [/Users/zachshallbetter/Projects/Perception/docs/real-sensor-datasets.md](/Users/zachshallbetter/Projects/Perception/docs/real-sensor-datasets.md)
    - real-data support matrix, prepared-data contract, and autonomous progression rules
+8. `paper/latex/README.md`
+   - [/Users/zachshallbetter/Projects/Perception/paper/latex/README.md](/Users/zachshallbetter/Projects/Perception/paper/latex/README.md)
+   - TeX toolchain installation and manuscript PDF generation
 
 ## How To Read These Docs
 
@@ -38,6 +41,7 @@ This directory is the operator and research bridge between the codebase and the 
 - If you are trying to decide whether this work is usable beyond the paper, read [productization-roadmap.md](/Users/zachshallbetter/Projects/Perception/docs/productization-roadmap.md).
 - If you are thinking about a real live deployment, read [live-deployment-architecture.md](/Users/zachshallbetter/Projects/Perception/docs/live-deployment-architecture.md) before trying to infer product behavior from the training scripts.
 - If you are trying to understand the user-facing outcome rather than the mechanism details, read [README.md](/Users/zachshallbetter/Projects/Perception/README.md) together with [productization-roadmap.md](/Users/zachshallbetter/Projects/Perception/docs/productization-roadmap.md).
+- If you need the actual PDF manuscript artifact, use [paper/latex/README.md](/Users/zachshallbetter/Projects/Perception/paper/latex/README.md) instead of relying on whatever stale build products may already exist.
 
 ## Experiment and Review Docs
 

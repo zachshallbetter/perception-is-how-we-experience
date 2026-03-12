@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import csv
 import json
-from pathlib import Path
 import shutil
+from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -16,7 +16,6 @@ from .real_sensor import (
     REAL_SENSOR_DATASET_SPECS,
     get_real_sensor_dataset_dir,
 )
-
 
 WISDM_SENSOR_DIRS = {
     "phone_accel": ("phone", "accel"),
@@ -91,7 +90,9 @@ def _resample_timeseries(values: np.ndarray, sequence_length: int) -> np.ndarray
         return np.repeat(values.astype(np.float32, copy=False), sequence_length, axis=0)
     base_x = np.linspace(0.0, 1.0, values.shape[0], dtype=np.float32)
     target_x = np.linspace(0.0, 1.0, sequence_length, dtype=np.float32)
-    channels = [np.interp(target_x, base_x, values[:, idx]) for idx in range(values.shape[1])]
+    channels = [
+        np.interp(target_x, base_x, values[:, idx]) for idx in range(values.shape[1])
+    ]
     return np.stack(channels, axis=1).astype(np.float32, copy=False)
 
 
@@ -110,11 +111,15 @@ def _encode_split_payload(
         mean = stats[modality]["mean"]
         std = stats[modality]["std"]
         standardized = (stacked - mean) / std
-        payload[modality] = torch.from_numpy(standardized.astype(np.float32, copy=False))
+        payload[modality] = torch.from_numpy(
+            standardized.astype(np.float32, copy=False)
+        )
     return payload
 
 
-def _compute_standardization(samples: List[Dict[str, np.ndarray]]) -> Dict[str, Dict[str, np.ndarray]]:
+def _compute_standardization(
+    samples: List[Dict[str, np.ndarray]],
+) -> Dict[str, Dict[str, np.ndarray]]:
     stats: Dict[str, Dict[str, np.ndarray]] = {}
     for modality in SENSOR_MODALITIES:
         stacked = np.stack([sample[modality] for sample in samples], axis=0)
@@ -129,7 +134,9 @@ def _compute_standardization(samples: List[Dict[str, np.ndarray]]) -> Dict[str, 
     return stats
 
 
-def _window_array(values: np.ndarray, sequence_length: int, step: Optional[int] = None) -> List[np.ndarray]:
+def _window_array(
+    values: np.ndarray, sequence_length: int, step: Optional[int] = None
+) -> List[np.ndarray]:
     if values.shape[0] < sequence_length:
         return [_resample_timeseries(values, sequence_length)]
     stride = step if step is not None else max(1, sequence_length // 2)
@@ -197,7 +204,9 @@ def _finalize_sensor_dataset(
         "sample_counts": {"train": len(train_samples), "val": len(val_samples)},
         "notes": notes,
     }
-    (dataset_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (dataset_dir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
     dataset_card = [
         f"# {REAL_SENSOR_DATASET_SPECS[dataset_id].source_name} Prepared Dataset Card",
         "",
@@ -206,7 +215,9 @@ def _finalize_sensor_dataset(
     for key, value in projection_strategy.items():
         dataset_card.append(f"- {key}: {value}")
     dataset_card += ["", "Notes:"] + [f"- {note}" for note in notes]
-    (dataset_dir / "README.md").write_text("\n".join(dataset_card) + "\n", encoding="utf-8")
+    (dataset_dir / "README.md").write_text(
+        "\n".join(dataset_card) + "\n", encoding="utf-8"
+    )
 
     return {
         "dataset": dataset_id,
@@ -225,7 +236,9 @@ def _build_wisdm_modalities(
     watch_accel: np.ndarray,
     watch_gyro: np.ndarray,
 ) -> Dict[str, np.ndarray]:
-    smartwatch = np.concatenate([watch_accel, watch_gyro, _vector_norm(watch_accel)], axis=1)
+    smartwatch = np.concatenate(
+        [watch_accel, watch_gyro, _vector_norm(watch_accel)], axis=1
+    )
     room_env = np.concatenate([phone_accel, _vector_norm(phone_accel)], axis=1)
     accel_delta = watch_accel - phone_accel
     gyro_delta = watch_gyro - phone_gyro
@@ -298,11 +311,15 @@ def _parse_wisdm_line(line: str) -> Optional[Tuple[int, str, int, np.ndarray]]:
     subject_id = int(parts[0])
     activity_code = parts[1]
     timestamp = int(parts[2])
-    values = np.asarray([float(parts[3]), float(parts[4]), float(parts[5])], dtype=np.float32)
+    values = np.asarray(
+        [float(parts[3]), float(parts[4]), float(parts[5])], dtype=np.float32
+    )
     return subject_id, activity_code, timestamp, values
 
 
-def _group_wisdm_measurements(raw_root: Path) -> Dict[int, Dict[str, Dict[str, List[Tuple[int, np.ndarray]]]]]:
+def _group_wisdm_measurements(
+    raw_root: Path,
+) -> Dict[int, Dict[str, Dict[str, List[Tuple[int, np.ndarray]]]]]:
     grouped: Dict[int, Dict[str, Dict[str, List[Tuple[int, np.ndarray]]]]] = {}
     for sensor_key, (device, sensor_type) in WISDM_SENSOR_DIRS.items():
         sensor_dir = raw_root / device / sensor_type
@@ -321,15 +338,25 @@ def _group_wisdm_measurements(raw_root: Path) -> Dict[int, Dict[str, Dict[str, L
     return grouped
 
 
-def prepare_wisdm_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_wisdm_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     raw_root = _find_wisdm_raw_root(raw_dir.resolve())
     activity_map = _load_wisdm_activity_map(raw_root)
     grouped = _group_wisdm_measurements(raw_root)
     subjects = sorted(grouped)
     if not subjects:
-        raise ValueError("No WISDM measurements were found in the provided raw directory")
+        raise ValueError(
+            "No WISDM measurements were found in the provided raw directory"
+        )
 
-    label_codes = sorted({activity_code for activities in grouped.values() for activity_code in activities})
+    label_codes = sorted(
+        {
+            activity_code
+            for activities in grouped.values()
+            for activity_code in activities
+        }
+    )
     label_map = {code: idx for idx, code in enumerate(label_codes)}
 
     prepared_samples: List[Dict[str, object]] = []
@@ -357,10 +384,26 @@ def prepare_wisdm_dataset(raw_dir: Path, output_root: Path, sequence_length: int
 
     val_subject_count = max(1, round(len(subjects) * 0.2))
     val_subjects = set(subjects[-val_subject_count:])
-    train_samples = [sample["modalities"] for sample in prepared_samples if sample["subject_id"] not in val_subjects]
-    val_samples = [sample["modalities"] for sample in prepared_samples if sample["subject_id"] in val_subjects]
-    train_labels = [int(sample["label"]) for sample in prepared_samples if sample["subject_id"] not in val_subjects]
-    val_labels = [int(sample["label"]) for sample in prepared_samples if sample["subject_id"] in val_subjects]
+    train_samples = [
+        sample["modalities"]
+        for sample in prepared_samples
+        if sample["subject_id"] not in val_subjects
+    ]
+    val_samples = [
+        sample["modalities"]
+        for sample in prepared_samples
+        if sample["subject_id"] in val_subjects
+    ]
+    train_labels = [
+        int(sample["label"])
+        for sample in prepared_samples
+        if sample["subject_id"] not in val_subjects
+    ]
+    val_labels = [
+        int(sample["label"])
+        for sample in prepared_samples
+        if sample["subject_id"] in val_subjects
+    ]
 
     class_names = [activity_map.get(code, code) for code in label_codes]
     return _finalize_sensor_dataset(
@@ -385,13 +428,17 @@ def prepare_wisdm_dataset(raw_dir: Path, output_root: Path, sequence_length: int
         },
         split_strategy={
             "type": "subject-holdout",
-            "train_subjects": [int(subject) for subject in subjects[:-val_subject_count]],
+            "train_subjects": [
+                int(subject) for subject in subjects[:-val_subject_count]
+            ],
             "val_subjects": [int(subject) for subject in subjects[-val_subject_count:]],
         },
     )
 
 
-def prepare_uci_har_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_uci_har_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     candidates = [raw_dir.resolve(), raw_dir.resolve() / "UCI HAR Dataset"]
     root = None
     for candidate in candidates:
@@ -399,11 +446,16 @@ def prepare_uci_har_dataset(raw_dir: Path, output_root: Path, sequence_length: i
             root = candidate
             break
     if root is None:
-        raise FileNotFoundError(f"Could not locate UCI HAR inertial signal files under {raw_dir}")
+        raise FileNotFoundError(
+            f"Could not locate UCI HAR inertial signal files under {raw_dir}"
+        )
 
     def load_signal_split(split: str, prefix: str) -> np.ndarray:
         signals_dir = root / split / "Inertial Signals"
-        axes = [np.loadtxt(signals_dir / f"{prefix}_{axis}_{split}.txt", dtype=np.float32) for axis in ("x", "y", "z")]
+        axes = [
+            np.loadtxt(signals_dir / f"{prefix}_{axis}_{split}.txt", dtype=np.float32)
+            for axis in ("x", "y", "z")
+        ]
         return np.stack(axes, axis=2)
 
     train_body_acc = load_signal_split("train", "body_acc")
@@ -415,22 +467,51 @@ def prepare_uci_har_dataset(raw_dir: Path, output_root: Path, sequence_length: i
     gravity_train = train_total_acc - train_body_acc
     gravity_test = test_total_acc - test_body_acc
 
-    def build_samples(body_acc: np.ndarray, body_gyro: np.ndarray, total_acc: np.ndarray, gravity: np.ndarray) -> List[Dict[str, np.ndarray]]:
+    def build_samples(
+        body_acc: np.ndarray,
+        body_gyro: np.ndarray,
+        total_acc: np.ndarray,
+        gravity: np.ndarray,
+    ) -> List[Dict[str, np.ndarray]]:
         samples = []
         for idx in range(body_acc.shape[0]):
-            smartwatch = np.concatenate([body_acc[idx], _vector_norm(body_acc[idx])], axis=1)
-            room_env = np.concatenate([total_acc[idx], _vector_norm(total_acc[idx])], axis=1)
+            smartwatch = np.concatenate(
+                [body_acc[idx], _vector_norm(body_acc[idx])], axis=1
+            )
+            room_env = np.concatenate(
+                [total_acc[idx], _vector_norm(total_acc[idx])], axis=1
+            )
             robot_arm = np.concatenate(
-                [body_gyro[idx], gravity[idx], _vector_norm(body_gyro[idx]), _vector_norm(gravity[idx]), _vector_norm(body_acc[idx])],
+                [
+                    body_gyro[idx],
+                    gravity[idx],
+                    _vector_norm(body_gyro[idx]),
+                    _vector_norm(gravity[idx]),
+                    _vector_norm(body_acc[idx]),
+                ],
                 axis=1,
             )
-            samples.append({"smartwatch": smartwatch, "room_env": room_env, "robot_arm": robot_arm})
+            samples.append(
+                {"smartwatch": smartwatch, "room_env": room_env, "robot_arm": robot_arm}
+            )
         return samples
 
-    train_samples = build_samples(train_body_acc, train_body_gyro, train_total_acc, gravity_train)
-    val_samples = build_samples(test_body_acc, test_body_gyro, test_total_acc, gravity_test)
-    train_labels = (np.loadtxt(root / "train" / "y_train.txt", dtype=np.int64) - 1).astype(int).tolist()
-    val_labels = (np.loadtxt(root / "test" / "y_test.txt", dtype=np.int64) - 1).astype(int).tolist()
+    train_samples = build_samples(
+        train_body_acc, train_body_gyro, train_total_acc, gravity_train
+    )
+    val_samples = build_samples(
+        test_body_acc, test_body_gyro, test_total_acc, gravity_test
+    )
+    train_labels = (
+        (np.loadtxt(root / "train" / "y_train.txt", dtype=np.int64) - 1)
+        .astype(int)
+        .tolist()
+    )
+    val_labels = (
+        (np.loadtxt(root / "test" / "y_test.txt", dtype=np.int64) - 1)
+        .astype(int)
+        .tolist()
+    )
     class_names = [
         "walking",
         "walking_upstairs",
@@ -462,7 +543,9 @@ def prepare_uci_har_dataset(raw_dir: Path, output_root: Path, sequence_length: i
     )
 
 
-def _load_csv_xyz(path: Path, value_keys: Tuple[str, str, str], group_keys: Tuple[str, str]) -> Dict[Tuple[str, str], np.ndarray]:
+def _load_csv_xyz(
+    path: Path, value_keys: Tuple[str, str, str], group_keys: Tuple[str, str]
+) -> Dict[Tuple[str, str], np.ndarray]:
     grouped: Dict[Tuple[str, str], List[List[float]]] = {}
     with path.open(encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -471,36 +554,62 @@ def _load_csv_xyz(path: Path, value_keys: Tuple[str, str, str], group_keys: Tupl
             user = row.get(group_keys[0], "").strip()
             if not user or not label or label == "null":
                 continue
-            grouped.setdefault((user, label), []).append([float(row[key]) for key in value_keys])
-    return {key: np.asarray(values, dtype=np.float32) for key, values in grouped.items()}
+            grouped.setdefault((user, label), []).append(
+                [float(row[key]) for key in value_keys]
+            )
+    return {
+        key: np.asarray(values, dtype=np.float32) for key, values in grouped.items()
+    }
 
 
-def prepare_hhar_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
-    root = _resolve_candidate_root(raw_dir.resolve(), ["", "activity_recognition/Activity recognition exp"])
-    phone_acc = _load_csv_xyz(root / "Phones_accelerometer.csv", ("x", "y", "z"), ("User", "gt"))
-    phone_gyro = _load_csv_xyz(root / "Phones_gyroscope.csv", ("x", "y", "z"), ("User", "gt"))
-    watch_acc = _load_csv_xyz(root / "Watch_accelerometer.csv", ("x", "y", "z"), ("User", "gt"))
-    watch_gyro = _load_csv_xyz(root / "Watch_gyroscope.csv", ("x", "y", "z"), ("User", "gt"))
+def prepare_hhar_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
+    root = _resolve_candidate_root(
+        raw_dir.resolve(), ["", "activity_recognition/Activity recognition exp"]
+    )
+    phone_acc = _load_csv_xyz(
+        root / "Phones_accelerometer.csv", ("x", "y", "z"), ("User", "gt")
+    )
+    phone_gyro = _load_csv_xyz(
+        root / "Phones_gyroscope.csv", ("x", "y", "z"), ("User", "gt")
+    )
+    watch_acc = _load_csv_xyz(
+        root / "Watch_accelerometer.csv", ("x", "y", "z"), ("User", "gt")
+    )
+    watch_gyro = _load_csv_xyz(
+        root / "Watch_gyroscope.csv", ("x", "y", "z"), ("User", "gt")
+    )
     keys = sorted(set(phone_acc) & set(phone_gyro) & set(watch_acc) & set(watch_gyro))
     if not keys:
         raise ValueError("HHAR did not yield any aligned phone/watch activity groups")
     class_codes = sorted({label for _, label in keys})
     class_map = {label: idx for idx, label in enumerate(class_codes)}
     users = sorted({user for user, _ in keys})
-    val_users = set(users[-max(1, round(len(users) * 0.2)):])
+    val_users = set(users[-max(1, round(len(users) * 0.2)) :])
     train_samples: List[Dict[str, np.ndarray]] = []
     val_samples: List[Dict[str, np.ndarray]] = []
     train_labels: List[int] = []
     val_labels: List[int] = []
     for user, label in keys:
-        min_len = min(len(phone_acc[(user, label)]), len(phone_gyro[(user, label)]), len(watch_acc[(user, label)]), len(watch_gyro[(user, label)]))
+        min_len = min(
+            len(phone_acc[(user, label)]),
+            len(phone_gyro[(user, label)]),
+            len(watch_acc[(user, label)]),
+            len(watch_gyro[(user, label)]),
+        )
         if min_len < 16:
             continue
         pa = phone_acc[(user, label)][:min_len]
         pg = phone_gyro[(user, label)][:min_len]
         wa = watch_acc[(user, label)][:min_len]
         wg = watch_gyro[(user, label)][:min_len]
-        for w_pa, w_pg, w_wa, w_wg in zip(_window_array(pa, sequence_length), _window_array(pg, sequence_length), _window_array(wa, sequence_length), _window_array(wg, sequence_length)):
+        for w_pa, w_pg, w_wa, w_wg in zip(
+            _window_array(pa, sequence_length),
+            _window_array(pg, sequence_length),
+            _window_array(wa, sequence_length),
+            _window_array(wg, sequence_length),
+        ):
             sample = {
                 "smartwatch": np.concatenate([w_wa, w_wg, _vector_norm(w_wa)], axis=1),
                 "room_env": np.concatenate([w_pa, _vector_norm(w_pa)], axis=1),
@@ -535,7 +644,9 @@ def prepare_hhar_dataset(raw_dir: Path, output_root: Path, sequence_length: int)
     )
 
 
-def _contiguous_windows(values: np.ndarray, labels: np.ndarray, sequence_length: int) -> List[Tuple[np.ndarray, int]]:
+def _contiguous_windows(
+    values: np.ndarray, labels: np.ndarray, sequence_length: int
+) -> List[Tuple[np.ndarray, int]]:
     windows: List[Tuple[np.ndarray, int]] = []
     start = 0
     while start < len(labels):
@@ -551,13 +662,15 @@ def _contiguous_windows(values: np.ndarray, labels: np.ndarray, sequence_length:
     return windows
 
 
-def prepare_mhealth_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_mhealth_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     root = _resolve_candidate_root(raw_dir.resolve(), ["", "MHEALTHDATASET"])
     files = sorted(root.glob("mHealth_subject*.log"))
     if not files:
         raise FileNotFoundError(f"No MHEALTH subject logs found under {root}")
     subjects = [path.stem.replace("mHealth_subject", "") for path in files]
-    val_subjects = set(subjects[-max(1, round(len(subjects) * 0.2)):])
+    val_subjects = set(subjects[-max(1, round(len(subjects) * 0.2)) :])
     train_samples: List[Dict[str, np.ndarray]] = []
     val_samples: List[Dict[str, np.ndarray]] = []
     train_labels: List[int] = []
@@ -576,8 +689,12 @@ def prepare_mhealth_dataset(raw_dir: Path, output_root: Path, sequence_length: i
         wrist_mag = data[:, 20:23]
         stacked = np.concatenate(
             [
-                np.concatenate([wrist_acc, wrist_gyro, _vector_norm(wrist_acc)], axis=1),
-                np.concatenate([chest_acc, chest_ecg.mean(axis=1, keepdims=True)], axis=1),
+                np.concatenate(
+                    [wrist_acc, wrist_gyro, _vector_norm(wrist_acc)], axis=1
+                ),
+                np.concatenate(
+                    [chest_acc, chest_ecg.mean(axis=1, keepdims=True)], axis=1
+                ),
                 ankle,
             ],
             axis=1,
@@ -611,11 +728,16 @@ def prepare_mhealth_dataset(raw_dir: Path, output_root: Path, sequence_length: i
             "room_env": "chest accel xyz + mean ECG proxy",
             "robot_arm": "left ankle accel xyz + gyro xyz + magnetic xyz",
         },
-        split_strategy={"type": "subject-holdout", "val_subjects": sorted(val_subjects)},
+        split_strategy={
+            "type": "subject-holdout",
+            "val_subjects": sorted(val_subjects),
+        },
     )
 
 
-def prepare_pamap2_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_pamap2_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     raw_root = raw_dir.resolve()
     protocol_candidates = [
         raw_root / "Protocol",
@@ -633,7 +755,7 @@ def prepare_pamap2_dataset(raw_dir: Path, output_root: Path, sequence_length: in
     if not files:
         raise FileNotFoundError(f"No PAMAP2 protocol files found under {protocol_dir}")
     subject_ids = [path.stem.replace("subject", "") for path in files]
-    val_subjects = set(subject_ids[-max(1, round(len(subject_ids) * 0.2)):])
+    val_subjects = set(subject_ids[-max(1, round(len(subject_ids) * 0.2)) :])
     class_ids: set[int] = set()
     train_samples: List[Dict[str, np.ndarray]] = []
     val_samples: List[Dict[str, np.ndarray]] = []
@@ -669,7 +791,16 @@ def prepare_pamap2_dataset(raw_dir: Path, output_root: Path, sequence_length: in
             target_labels = val_labels if subject in val_subjects else train_labels
             target_samples.append(sample)
             target_labels.append(label - 1)
-    class_names = [PAMAP2_ACTIVITY_NAMES.get(class_id, f"activity_{class_id}") for class_id in sorted(class_ids)]
+    sorted_class_ids = sorted(class_ids)
+    label_map = {
+        class_id: mapped_id for mapped_id, class_id in enumerate(sorted_class_ids)
+    }
+    train_labels = [label_map[label + 1] for label in train_labels]
+    val_labels = [label_map[label + 1] for label in val_labels]
+    class_names = [
+        PAMAP2_ACTIVITY_NAMES.get(class_id, f"activity_{class_id}")
+        for class_id in sorted_class_ids
+    ]
     return _finalize_sensor_dataset(
         dataset_id="pamap2",
         raw_dir=raw_dir,
@@ -688,12 +819,20 @@ def prepare_pamap2_dataset(raw_dir: Path, output_root: Path, sequence_length: in
             "room_env": "chest IMU acc16g xyz + heart rate",
             "robot_arm": "ankle IMU acc16g xyz + gyro xyz + magnetic xyz",
         },
-        split_strategy={"type": "subject-holdout", "val_subjects": sorted(val_subjects)},
+        split_strategy={
+            "type": "subject-holdout",
+            "val_subjects": sorted(val_subjects),
+        },
     )
 
 
-def prepare_opportunity_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
-    root = _resolve_candidate_root(raw_dir.resolve(), ["", "OpportunityUCIDataset", "OpportunityUCIDataset/dataset", "dataset"])
+def prepare_opportunity_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
+    root = _resolve_candidate_root(
+        raw_dir.resolve(),
+        ["", "OpportunityUCIDataset", "OpportunityUCIDataset/dataset", "dataset"],
+    )
     dataset_dir = root if root.name == "dataset" else root / "dataset"
     files = sorted(dataset_dir.glob("*.dat"))
     if not files:
@@ -708,9 +847,15 @@ def prepare_opportunity_dataset(raw_dir: Path, output_root: Path, sequence_lengt
         data = _sanitize_numeric(np.genfromtxt(path, dtype=np.float32))
         labels = data[:, 243].astype(np.int64)
         class_ids.update(int(label) for label in labels if label > 0)
-        smartwatch = np.concatenate([data[:, 22:25], data[:, 31:34], _vector_norm(data[:, 22:25])], axis=1)
-        room_env = np.concatenate([data[:, 16:19], _vector_norm(data[:, 16:19])], axis=1)
-        robot_arm = np.concatenate([data[:, 7:10], data[:, 25:28], data[:, 34:37]], axis=1)
+        smartwatch = np.concatenate(
+            [data[:, 22:25], data[:, 31:34], _vector_norm(data[:, 22:25])], axis=1
+        )
+        room_env = np.concatenate(
+            [data[:, 16:19], _vector_norm(data[:, 16:19])], axis=1
+        )
+        robot_arm = np.concatenate(
+            [data[:, 7:10], data[:, 25:28], data[:, 34:37]], axis=1
+        )
         stacked = np.concatenate([smartwatch, room_env, robot_arm], axis=1)
         for window, label in _contiguous_windows(stacked, labels, sequence_length):
             sample = {
@@ -747,11 +892,19 @@ def prepare_opportunity_dataset(raw_dir: Path, output_root: Path, sequence_lengt
     )
 
 
-def prepare_selfback_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_selfback_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     root = _resolve_candidate_root(raw_dir.resolve(), ["", "selfBACK"])
     phone_root = root / "t"
     watch_root = root / "w"
-    activity_dirs = sorted([path.name for path in phone_root.iterdir() if path.is_dir() and not path.name.startswith("._")])
+    activity_dirs = sorted(
+        [
+            path.name
+            for path in phone_root.iterdir()
+            if path.is_dir() and not path.name.startswith("._")
+        ]
+    )
     class_map = {activity: idx for idx, activity in enumerate(activity_dirs)}
     train_samples: List[Dict[str, np.ndarray]] = []
     val_samples: List[Dict[str, np.ndarray]] = []
@@ -769,18 +922,34 @@ def prepare_selfback_dataset(raw_dir: Path, output_root: Path, sequence_length: 
             paired_files.append((activity, phone_file, watch_file))
             all_file_ids.append(phone_file.stem)
     unique_file_ids = sorted(set(all_file_ids))
-    val_ids = set(unique_file_ids[-max(1, round(len(unique_file_ids) * 0.2)):])
+    val_ids = set(unique_file_ids[-max(1, round(len(unique_file_ids) * 0.2)) :])
     for activity, phone_file, watch_file in paired_files:
-        phone = np.genfromtxt(phone_file, delimiter=",", skip_header=1, usecols=(1, 2, 3), dtype=np.float32)
-        watch = np.genfromtxt(watch_file, delimiter=",", skip_header=1, usecols=(1, 2, 3), dtype=np.float32)
+        phone = np.genfromtxt(
+            phone_file,
+            delimiter=",",
+            skip_header=1,
+            usecols=(1, 2, 3),
+            dtype=np.float32,
+        )
+        watch = np.genfromtxt(
+            watch_file,
+            delimiter=",",
+            skip_header=1,
+            usecols=(1, 2, 3),
+            dtype=np.float32,
+        )
         min_len = min(len(phone), len(watch))
         if min_len < 16:
             continue
         phone = phone[:min_len]
         watch = watch[:min_len]
-        for p_win, w_win in zip(_window_array(phone, sequence_length), _window_array(watch, sequence_length)):
+        for p_win, w_win in zip(
+            _window_array(phone, sequence_length), _window_array(watch, sequence_length)
+        ):
             sample = {
-                "smartwatch": np.concatenate([w_win, p_win, _vector_norm(w_win)], axis=1),
+                "smartwatch": np.concatenate(
+                    [w_win, p_win, _vector_norm(w_win)], axis=1
+                ),
                 "room_env": np.concatenate([p_win, _vector_norm(p_win)], axis=1),
                 "robot_arm": np.concatenate([p_win, w_win, w_win - p_win], axis=1),
             }
@@ -813,7 +982,9 @@ def prepare_selfback_dataset(raw_dir: Path, output_root: Path, sequence_length: 
     )
 
 
-def prepare_geomagnetic_wlan_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_geomagnetic_wlan_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     root = raw_dir.resolve()
     wifi_by_place: Dict[int, np.ndarray] = {}
     train_samples: List[Dict[str, np.ndarray]] = []
@@ -822,19 +993,41 @@ def prepare_geomagnetic_wlan_dataset(raw_dir: Path, output_root: Path, sequence_
     val_labels: List[int] = []
     place_ids: set[int] = set()
     for measure in (1, 2):
-        phone_name = f"measure{measure}_smartphone_sens.csv" if measure == 1 else f"measure{measure}_phone_sens.csv"
-        phone_sens = np.genfromtxt(root / phone_name, delimiter=",", skip_header=1, dtype=np.float32)
-        watch_name = f"measure{measure}_smartwatch_sens.csv" if measure == 1 else f"measure{measure}_watch_sens.csv"
-        watch_sens = np.genfromtxt(root / watch_name, delimiter=",", skip_header=1, dtype=np.float32)
-        phone_wifi = np.genfromtxt(root / f"measure{measure}_smartphone_wifi.csv", delimiter=",", dtype=np.float32)
-        intervals = np.genfromtxt(root / f"measure{measure}_timestamp_id.csv", delimiter=",", dtype=np.int64)
+        phone_name = (
+            f"measure{measure}_smartphone_sens.csv"
+            if measure == 1
+            else f"measure{measure}_phone_sens.csv"
+        )
+        phone_sens = np.genfromtxt(
+            root / phone_name, delimiter=",", skip_header=1, dtype=np.float32
+        )
+        watch_name = (
+            f"measure{measure}_smartwatch_sens.csv"
+            if measure == 1
+            else f"measure{measure}_watch_sens.csv"
+        )
+        watch_sens = np.genfromtxt(
+            root / watch_name, delimiter=",", skip_header=1, dtype=np.float32
+        )
+        phone_wifi = np.genfromtxt(
+            root / f"measure{measure}_smartphone_wifi.csv",
+            delimiter=",",
+            dtype=np.float32,
+        )
+        intervals = np.genfromtxt(
+            root / f"measure{measure}_timestamp_id.csv", delimiter=",", dtype=np.int64
+        )
         for row in phone_wifi:
             place_id = int(row[0])
             wifi_by_place[place_id] = row[1:]
         for start_ts, end_ts, place_id in intervals:
             phone_mask = (phone_sens[:, 0] >= start_ts) & (phone_sens[:, 0] <= end_ts)
             watch_mask = (watch_sens[:, 0] >= start_ts) & (watch_sens[:, 0] <= end_ts)
-            if int(place_id) not in wifi_by_place or not phone_mask.any() or not watch_mask.any():
+            if (
+                int(place_id) not in wifi_by_place
+                or not phone_mask.any()
+                or not watch_mask.any()
+            ):
                 continue
             place_ids.add(int(place_id))
             phone_rows = phone_sens[phone_mask][:, 1:13]
@@ -845,9 +1038,19 @@ def prepare_geomagnetic_wlan_dataset(raw_dir: Path, output_root: Path, sequence_
             top4 = np.sort(wifi)[-4:].astype(np.float32) / 100.0
             room_env = np.repeat(top4.reshape(1, -1), sequence_length, axis=0)
             sample = {
-                "smartwatch": np.concatenate([watch_rows[:, 0:3], watch_rows[:, 9:12], _vector_norm(watch_rows[:, 0:3])], axis=1),
+                "smartwatch": np.concatenate(
+                    [
+                        watch_rows[:, 0:3],
+                        watch_rows[:, 9:12],
+                        _vector_norm(watch_rows[:, 0:3]),
+                    ],
+                    axis=1,
+                ),
                 "room_env": room_env,
-                "robot_arm": np.concatenate([phone_rows[:, 0:3], phone_rows[:, 9:12], phone_rows[:, 3:6]], axis=1),
+                "robot_arm": np.concatenate(
+                    [phone_rows[:, 0:3], phone_rows[:, 9:12], phone_rows[:, 3:6]],
+                    axis=1,
+                ),
             }
             if measure == 1:
                 train_samples.append(sample)
@@ -878,11 +1081,17 @@ def prepare_geomagnetic_wlan_dataset(raw_dir: Path, output_root: Path, sequence_
             "room_env": "top-4 Wi-Fi RSSI values repeated across the interval window",
             "robot_arm": "phone accel xyz + phone gyro xyz + phone magnetic xyz",
         },
-        split_strategy={"type": "measure-holdout", "train_measure": 1, "val_measure": 2},
+        split_strategy={
+            "type": "measure-holdout",
+            "train_measure": 1,
+            "val_measure": 2,
+        },
     )
 
 
-def prepare_realworld_har_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_realworld_har_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     resolved_raw = raw_dir.resolve()
     required = ["x_train.npy", "y_train.npy", "x_valid.npy", "y_valid.npy"]
     if not all((resolved_raw / name).exists() for name in required):
@@ -907,7 +1116,12 @@ def prepare_realworld_har_dataset(raw_dir: Path, output_root: Path, sequence_len
 
     train_samples = [build_sample(sample) for sample in x_train]
     val_samples = [build_sample(sample) for sample in x_val]
-    max_label = int(max(int(np.max(y_train)) if y_train.size else 0, int(np.max(y_val)) if y_val.size else 0))
+    max_label = int(
+        max(
+            int(np.max(y_train)) if y_train.size else 0,
+            int(np.max(y_val)) if y_val.size else 0,
+        )
+    )
     class_names = [f"activity_{idx}" for idx in range(max_label + 1)]
     return _finalize_sensor_dataset(
         dataset_id="realworld_har",
@@ -928,11 +1142,17 @@ def prepare_realworld_har_dataset(raw_dir: Path, output_root: Path, sequence_len
             "room_env": "accelerometer xyz + accel norm",
             "robot_arm": "accelerometer xyz + timestep delta xyz + squared accel xyz",
         },
-        split_strategy={"type": "hf-downstream-holdout", "train_split": "x_train/y_train", "val_split": "x_valid/y_valid"},
+        split_strategy={
+            "type": "hf-downstream-holdout",
+            "train_split": "x_train/y_train",
+            "val_split": "x_valid/y_valid",
+        },
     )
 
 
-def prepare_real_sensor_dataset(dataset: str, raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_real_sensor_dataset(
+    dataset: str, raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     if dataset == "wisdm":
         return prepare_wisdm_dataset(raw_dir, output_root, sequence_length)
     if dataset == "pamap2":

@@ -11,7 +11,6 @@ from typing import Dict, Iterable, Optional, Union
 import torch
 from torch.utils.data import Dataset
 
-
 PREPARED_AUDIO_SCHEMA_VERSION = 1
 DEFAULT_REAL_AUDIO_ROOT = Path("data/real-audio")
 REAL_AUDIO_FEATURE_DIM = 128
@@ -65,17 +64,23 @@ def is_real_audio_dataset(dataset_name: str) -> bool:
     return dataset_name in REAL_AUDIO_DATASET_SPECS
 
 
-def get_real_audio_dataset_dir(dataset_name: str, root: Optional[Union[str, Path]] = None) -> Path:
+def get_real_audio_dataset_dir(
+    dataset_name: str, root: Optional[Union[str, Path]] = None
+) -> Path:
     if not is_real_audio_dataset(dataset_name):
         raise ValueError(f"Unknown real audio dataset: {dataset_name}")
     return get_real_audio_root(root) / dataset_name
 
 
-def get_real_audio_manifest_path(dataset_name: str, root: Optional[Union[str, Path]] = None) -> Path:
+def get_real_audio_manifest_path(
+    dataset_name: str, root: Optional[Union[str, Path]] = None
+) -> Path:
     return get_real_audio_dataset_dir(dataset_name, root) / "manifest.json"
 
 
-def load_real_audio_manifest(dataset_name: str, root: Optional[Union[str, Path]] = None) -> dict:
+def load_real_audio_manifest(
+    dataset_name: str, root: Optional[Union[str, Path]] = None
+) -> dict:
     manifest_path = get_real_audio_manifest_path(dataset_name, root)
     if not manifest_path.exists():
         raise FileNotFoundError(
@@ -113,15 +118,21 @@ def real_audio_dataset_is_prepared(
     return (dataset_dir / train_file).exists() and (dataset_dir / val_file).exists()
 
 
-def get_real_audio_n_classes(dataset_name: str, root: Optional[Union[str, Path]] = None) -> int:
+def get_real_audio_n_classes(
+    dataset_name: str, root: Optional[Union[str, Path]] = None
+) -> int:
     manifest = load_real_audio_manifest(dataset_name, root)
     n_classes = manifest.get("n_classes")
     if not isinstance(n_classes, int) or n_classes <= 0:
-        raise ValueError(f"Manifest for '{dataset_name}' must define positive integer n_classes")
+        raise ValueError(
+            f"Manifest for '{dataset_name}' must define positive integer n_classes"
+        )
     return n_classes
 
 
-def _resolve_split_file(dataset_name: str, split: str, root: Optional[Union[str, Path]] = None) -> Path:
+def _resolve_split_file(
+    dataset_name: str, split: str, root: Optional[Union[str, Path]] = None
+) -> Path:
     manifest = load_real_audio_manifest(dataset_name, root)
     split_file = manifest.get("splits", {}).get(split)
     if not split_file:

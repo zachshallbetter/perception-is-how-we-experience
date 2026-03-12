@@ -30,7 +30,9 @@ class Supervisor:
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.summary_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = Path(args.log_file).resolve()
-        self.report_file = self.summary_dir / f"{args.current_family}-autonomy-report.json"
+        self.report_file = (
+            self.summary_dir / f"{args.current_family}-autonomy-report.json"
+        )
         self.python_bin = args.python_bin
         self.current_family = args.current_family
         self.poll_seconds = args.poll_seconds
@@ -42,7 +44,9 @@ class Supervisor:
         self.active_family: str | None = None
 
     def write_report_payload(self, payload: dict) -> None:
-        self.report_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        self.report_file.write_text(
+            json.dumps(payload, indent=2) + "\n", encoding="utf-8"
+        )
 
     def write_progress_report(
         self,
@@ -88,7 +92,9 @@ class Supervisor:
             fh.write(line + "\n")
         print(line, flush=True)
 
-    def run(self, *cmd: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
+    def run(
+        self, *cmd: str, env: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess:
         merged_env = os.environ.copy()
         if env:
             merged_env.update(env)
@@ -115,7 +121,11 @@ class Supervisor:
         )
         if result.returncode != 0:
             return 0
-        return sum(1 for line in result.stdout.splitlines() if f"sensor-mime-{family}-gpu" in line)
+        return sum(
+            1
+            for line in result.stdout.splitlines()
+            if f"sensor-mime-{family}-gpu" in line
+        )
 
     def wait_for_family(
         self,
@@ -128,7 +138,13 @@ class Supervisor:
         while True:
             sessions = self.count_sessions(family)
             results = self.count_results(family)
-            self.log("wait-family", family=family, sessions=sessions, results=results, expected=self.expected_results)
+            self.log(
+                "wait-family",
+                family=family,
+                sessions=sessions,
+                results=results,
+                expected=self.expected_results,
+            )
             self.write_progress_report(
                 status="running",
                 completed=completed,
@@ -147,7 +163,10 @@ class Supervisor:
             time.sleep(self.poll_seconds)
 
     def family_complete(self, family: str) -> bool:
-        return self.count_results(family) >= self.expected_results and self.count_sessions(family) == 0
+        return (
+            self.count_results(family) >= self.expected_results
+            and self.count_sessions(family) == 0
+        )
 
     def family_has_activity(self, family: str) -> bool:
         return self.count_results(family) > 0 or self.count_sessions(family) > 0
@@ -166,7 +185,11 @@ class Supervisor:
         )
         payload = json.loads(output_file.read_text(encoding="utf-8"))
         self.log("summary-written", family=family, output=str(output_file))
-        return FamilyResult(family=family, summary_file=str(output_file), paired=payload.get("paired_comparison", []))
+        return FamilyResult(
+            family=family,
+            summary_file=str(output_file),
+            paired=payload.get("paired_comparison", []),
+        )
 
     def baseline_gap(self, family_result: FamilyResult) -> float:
         return self.variant_gap(family_result, "baseline")
@@ -179,7 +202,9 @@ class Supervisor:
             f"Variant '{variant}' paired comparison missing for family {family_result.family}"
         )
 
-    def launch(self, family: str, launcher: str, *, extra_env: dict[str, str] | None = None) -> None:
+    def launch(
+        self, family: str, launcher: str, *, extra_env: dict[str, str] | None = None
+    ) -> None:
         env = {
             "PYTHON_BIN": self.python_bin,
             "CAMPAIGN_ID": f"sensor-mime-{family}",
@@ -200,7 +225,9 @@ class Supervisor:
                 summary[key] = float(row["canonical_minus_merged"])
         return summary
 
-    def write_report(self, status: str, baseline_family: FamilyResult, completed: list[FamilyResult]) -> None:
+    def write_report(
+        self, status: str, baseline_family: FamilyResult, completed: list[FamilyResult]
+    ) -> None:
         self.write_progress_report(
             status=status,
             completed=completed,
@@ -211,7 +238,9 @@ class Supervisor:
         )
         self.log("report-written", status=status, report=str(self.report_file))
 
-    def determine_stop_state(self, baseline_family: FamilyResult, completed: list[FamilyResult]) -> str:
+    def determine_stop_state(
+        self, baseline_family: FamilyResult, completed: list[FamilyResult]
+    ) -> str:
         baseline_gap = self.baseline_gap(baseline_family)
         if baseline_gap < 0:
             return "merged-favored"
@@ -232,7 +261,9 @@ class Supervisor:
             "noise_room_env",
             "noise_robot_arm",
         ]
-        available_stress = [variant_gaps[name] for name in stress_variants if name in variant_gaps]
+        available_stress = [
+            variant_gaps[name] for name in stress_variants if name in variant_gaps
+        ]
         supported_stress = sum(gap > 0 for gap in available_stress)
 
         if (
@@ -272,17 +303,49 @@ class Supervisor:
 
         sequence.extend(
             [
-                (f"{self.current_family}-drop-smartwatch", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "drop_smartwatch"}),
-                (f"{self.current_family}-drop-room-env", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "drop_room_env"}),
-                (f"{self.current_family}-drop-robot-arm", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "drop_robot_arm"}),
-                (f"{self.current_family}-corrupt-bindings", "scripts/launch_sensor_mime_corruption_titan.sh", {"SENSOR_VARIANT": "corrupt_bindings"}),
-                (f"{self.current_family}-noise-smartwatch", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "noise_smartwatch"}),
-                (f"{self.current_family}-noise-room-env", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "noise_room_env"}),
-                (f"{self.current_family}-noise-robot-arm", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "noise_robot_arm"}),
+                (
+                    f"{self.current_family}-drop-smartwatch",
+                    "scripts/launch_sensor_mime_ablation_titan.sh",
+                    {"SENSOR_VARIANT": "drop_smartwatch"},
+                ),
+                (
+                    f"{self.current_family}-drop-room-env",
+                    "scripts/launch_sensor_mime_ablation_titan.sh",
+                    {"SENSOR_VARIANT": "drop_room_env"},
+                ),
+                (
+                    f"{self.current_family}-drop-robot-arm",
+                    "scripts/launch_sensor_mime_ablation_titan.sh",
+                    {"SENSOR_VARIANT": "drop_robot_arm"},
+                ),
+                (
+                    f"{self.current_family}-corrupt-bindings",
+                    "scripts/launch_sensor_mime_corruption_titan.sh",
+                    {"SENSOR_VARIANT": "corrupt_bindings"},
+                ),
+                (
+                    f"{self.current_family}-noise-smartwatch",
+                    "scripts/launch_sensor_mime_ablation_titan.sh",
+                    {"SENSOR_VARIANT": "noise_smartwatch"},
+                ),
+                (
+                    f"{self.current_family}-noise-room-env",
+                    "scripts/launch_sensor_mime_ablation_titan.sh",
+                    {"SENSOR_VARIANT": "noise_room_env"},
+                ),
+                (
+                    f"{self.current_family}-noise-robot-arm",
+                    "scripts/launch_sensor_mime_ablation_titan.sh",
+                    {"SENSOR_VARIANT": "noise_robot_arm"},
+                ),
             ]
         )
 
-        active_sequence = [item for item in sequence if self.count_sessions(item[0]) > 0 and not self.family_complete(item[0])]
+        active_sequence = [
+            item
+            for item in sequence
+            if self.count_sessions(item[0]) > 0 and not self.family_complete(item[0])
+        ]
         pending_sequence = [item for item in sequence if item not in active_sequence]
         ordered_launches = active_sequence + pending_sequence
         if active_sequence:
@@ -300,7 +363,9 @@ class Supervisor:
                     self.launch(family, launcher)
                 else:
                     self.launch(family, launcher, extra_env=env)
-            self.wait_for_family(family, completed=completed, baseline_family=baseline_family)
+            self.wait_for_family(
+                family, completed=completed, baseline_family=baseline_family
+            )
             completed.append(self.summarize_family(family))
 
         status = self.determine_stop_state(baseline_family, completed)
@@ -317,7 +382,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--results-root", default="results")
     parser.add_argument("--log-dir", default="results/titan_logs")
     parser.add_argument("--summary-dir", default="results/sensor_sequence_summaries")
-    parser.add_argument("--log-file", default="results/titan_logs/sensor-sequence-supervisor.log")
+    parser.add_argument(
+        "--log-file", default="results/titan_logs/sensor-sequence-supervisor.log"
+    )
     parser.add_argument("--poll-seconds", type=int, default=60)
     parser.add_argument("--expected-results", type=int, default=6)
     parser.add_argument("--competitive-gap-threshold", type=float, default=0.03)
@@ -335,13 +402,21 @@ def main() -> int:
     try:
         return supervisor.execute()
     except Exception as exc:
-        supervisor.log("supervisor-failed", family=supervisor.active_family or supervisor.current_family, error=str(exc))
+        supervisor.log(
+            "supervisor-failed",
+            family=supervisor.active_family or supervisor.current_family,
+            error=str(exc),
+        )
         supervisor.write_progress_report(
             status="failed",
             completed=[],
             active_family=supervisor.active_family,
-            active_results=supervisor.count_results(supervisor.active_family or supervisor.current_family),
-            active_sessions=supervisor.count_sessions(supervisor.active_family or supervisor.current_family),
+            active_results=supervisor.count_results(
+                supervisor.active_family or supervisor.current_family
+            ),
+            active_sessions=supervisor.count_sessions(
+                supervisor.active_family or supervisor.current_family
+            ),
             error=str(exc),
         )
         return 1

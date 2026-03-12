@@ -14,3 +14,10 @@ data/
 monitor_dashboard.html
 experiment_orchestrator.log
 .env.local
+paper/latex/*.aux
+paper/latex/*.bbl
+paper/latex/*.blg
+paper/latex/*.fdb_latexmk
+paper/latex/*.fls
+paper/latex/*.log
+paper/latex/*.out

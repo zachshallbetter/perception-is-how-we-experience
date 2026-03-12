@@ -27,7 +27,9 @@ def main() -> int:
                 "replay_mode": cfg.get("replay_mode"),
                 "replay_weight": cfg.get("replay_weight"),
                 "replay_buffer": cfg.get("replay_buffer"),
-                "distillation_temp": cfg.get("distill_temp", cfg.get("distillation_temp")),
+                "distillation_temp": cfg.get(
+                    "distill_temp", cfg.get("distillation_temp")
+                ),
                 "ewc_lambda": cfg.get("ewc_lambda"),
                 "si_lambda": cfg.get("si_lambda"),
                 "no_parameter_isolation": cfg.get("no_parameter_isolation"),
@@ -37,7 +39,9 @@ def main() -> int:
             }
         )
 
-    rows.sort(key=lambda row: (row["BWT"] if row["BWT"] is not None else -1e9), reverse=True)
+    rows.sort(
+        key=lambda row: (row["BWT"] if row["BWT"] is not None else -1e9), reverse=True
+    )
 
     for row in rows:
         print(

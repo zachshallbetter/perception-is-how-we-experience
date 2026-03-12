@@ -167,7 +167,6 @@ The current repository should still be read as a design reference and research p
 - `src/models/` — canonical model package (`core.py` + exports)
 - `src/train.py` — training CLI entrypoint
 - `src/eval.py` — evaluation CLI entrypoint
-- `src/experiments/experiment_orchestrator.py` — multi-run orchestration CLI
 - `src/services/` — training, evaluation, orchestration service layer
 - `src/runtime/` — runtime config, validation, typed errors
 - `src/observability/` — structured events + metrics collection
@@ -187,6 +186,7 @@ If you are orienting yourself to the project, read in this order:
 5. [docs/training-guide.md](/Users/zachshallbetter/Projects/Perception/docs/training-guide.md) for the canonical Titan workflow.
 6. [docs/sensor-mime-experiment-plan.md](/Users/zachshallbetter/Projects/Perception/docs/sensor-mime-experiment-plan.md) for the current perception-side evidence ladder.
 7. [paper/sections/README.md](/Users/zachshallbetter/Projects/Perception/paper/sections/README.md), [paper/sections/06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md), and [paper/sections/07-discussion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md) for the current paper-aligned claim surface.
+8. [paper/latex/README.md](/Users/zachshallbetter/Projects/Perception/paper/latex/README.md) for the TeX toolchain and PDF build path.
 
 ## Concept Map
 
@@ -280,11 +280,6 @@ python -m src.train --experiment continual --dataset split_cifar --epochs 1 --ou
 3. Evaluate a checkpoint:
 ```bash
 python -m src.eval --checkpoint results/smoke_train/best_model.pt --experiment continual --dataset split_cifar --output_file results/smoke_train/eval_results.json
-```
-
-4. Run orchestrator quick mode:
-```bash
-python -m src.experiments.experiment_orchestrator --mode quick --n-gpus 1
 ```
 
 ## Validation

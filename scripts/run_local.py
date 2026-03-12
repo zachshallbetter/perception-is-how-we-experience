@@ -31,7 +31,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Tuple, Optional, Dict, List
+from typing import Dict, List, Optional, Tuple
 
 # Ensure the repository root is on sys.path so `import src...` works even when this
 # script is executed from within the `scripts/` directory.
@@ -39,23 +39,22 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+import matplotlib
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
-import torchvision.transforms as transforms
 from torchvision.datasets import CIFAR100
-import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
-from src.models.core import SensoryPerceiver, ContrastiveLoss
+from src.models.core import ContrastiveLoss, SensoryPerceiver
 from src.runtime import DEFAULT_CONTINUAL_TASKS
-
 
 # ─── Device detection ────────────────────────────────────────────────────────
 
@@ -240,7 +239,9 @@ def ewc_penalty(model, ewc_tasks: List[Dict[str, Dict[str, torch.Tensor]]]):
     return penalty
 
 
-def si_penalty(model, si_omega: Dict[str, torch.Tensor], si_prev: Dict[str, torch.Tensor]):
+def si_penalty(
+    model, si_omega: Dict[str, torch.Tensor], si_prev: Dict[str, torch.Tensor]
+):
     if not si_omega:
         return torch.tensor(0.0, device=next(model.parameters()).device)
     penalty = 0.0
@@ -325,7 +326,9 @@ def train_one_epoch(
             loss = loss + si_lambda * si_penalty(model, si_omega, si_prev)
 
         loss.backward()
-        nn.utils.clip_grad_norm_(list(model.parameters()) + list(classifier.parameters()), 1.0)
+        nn.utils.clip_grad_norm_(
+            list(model.parameters()) + list(classifier.parameters()), 1.0
+        )
 
         if si_lambda > 0:
             prev_params = {n: p.detach().clone() for n, p in model.named_parameters()}
@@ -588,7 +591,9 @@ def main():
         args.ewc_lambda = 0.6
         if args.output_dir == "results/cl_experiment":  # only override if default
             args.output_dir = "results/cl_experiment_tuned"
-        print("── TUNED MODE: replay_weight=0.8 / buffer=8000 / lr=3e-4 / ewc_lambda=0.6 ──")
+        print(
+            "── TUNED MODE: replay_weight=0.8 / buffer=8000 / lr=3e-4 / ewc_lambda=0.6 ──"
+        )
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -606,7 +611,9 @@ def main():
 
     total_epochs = args.n_tasks * args.epochs_per_task
     if args.late_task_boost > 0:
-        total_epochs += max(0, args.n_tasks - args.late_task_start) * args.late_task_boost
+        total_epochs += (
+            max(0, args.n_tasks - args.late_task_start) * args.late_task_boost
+        )
 
     # ── Build model ──────────────────────────────────────────────────────────
     model = SensoryPerceiver(
@@ -649,8 +656,12 @@ def main():
     start_time = time.time()
     ewc_tasks = []
     si_prev = {name: param.detach().clone() for name, param in model.named_parameters()}
-    si_omega = {name: torch.zeros_like(param) for name, param in model.named_parameters()}
-    si_accum = {name: torch.zeros_like(param) for name, param in model.named_parameters()}
+    si_omega = {
+        name: torch.zeros_like(param) for name, param in model.named_parameters()
+    }
+    si_accum = {
+        name: torch.zeros_like(param) for name, param in model.named_parameters()
+    }
     teacher_model = None
     teacher_classifier = None
 

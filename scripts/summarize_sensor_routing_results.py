@@ -10,7 +10,6 @@ import statistics
 from collections import defaultdict
 from pathlib import Path
 
-
 RUN_RE = re.compile(
     r"^sensor_streaming_(?:(?P<variant>.+)_)?(?P<routing>canonical|merged)_seed(?P<seed>\d+)_(?P<family>.+)$"
 )
@@ -63,7 +62,9 @@ def summarize(rows: list[dict]) -> dict:
                 "routing": routing,
                 "runs": len(group),
                 "mean_accuracy": statistics.mean(accuracies),
-                "std_accuracy": statistics.pstdev(accuracies) if len(accuracies) > 1 else 0.0,
+                "std_accuracy": (
+                    statistics.pstdev(accuracies) if len(accuracies) > 1 else 0.0
+                ),
                 "min_accuracy": min(accuracies),
                 "max_accuracy": max(accuracies),
                 "seeds": [row["seed"] for row in group],
@@ -79,7 +80,9 @@ def summarize(rows: list[dict]) -> dict:
             paired.append(
                 {
                     "variant": variant,
-                    "canonical_mean_accuracy": routing_rows["canonical"]["mean_accuracy"],
+                    "canonical_mean_accuracy": routing_rows["canonical"][
+                        "mean_accuracy"
+                    ],
                     "merged_mean_accuracy": routing_rows["merged"]["mean_accuracy"],
                     "canonical_minus_merged": (
                         routing_rows["canonical"]["mean_accuracy"]

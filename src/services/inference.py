@@ -5,8 +5,8 @@ from typing import Any, Dict, Optional, Set
 
 import torch
 
-from src.runtime.live_schema import ModalityType, SensorWindow, StreamStatus
 from src.runtime.errors import AppError, ErrorCode
+from src.runtime.live_schema import ModalityType, SensorWindow, StreamStatus
 
 
 class InferenceErrorCodes:
@@ -19,6 +19,7 @@ class InferenceErrorCodes:
 @dataclass(frozen=True)
 class InferencePlan:
     """Pure data output of an inference step."""
+
     prediction_logits: torch.Tensor
     is_safe: bool
     confidence_score: float
@@ -132,7 +133,7 @@ def resolve_inference_plan(
         raise AppError(
             ErrorCode.INTERNAL_ERROR,
             f"Pure model evaluation failed unexpectedly: {e}",
-            context={"exception": str(e)}
+            context={"exception": str(e)},
         ) from e
 
     # Assume a standard softmax confidence baseline for now

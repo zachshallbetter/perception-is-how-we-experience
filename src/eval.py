@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 def build_parser() -> ArgumentParser:
     """Build the evaluation CLI parser."""
     parser = ArgumentParser()
-    parser.add_argument("--checkpoint", type=str, required=True, help="Path to model checkpoint")
+    parser.add_argument(
+        "--checkpoint", type=str, required=True, help="Path to model checkpoint"
+    )
     parser.add_argument(
         "--experiment",
         type=str,

@@ -242,6 +242,18 @@
       "min_accuracy": 0.881787216990583,
       "max_accuracy": 0.8857944299739531,
       "status": "completed"
+    },
+    {
+      "stage": "canonical",
+      "canonical": true,
+      "dataset": "speech_commands",
+      "family": "real-audio-seq-002-speech_commands",
+      "runs": 3,
+      "mean_accuracy": 0.8832231349762907,
+      "std_accuracy": 0.0018223153208631712,
+      "min_accuracy": 0.881787216990583,
+      "max_accuracy": 0.8857944299739531,
+      "status": "completed"
     }
   ],
   "real_sensor_rows": [

@@ -16,8 +16,10 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from src.data.real_sensor import REAL_SENSOR_DATASET_SPECS, real_sensor_dataset_is_prepared
-
+from src.data.real_sensor import (
+    REAL_SENSOR_DATASET_SPECS,
+    real_sensor_dataset_is_prepared,
+)
 
 CANDIDATE_DATASETS: dict[str, dict[str, str]] = {}
 
@@ -27,13 +29,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("sequence_id")
     parser.add_argument("--root", default=ROOT_DIR)
     parser.add_argument("--python-bin", default=os.environ.get("PYTHON_BIN", "python3"))
-    parser.add_argument("--datasets", default="wisdm,pamap2,opportunity,uci_har,hhar,mhealth,selfback,geomagnetic_wlan,realworld_har")
+    parser.add_argument(
+        "--datasets",
+        default="wisdm,pamap2,opportunity,uci_har,hhar,mhealth,selfback,geomagnetic_wlan,realworld_har",
+    )
     parser.add_argument("--candidate-datasets", default="")
     parser.add_argument("--results-root", default="results")
     parser.add_argument("--prepared-root", default="data/real-sensor")
     parser.add_argument("--raw-root", default="data/raw")
-    parser.add_argument("--log-file", default="results/titan_logs/real-sensor-sequence-supervisor.log")
-    parser.add_argument("--summary-dir", default="results/real_sensor_sequence_summaries")
+    parser.add_argument(
+        "--log-file", default="results/titan_logs/real-sensor-sequence-supervisor.log"
+    )
+    parser.add_argument(
+        "--summary-dir", default="results/real_sensor_sequence_summaries"
+    )
     parser.add_argument("--poll-seconds", type=int, default=60)
     parser.add_argument("--expected-results", type=int, default=6)
     parser.add_argument("--batch-size", type=int, default=16)
@@ -45,8 +54,12 @@ class Supervisor:
     def __init__(self, args: argparse.Namespace) -> None:
         self.root = Path(args.root).resolve()
         self.python_bin = args.python_bin
-        self.datasets = [item.strip() for item in args.datasets.split(",") if item.strip()]
-        self.candidate_datasets = [item.strip() for item in args.candidate_datasets.split(",") if item.strip()]
+        self.datasets = [
+            item.strip() for item in args.datasets.split(",") if item.strip()
+        ]
+        self.candidate_datasets = [
+            item.strip() for item in args.candidate_datasets.split(",") if item.strip()
+        ]
         self.results_root = self.root / args.results_root
         self.prepared_root = self.root / args.prepared_root
         self.raw_root = self.root / args.raw_root
@@ -76,7 +89,9 @@ class Supervisor:
             fh.write(line + "\n")
         print(line, flush=True)
 
-    def run(self, *cmd: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
+    def run(
+        self, *cmd: str, env: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess:
         merged_env = os.environ.copy()
         if env:
             merged_env.update(env)
@@ -94,7 +109,11 @@ class Supervisor:
         for dataset in self.candidate_datasets:
             info = CANDIDATE_DATASETS.get(
                 dataset,
-                {"source_name": dataset, "status": "candidate-not-integrated", "notes": "No metadata recorded."},
+                {
+                    "source_name": dataset,
+                    "status": "candidate-not-integrated",
+                    "notes": "No metadata recorded.",
+                },
             )
             candidate_queue.append({"dataset": dataset, **info})
         return candidate_queue
@@ -104,17 +123,29 @@ class Supervisor:
         return sum(1 for _ in self.results_root.glob(pattern))
 
     def count_sessions(self, family: str) -> int:
-        result = subprocess.run(["tmux", "ls"], cwd=self.root, capture_output=True, text=True, check=False)
+        result = subprocess.run(
+            ["tmux", "ls"], cwd=self.root, capture_output=True, text=True, check=False
+        )
         if result.returncode != 0:
             return 0
-        return sum(1 for line in result.stdout.splitlines() if f"real-sensor-" in line and family in line)
+        return sum(
+            1
+            for line in result.stdout.splitlines()
+            if f"real-sensor-" in line and family in line
+        )
 
     def wait_for_family(self, family: str) -> None:
         self.active_family = family
         while True:
             sessions = self.count_sessions(family)
             results = self.count_results(family)
-            self.log("wait-family", family=family, sessions=sessions, results=results, expected=self.expected_results)
+            self.log(
+                "wait-family",
+                family=family,
+                sessions=sessions,
+                results=results,
+                expected=self.expected_results,
+            )
             self.write_report(
                 status="running",
                 active_family=family,
@@ -124,7 +155,9 @@ class Supervisor:
             )
             if sessions == 0:
                 if results < self.expected_results:
-                    raise RuntimeError(f"Family {family} ended with only {results}/{self.expected_results} eval_results.json artifacts")
+                    raise RuntimeError(
+                        f"Family {family} ended with only {results}/{self.expected_results} eval_results.json artifacts"
+                    )
                 self.active_family = None
                 return
             time.sleep(self.poll_seconds)
@@ -148,7 +181,9 @@ class Supervisor:
             )
             if real_sensor_dataset_is_prepared(dataset, self.prepared_root):
                 return {"dataset": dataset, "status": "prepared"}
-            raise RuntimeError(f"Dataset {dataset} preparation ran but prepared files are still missing")
+            raise RuntimeError(
+                f"Dataset {dataset} preparation ran but prepared files are still missing"
+            )
         if raw_dir.exists():
             return {
                 "dataset": dataset,
@@ -176,7 +211,9 @@ class Supervisor:
             str(output_file),
         )
         payload = json.loads(output_file.read_text(encoding="utf-8"))
-        self.log("summary-written", dataset=dataset, family=family, output=str(output_file))
+        self.log(
+            "summary-written", dataset=dataset, family=family, output=str(output_file)
+        )
         return {
             "dataset": dataset,
             "family": family,
@@ -234,10 +271,14 @@ class Supervisor:
         }
         if error is not None:
             payload["error"] = error
-        self.report_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        self.report_file.write_text(
+            json.dumps(payload, indent=2) + "\n", encoding="utf-8"
+        )
 
     def execute(self) -> int:
-        self.log("real-supervisor-start", sequence=self.sequence_id, datasets=self.datasets)
+        self.log(
+            "real-supervisor-start", sequence=self.sequence_id, datasets=self.datasets
+        )
         completed: list[dict] = []
         blocked: list[dict] = []
 
@@ -246,7 +287,12 @@ class Supervisor:
             existing_summary = self.load_existing_summary(dataset, family)
             if existing_summary is not None and self.count_sessions(family) == 0:
                 completed.append(existing_summary)
-                self.log("reuse-summary", dataset=dataset, family=family, output=existing_summary["summary_file"])
+                self.log(
+                    "reuse-summary",
+                    dataset=dataset,
+                    family=family,
+                    output=existing_summary["summary_file"],
+                )
                 continue
 
             prep_state = self.maybe_prepare_dataset(dataset)
@@ -259,7 +305,7 @@ class Supervisor:
             self.wait_for_family(family)
             completed.append(self.summarize_family(dataset, family))
 
-        final_status = "completed" if completed else "blocked"
+        final_status = "completed" if completed and not blocked else "blocked"
         self.write_report(
             status=final_status,
             completed=completed,
@@ -278,15 +324,33 @@ def main() -> int:
     try:
         return supervisor.execute()
     except Exception as exc:
-        supervisor.log("real-supervisor-failed", family=supervisor.active_family, error=str(exc))
+        supervisor.log(
+            "real-supervisor-failed", family=supervisor.active_family, error=str(exc)
+        )
+        existing_payload = {}
+        if supervisor.report_file.exists():
+            try:
+                existing_payload = json.loads(
+                    supervisor.report_file.read_text(encoding="utf-8")
+                )
+            except Exception:
+                existing_payload = {}
         supervisor.write_report(
             status="failed",
-            completed=[],
-            blocked=[],
+            completed=existing_payload.get("completed", []),
+            blocked=existing_payload.get("blocked", []),
             candidate_queue=supervisor.candidate_queue_entries,
             active_family=supervisor.active_family,
-            active_results=supervisor.count_results(supervisor.active_family) if supervisor.active_family else None,
-            active_sessions=supervisor.count_sessions(supervisor.active_family) if supervisor.active_family else None,
+            active_results=(
+                supervisor.count_results(supervisor.active_family)
+                if supervisor.active_family
+                else None
+            ),
+            active_sessions=(
+                supervisor.count_sessions(supervisor.active_family)
+                if supervisor.active_family
+                else None
+            ),
             error=str(exc),
         )
         return 1

@@ -30,7 +30,9 @@ def build_markdown(payload: Dict) -> str:
     lines.append("")
     lines.append("## Aggregate")
     lines.append("")
-    lines.append("| Condition | Replay Mode | Runs | Acc Mean | Acc Std | Val Acc Mean | Val Acc Std |")
+    lines.append(
+        "| Condition | Replay Mode | Runs | Acc Mean | Acc Std | Val Acc Mean | Val Acc Std |"
+    )
     lines.append("|---|---:|---:|---:|---:|---:|---:|")
     for row in payload.get("aggregate", []):
         lines.append(
@@ -48,7 +50,9 @@ def build_markdown(payload: Dict) -> str:
     lines.append("")
     lines.append("## Run Records")
     lines.append("")
-    lines.append("| Condition | Seed | Train RC | Eval RC | Overall Acc | Final Val Acc | Output Dir |")
+    lines.append(
+        "| Condition | Seed | Train RC | Eval RC | Overall Acc | Final Val Acc | Output Dir |"
+    )
     lines.append("|---|---:|---:|---:|---:|---:|---|")
     for row in payload.get("records", []):
         lines.append(
@@ -66,16 +70,24 @@ def build_markdown(payload: Dict) -> str:
     lines.append("")
     lines.append("## Interpretation Template")
     lines.append("")
-    lines.append("1. Compare `feature_only` vs `raw_er` to estimate replay-depth effect through the shared backbone.")
-    lines.append("2. Compare `raw_er` vs `raw_contrastive` to quantify objective choice impact.")
-    lines.append("3. Inspect failed runs (`train_rc != 0` or `eval_rc != 0`) before interpreting aggregate means.")
+    lines.append(
+        "1. Compare `feature_only` vs `raw_er` to estimate replay-depth effect through the shared backbone."
+    )
+    lines.append(
+        "2. Compare `raw_er` vs `raw_contrastive` to quantify objective choice impact."
+    )
+    lines.append(
+        "3. Inspect failed runs (`train_rc != 0` or `eval_rc != 0`) before interpreting aggregate means."
+    )
 
     return "\n".join(lines) + "\n"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ablation_dir", required=True, help="Directory containing ablation_runs.json")
+    parser.add_argument(
+        "--ablation_dir", required=True, help="Directory containing ablation_runs.json"
+    )
     parser.add_argument("--output", default="ablation_report.md")
     args = parser.parse_args()
 

@@ -39,7 +39,9 @@ LEGACY_PHASE_1 = {
 
 PHASE_2_PATH = RESULTS_DIR / "cl_baseline_reservoir_sampling" / "results.json"
 BWT_SWEEP_GLOB = "bwt_*/results.json"
-TUNED_RUN_RE = re.compile(r"^paper_runlocal_tuned_20t_seed(?P<seed>\d+)_(?P<family>.+)$")
+TUNED_RUN_RE = re.compile(
+    r"^paper_runlocal_tuned_20t_seed(?P<seed>\d+)_(?P<family>.+)$"
+)
 
 
 @dataclass(frozen=True)
@@ -191,8 +193,14 @@ def build_phase_progression_figure(phases: list[dict]) -> None:
 
     for ax, values in zip(axes, [cil, bwt]):
         for idx, value in enumerate(values):
-            ax.text(idx, value + (0.8 if value >= 0 else -2.5), f"{value:.2f}",
-                    ha="center", va="bottom" if value >= 0 else "top", fontsize=10)
+            ax.text(
+                idx,
+                value + (0.8 if value >= 0 else -2.5),
+                f"{value:.2f}",
+                ha="center",
+                va="bottom" if value >= 0 else "top",
+                fontsize=10,
+            )
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
@@ -223,8 +231,14 @@ def build_tuned_multiseed_figure(tuned_rows: list[ResultRow], tuned_mean: dict) 
 
     for ax, values in zip(axes, [cil, bwt]):
         for idx, value in enumerate(values):
-            ax.text(idx, value + (0.35 if value >= 0 else -0.75), f"{value:.2f}",
-                    ha="center", va="bottom" if value >= 0 else "top", fontsize=9)
+            ax.text(
+                idx,
+                value + (0.35 if value >= 0 else -0.75),
+                f"{value:.2f}",
+                ha="center",
+                va="bottom" if value >= 0 else "top",
+                fontsize=9,
+            )
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
@@ -235,13 +249,24 @@ def build_tuned_multiseed_figure(tuned_rows: list[ResultRow], tuned_mean: dict) 
 
 def build_bwt_sweep_figure(bwt_rows: list[ResultRow], tuned_mean_bwt: float) -> None:
     sorted_rows = sorted(bwt_rows, key=lambda row: row.BWT, reverse=True)
-    labels = [row.run.replace("_20260311_002625", "").replace("_20260311_0033_followup", "").replace("_20260311_0030_direct", "") for row in sorted_rows]
+    labels = [
+        row.run.replace("_20260311_002625", "")
+        .replace("_20260311_0033_followup", "")
+        .replace("_20260311_0030_direct", "")
+        for row in sorted_rows
+    ]
     values = [row.BWT for row in sorted_rows]
     colors = ["#6A994E" if value >= tuned_mean_bwt else "#C73E1D" for value in values]
 
     fig, ax = plt.subplots(figsize=(12, 6))
     ax.barh(labels, values, color=colors)
-    ax.axvline(tuned_mean_bwt, color="#2E86AB", linestyle="--", linewidth=2, label=f"Tuned core mean ({tuned_mean_bwt:.2f})")
+    ax.axvline(
+        tuned_mean_bwt,
+        color="#2E86AB",
+        linestyle="--",
+        linewidth=2,
+        label=f"Tuned core mean ({tuned_mean_bwt:.2f})",
+    )
     ax.set_xlabel("BWT (%)")
     ax.set_title("Exploratory BWT Sweep Ranked by Final BWT")
     ax.legend(loc="lower right")
@@ -259,7 +284,11 @@ def build_results_table_figure(table_rows: list[dict]) -> None:
             row["source_kind"],
             f"{row['CIL']:.2f}",
             f"{row['BWT']:.2f}",
-            f"{row['task0_retention']:.1f}" if row["task0_retention"] is not None else "N/A",
+            (
+                f"{row['task0_retention']:.1f}"
+                if row["task0_retention"] is not None
+                else "N/A"
+            ),
         ]
         for row in table_rows
     ]
@@ -276,7 +305,11 @@ def build_results_table_figure(table_rows: list[dict]) -> None:
         table[(0, col)].set_text_props(weight="bold", color="white")
 
     for row_idx in range(1, len(data) + 1):
-        fill = "#EAF3F8" if row_idx == len(data) else ("#F7F7F7" if row_idx % 2 == 0 else "white")
+        fill = (
+            "#EAF3F8"
+            if row_idx == len(data)
+            else ("#F7F7F7" if row_idx % 2 == 0 else "white")
+        )
         for col in range(len(headers)):
             table[(row_idx, col)].set_facecolor(fill)
             table[(row_idx, col)].set_edgecolor("#CCCCCC")
@@ -312,7 +345,9 @@ def build_distillation_comparison_figure(
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
-    fig.suptitle("Distillation Replay vs Tuned ER Controls", fontsize=14, fontweight="bold")
+    fig.suptitle(
+        "Distillation Replay vs Tuned ER Controls", fontsize=14, fontweight="bold"
+    )
     fig.tight_layout()
     save_figure(fig, OUTPUT_DIR / "figure_distillation_vs_control")
 
@@ -332,7 +367,9 @@ def load_json_if_exists(path: Path) -> dict[str, Any] | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def extract_completed_audio_entry(report: dict[str, Any] | None, dataset: str) -> dict[str, Any] | None:
+def extract_completed_audio_entry(
+    report: dict[str, Any] | None, dataset: str
+) -> dict[str, Any] | None:
     if not report:
         return None
     for entry in report.get("completed", []):
@@ -341,7 +378,9 @@ def extract_completed_audio_entry(report: dict[str, Any] | None, dataset: str) -
     return None
 
 
-def extract_completed_sensor_entry(report: dict[str, Any] | None, dataset: str) -> dict[str, Any] | None:
+def extract_completed_sensor_entry(
+    report: dict[str, Any] | None, dataset: str
+) -> dict[str, Any] | None:
     if not report:
         return None
     for entry in report.get("completed", []):
@@ -350,7 +389,9 @@ def extract_completed_sensor_entry(report: dict[str, Any] | None, dataset: str) 
     return None
 
 
-def real_audio_rows(report: dict[str, Any] | None, *, stage: str, canonical: bool) -> list[dict[str, Any]]:
+def real_audio_rows(
+    report: dict[str, Any] | None, *, stage: str, canonical: bool
+) -> list[dict[str, Any]]:
     if not report:
         return []
     rows: list[dict[str, Any]] = []
@@ -373,7 +414,9 @@ def real_audio_rows(report: dict[str, Any] | None, *, stage: str, canonical: boo
     return rows
 
 
-def real_sensor_rows(report: dict[str, Any] | None, *, stage: str, canonical: bool) -> list[dict[str, Any]]:
+def real_sensor_rows(
+    report: dict[str, Any] | None, *, stage: str, canonical: bool
+) -> list[dict[str, Any]]:
     if not report:
         return []
     rows: list[dict[str, Any]] = []
@@ -394,9 +437,15 @@ def real_sensor_rows(report: dict[str, Any] | None, *, stage: str, canonical: bo
     return rows
 
 
-def build_real_data_overview_figure(audio_rows: list[dict[str, Any]], sensor_rows: list[dict[str, Any]]) -> None:
-    completed_audio = [row for row in audio_rows if row.get("mean_accuracy") is not None]
-    completed_sensor = [row for row in sensor_rows if row.get("canonical_minus_merged") is not None]
+def build_real_data_overview_figure(
+    audio_rows: list[dict[str, Any]], sensor_rows: list[dict[str, Any]]
+) -> None:
+    completed_audio = [
+        row for row in audio_rows if row.get("mean_accuracy") is not None
+    ]
+    completed_sensor = [
+        row for row in sensor_rows if row.get("canonical_minus_merged") is not None
+    ]
     if not completed_audio and not completed_sensor:
         return
 
@@ -405,15 +454,21 @@ def build_real_data_overview_figure(audio_rows: list[dict[str, Any]], sensor_row
     if completed_audio:
         labels = [f"{row['dataset']}\n({row['stage']})" for row in completed_audio]
         values = [row["mean_accuracy"] * 100.0 for row in completed_audio]
-        colors = ["#2E86AB" if row["canonical"] else "#A23B72" for row in completed_audio]
+        colors = [
+            "#2E86AB" if row["canonical"] else "#A23B72" for row in completed_audio
+        ]
         axes[0].bar(labels, values, color=colors)
         axes[0].set_title("Real Audio Accuracy")
         axes[0].set_ylabel("Accuracy (%)")
         axes[0].set_ylim(0, 100)
         for idx, value in enumerate(values):
-            axes[0].text(idx, value + 1.0, f"{value:.1f}", ha="center", va="bottom", fontsize=9)
+            axes[0].text(
+                idx, value + 1.0, f"{value:.1f}", ha="center", va="bottom", fontsize=9
+            )
     else:
-        axes[0].text(0.5, 0.5, "No completed real-audio runs yet", ha="center", va="center")
+        axes[0].text(
+            0.5, 0.5, "No completed real-audio runs yet", ha="center", va="center"
+        )
         axes[0].set_axis_off()
 
     if completed_sensor:
@@ -426,9 +481,18 @@ def build_real_data_overview_figure(audio_rows: list[dict[str, Any]], sensor_row
         axes[1].set_ylabel("Canonical - Merged (pp)")
         for idx, value in enumerate(values):
             offset = 1.0 if value >= 0 else -1.0
-            axes[1].text(idx, value + offset, f"{value:.1f}", ha="center", va="bottom" if value >= 0 else "top", fontsize=9)
+            axes[1].text(
+                idx,
+                value + offset,
+                f"{value:.1f}",
+                ha="center",
+                va="bottom" if value >= 0 else "top",
+                fontsize=9,
+            )
     else:
-        axes[1].text(0.5, 0.5, "No completed real-sensor runs yet", ha="center", va="center")
+        axes[1].text(
+            0.5, 0.5, "No completed real-sensor runs yet", ha="center", va="center"
+        )
         axes[1].set_axis_off()
 
     for ax in axes:
@@ -447,10 +511,15 @@ def main() -> int:
 
     phase_2 = row_from_result(PHASE_2_PATH)
     tuned_family, tuned_paths = discover_tuned_paths()
+    tuned_family_latex = tuned_family.replace("_", "\\_")
     tuned_rows = [row_from_result(path) for path in tuned_paths]
-    bwt_rows = [row_from_result(path) for path in sorted(RESULTS_DIR.glob(BWT_SWEEP_GLOB))]
+    bwt_rows = [
+        row_from_result(path) for path in sorted(RESULTS_DIR.glob(BWT_SWEEP_GLOB))
+    ]
     if not bwt_rows:
-        raise FileNotFoundError(f"No BWT sweep results found via glob: {BWT_SWEEP_GLOB}")
+        raise FileNotFoundError(
+            f"No BWT sweep results found via glob: {BWT_SWEEP_GLOB}"
+        )
 
     tuned_mean = {
         "CIL": statistics.mean(row.CIL for row in tuned_rows),
@@ -491,7 +560,9 @@ def main() -> int:
             "phase_label": "Phase 3",
             "configuration": f"Tuned core continual path ({len(tuned_rows)}-seed mean)",
             "source_kind": "artifact_results_json_mean",
-            "source_path": "; ".join(str(path.relative_to(ROOT)) for path in tuned_paths),
+            "source_path": "; ".join(
+                str(path.relative_to(ROOT)) for path in tuned_paths
+            ),
             "CIL": tuned_mean["CIL"],
             "BWT": tuned_mean["BWT"],
             "FWT": tuned_mean["FWT"],
@@ -512,25 +583,51 @@ def main() -> int:
         for row in tuned_rows
     ]
 
-    real_audio_seq001_report = load_json_if_exists(REAL_AUDIO_SUMMARY_DIR / "real-audio-seq-001-report.json")
-    real_audio_seq002_report = load_json_if_exists(REAL_AUDIO_SUMMARY_DIR / "real-audio-seq-002-report.json")
-    real_sensor_seq004_report = load_json_if_exists(REAL_SENSOR_SUMMARY_DIR / "real-seq-004-report.json")
+    real_audio_seq001_report = load_json_if_exists(
+        REAL_AUDIO_SUMMARY_DIR / "real-audio-seq-001-report.json"
+    )
+    real_audio_seq002_report = load_json_if_exists(
+        REAL_AUDIO_SUMMARY_DIR / "real-audio-seq-002-report.json"
+    )
+    real_sensor_seq004_report = load_json_if_exists(
+        REAL_SENSOR_SUMMARY_DIR / "real-seq-004-report.json"
+    )
     real_sensor_seq001_report = first_existing_json(
         REAL_SENSOR_SUMMARY_DIR / "real-sensor-seq-001-report.json",
         REAL_SENSOR_SUMMARY_DIR / "real-seq-001-report.json",
     )
-
-    real_audio_table_rows = (
-        real_audio_rows(real_audio_seq001_report, stage="bootstrap", canonical=False)
-        + real_audio_rows(real_audio_seq002_report, stage="canonical", canonical=True)
+    canonical_audio_expected = ["speech_commands", "esc50", "urbansound8k", "fsd50k"]
+    canonical_sensor_expected = [
+        "wisdm",
+        "pamap2",
+        "opportunity",
+        "uci_har",
+        "hhar",
+        "mhealth",
+        "selfback",
+        "geomagnetic_wlan",
+        "realworld_har",
+    ]
+    canonical_audio_promotable = sequence_promotable(
+        real_audio_seq002_report, canonical_audio_expected
     )
-    real_sensor_table_rows = (
-        real_sensor_rows(real_sensor_seq004_report, stage="bootstrap", canonical=False)
-        + real_sensor_rows(real_sensor_seq001_report, stage="canonical", canonical=True)
+    canonical_sensor_promotable = sequence_promotable(
+        real_sensor_seq001_report, canonical_sensor_expected
     )
 
-    bootstrap_audio_entry = extract_completed_audio_entry(real_audio_seq001_report, "speech_commands")
-    bootstrap_sensor_entry = extract_completed_sensor_entry(real_sensor_seq004_report, "wisdm")
+    real_audio_table_rows = real_audio_rows(
+        real_audio_seq001_report, stage="bootstrap", canonical=False
+    ) + real_audio_rows(real_audio_seq002_report, stage="canonical", canonical=True)
+    real_sensor_table_rows = real_sensor_rows(
+        real_sensor_seq004_report, stage="bootstrap", canonical=False
+    ) + real_sensor_rows(real_sensor_seq001_report, stage="canonical", canonical=True)
+
+    bootstrap_audio_entry = extract_completed_audio_entry(
+        real_audio_seq001_report, "speech_commands"
+    )
+    bootstrap_sensor_entry = extract_completed_sensor_entry(
+        real_sensor_seq004_report, "wisdm"
+    )
 
     bwt_table_rows = [
         {
@@ -562,29 +659,69 @@ def main() -> int:
         {
             "bootstrap_audio_sequence": {
                 "sequence_id": "real-audio-seq-001",
-                "status": None if real_audio_seq001_report is None else real_audio_seq001_report.get("status"),
-                "speech_commands": None if bootstrap_audio_entry is None else bootstrap_audio_entry.get("summary"),
+                "status": (
+                    None
+                    if real_audio_seq001_report is None
+                    else real_audio_seq001_report.get("status")
+                ),
+                "speech_commands": (
+                    None
+                    if bootstrap_audio_entry is None
+                    else bootstrap_audio_entry.get("summary")
+                ),
                 "notes": "Bootstrap audio evidence; historical report may still list esc50 and urbansound8k as candidates.",
             },
             "canonical_audio_sequence": {
                 "sequence_id": "real-audio-seq-002",
-                "status": None if real_audio_seq002_report is None else real_audio_seq002_report.get("status"),
-                "completed": [] if real_audio_seq002_report is None else real_audio_seq002_report.get("completed", []),
-                "blocked": [] if real_audio_seq002_report is None else real_audio_seq002_report.get("blocked", []),
+                "status": (
+                    None
+                    if real_audio_seq002_report is None
+                    else real_audio_seq002_report.get("status")
+                ),
+                "completed": (
+                    []
+                    if real_audio_seq002_report is None
+                    else real_audio_seq002_report.get("completed", [])
+                ),
+                "blocked": (
+                    []
+                    if real_audio_seq002_report is None
+                    else real_audio_seq002_report.get("blocked", [])
+                ),
                 "expected_integrated_datasets": canonical_audio_expected,
                 "promotable": canonical_audio_promotable,
             },
             "bootstrap_sensor_sequence": {
                 "sequence_id": "real-seq-004",
-                "status": None if real_sensor_seq004_report is None else real_sensor_seq004_report.get("status"),
-                "wisdm": None if bootstrap_sensor_entry is None else bootstrap_sensor_entry.get("paired_comparison"),
+                "status": (
+                    None
+                    if real_sensor_seq004_report is None
+                    else real_sensor_seq004_report.get("status")
+                ),
+                "wisdm": (
+                    None
+                    if bootstrap_sensor_entry is None
+                    else bootstrap_sensor_entry.get("paired_comparison")
+                ),
                 "notes": "Bootstrap sensor evidence from the first real WISDM routing sequence.",
             },
             "canonical_sensor_sequence": {
                 "sequence_id": "real-sensor-seq-001",
-                "status": None if real_sensor_seq001_report is None else real_sensor_seq001_report.get("status"),
-                "completed": [] if real_sensor_seq001_report is None else real_sensor_seq001_report.get("completed", []),
-                "blocked": [] if real_sensor_seq001_report is None else real_sensor_seq001_report.get("blocked", []),
+                "status": (
+                    None
+                    if real_sensor_seq001_report is None
+                    else real_sensor_seq001_report.get("status")
+                ),
+                "completed": (
+                    []
+                    if real_sensor_seq001_report is None
+                    else real_sensor_seq001_report.get("completed", [])
+                ),
+                "blocked": (
+                    []
+                    if real_sensor_seq001_report is None
+                    else real_sensor_seq001_report.get("blocked", [])
+                ),
                 "expected_integrated_datasets": canonical_sensor_expected,
                 "promotable": canonical_sensor_promotable,
             },
@@ -595,7 +732,9 @@ def main() -> int:
         },
     )
 
-    phase_matrix = copy_source_matrix(PHASE_2_PATH, "phase2_raw_input_replay_accuracy_matrix")
+    phase_matrix = copy_source_matrix(
+        PHASE_2_PATH, "phase2_raw_input_replay_accuracy_matrix"
+    )
     tuned_matrices = [
         copy_source_matrix(path, f"tuned_core_seed{row.seed}_accuracy_matrix")
         for row, path in zip(tuned_rows, tuned_paths)
@@ -690,7 +829,7 @@ def main() -> int:
                 "\\begin{table}[t]",
                 "  \\centering",
                 f"  \\includegraphics[width=\\linewidth]{{../figures/generated/results_package/table_results_overview.pdf}}",
-                f"  \\caption{{Split-CIFAR-100 continual-learning progression. Phase 1 is a legacy feature-only replay result sourced from the canonical paper section because the original run directory is not currently tracked as a local artifact. Phase 2 and Phase 3 are artifact-backed, with Phase 3 reporting the mean over {len(tuned_rows)} tuned-core Titan runs from family `{tuned_family}`.}}",
+                f"  \\caption{{Split-CIFAR-100 continual-learning progression. Phase 1 is a legacy feature-only replay result sourced from the canonical paper section because the original run directory is not currently tracked as a local artifact. Phase 2 and Phase 3 are artifact-backed, with Phase 3 reporting the mean over {len(tuned_rows)} tuned-core Titan runs from family \\texttt{{{tuned_family_latex}}}.}}",
                 "  \\label{tab:split-cifar-results-overview}",
                 "\\end{table}",
                 "",
@@ -718,7 +857,9 @@ def main() -> int:
                 "\\begin{figure}[t]",
                 "  \\centering",
                 "  \\includegraphics[width=\\linewidth]{../figures/generated/results_package/figure_real_data_evidence.pdf}",
-                "  \\caption{Real-data evidence overview. Bootstrap evidence comes from `real-audio-seq-001` on Speech Commands and `real-seq-004` on WISDM. Canonical evidence is promoted only when bounded integrated sequences finish with all expected datasets present and no blocked entries. `real-audio-seq-002` is currently completed but not promotable because blocked datasets remain, and `real-sensor-seq-001` is currently failed at `pamap2`.}",
+                "  \\caption{Real-data evidence overview. Bootstrap evidence comes from \\texttt{real-audio-seq-001} on Speech Commands and \\texttt{real-seq-004} on WISDM. Canonical evidence is promoted only when bounded integrated sequences finish with all expected datasets present and no blocked entries. \\texttt{real-audio-seq-002} is currently completed but not promotable because blocked datasets remain, and \\texttt{real-sensor-seq-001} is currently failed at \\texttt{pamap2}.}".replace(
+                    "_", "\\_"
+                ),
                 "  \\label{fig:real-data-evidence-overview}",
                 "\\end{figure}",
                 "",
@@ -809,11 +950,11 @@ def main() -> int:
     save_json(OUTPUT_DIR / "distillation_campaign_status.json", distill_status)
 
     generated_files = sorted(
-        str(path.relative_to(ROOT))
-        for path in OUTPUT_DIR.rglob("*")
-        if path.is_file()
+        str(path.relative_to(ROOT)) for path in OUTPUT_DIR.rglob("*") if path.is_file()
     )
-    generated_files.append(str((OUTPUT_DIR / "package_manifest.json").relative_to(ROOT)))
+    generated_files.append(
+        str((OUTPUT_DIR / "package_manifest.json").relative_to(ROOT))
+    )
     manifest = {
         "package_version": 1,
         "output_dir": str(OUTPUT_DIR.relative_to(ROOT)),
@@ -822,7 +963,9 @@ def main() -> int:
         "tuned_core_summary": tuned_mean,
         "tuned_seed_rows": tuned_seed_rows,
         "bwt_sweep_top_ranked": bwt_table_rows,
-        "real_data_status_json": str((REAL_DATA_DIR / "real_data_status.json").relative_to(ROOT)),
+        "real_data_status_json": str(
+            (REAL_DATA_DIR / "real_data_status.json").relative_to(ROOT)
+        ),
         "real_audio_rows": real_audio_table_rows,
         "real_sensor_rows": real_sensor_table_rows,
         "source_matrices": {
@@ -838,17 +981,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-    canonical_audio_expected = ["speech_commands", "esc50", "urbansound8k", "fsd50k"]
-    canonical_sensor_expected = [
-        "wisdm",
-        "pamap2",
-        "opportunity",
-        "uci_har",
-        "hhar",
-        "mhealth",
-        "selfback",
-        "geomagnetic_wlan",
-        "realworld_har",
-    ]
-    canonical_audio_promotable = sequence_promotable(real_audio_seq002_report, canonical_audio_expected)
-    canonical_sensor_promotable = sequence_promotable(real_sensor_seq001_report, canonical_sensor_expected)

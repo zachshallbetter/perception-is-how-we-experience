@@ -54,4 +54,3 @@ def validate_training_config_schema(config: Dict) -> None:
                 "expected_schema_version": TRAIN_CONFIG_SCHEMA_VERSION,
             },
         )
-

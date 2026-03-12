@@ -53,7 +53,9 @@ def summarize(rows: list[dict]) -> dict:
         summary = {
             "runs": len(rows),
             "mean_accuracy": statistics.mean(accuracies),
-            "std_accuracy": statistics.pstdev(accuracies) if len(accuracies) > 1 else 0.0,
+            "std_accuracy": (
+                statistics.pstdev(accuracies) if len(accuracies) > 1 else 0.0
+            ),
             "min_accuracy": min(accuracies),
             "max_accuracy": max(accuracies),
             "seeds": [row["seed"] for row in rows],

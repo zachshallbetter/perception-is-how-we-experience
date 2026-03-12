@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -22,8 +22,12 @@ from src.data.real_audio_prepare import prepare_real_audio_dataset
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", choices=sorted(REAL_AUDIO_DATASET_SPECS), required=True)
-    parser.add_argument("--raw-dir", required=True, help="Path to the downloaded raw dataset root")
+    parser.add_argument(
+        "--dataset", choices=sorted(REAL_AUDIO_DATASET_SPECS), required=True
+    )
+    parser.add_argument(
+        "--raw-dir", required=True, help="Path to the downloaded raw dataset root"
+    )
     parser.add_argument(
         "--output-root",
         default="data/real-audio",
@@ -46,8 +50,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     raw_dir = Path(args.raw_dir).resolve()
-    if args.dataset in {"speech_commands", "esc50", "urbansound8k", "fsd50k"} and not args.bootstrap_only:
-        result = prepare_real_audio_dataset(args.dataset, raw_dir, Path(args.output_root), args.sequence_length)
+    if (
+        args.dataset in {"speech_commands", "esc50", "urbansound8k", "fsd50k"}
+        and not args.bootstrap_only
+    ):
+        result = prepare_real_audio_dataset(
+            args.dataset, raw_dir, Path(args.output_root), args.sequence_length
+        )
         print(json.dumps(result, indent=2))
         return 0
 
@@ -100,7 +109,9 @@ Scaffold status:
 - this directory is ready for canonical prepared audio tensors
 """
 
-    (dataset_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (dataset_dir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
     (dataset_dir / "README.md").write_text(dataset_card, encoding="utf-8")
 
     print(

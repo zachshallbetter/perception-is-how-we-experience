@@ -15,12 +15,11 @@ import json
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from statistics import mean, pstdev
 from typing import Dict, List
-
 
 CONDITIONS = {
     "feature_only": "feature",
@@ -91,11 +90,13 @@ def aggregate(records: List[RunRecord]) -> List[Dict]:
                 "replay_mode": rows[0].replay_mode,
                 "n_runs": len(rows),
                 "accuracy_mean": mean(accs) if accs else None,
-                "accuracy_std": pstdev(accs) if len(accs) > 1 else 0.0 if accs else None,
+                "accuracy_std": (
+                    pstdev(accs) if len(accs) > 1 else 0.0 if accs else None
+                ),
                 "val_acc_mean": mean(val_accs) if val_accs else None,
-                "val_acc_std": pstdev(val_accs)
-                if len(val_accs) > 1
-                else 0.0 if val_accs else None,
+                "val_acc_std": (
+                    pstdev(val_accs) if len(val_accs) > 1 else 0.0 if val_accs else None
+                ),
             }
         )
     return out
@@ -230,7 +231,9 @@ def main() -> int:
                 final_val_acc=final_val_acc,
             )
             records.append(rec)
-            print(f"[ablation] done condition={condition} seed={seed} train_rc={train_res.returncode} eval_rc={eval_rc}")
+            print(
+                f"[ablation] done condition={condition} seed={seed} train_rc={train_res.returncode} eval_rc={eval_rc}"
+            )
 
     aggregate_rows = aggregate(records)
 
@@ -258,7 +261,11 @@ def main() -> int:
     print(f"[ablation] wrote {out_root / 'ablation_runs.csv'}")
     print(f"[ablation] wrote {out_root / 'ablation_summary.csv'}")
 
-    failed = [r for r in records if r.train_returncode != 0 or (not args.skip_eval and r.eval_returncode != 0)]
+    failed = [
+        r
+        for r in records
+        if r.train_returncode != 0 or (not args.skip_eval and r.eval_returncode != 0)
+    ]
     return 2 if failed else 0
 
 

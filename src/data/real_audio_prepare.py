@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import csv
 import json
+import subprocess
 import tempfile
+import wave
 from io import BytesIO
 from pathlib import Path
-import subprocess
 from typing import Dict, Iterable, List, Tuple
-import wave
 
 import numpy as np
-import torch
 import soundfile as sf
+import torch
 
 from .real_audio import (
     PREPARED_AUDIO_SCHEMA_VERSION,
@@ -48,7 +48,9 @@ def _find_speech_commands_root(raw_dir: Path) -> Path:
     for candidate in candidates:
         if (candidate / "dataset_dict.json").exists():
             return candidate
-    raise FileNotFoundError(f"Could not locate a saved Speech Commands dataset under {raw_dir}")
+    raise FileNotFoundError(
+        f"Could not locate a saved Speech Commands dataset under {raw_dir}"
+    )
 
 
 def _find_esc50_root(raw_dir: Path) -> Path:
@@ -70,7 +72,9 @@ def _find_urbansound_root(raw_dir: Path) -> Path:
 def _find_fsd50k_root(raw_dir: Path) -> Path:
     candidates = [raw_dir, raw_dir / "fsd50k", raw_dir.parent / "fsd50k"]
     for candidate in candidates:
-        if (candidate / "ground_truth" / "dev.csv").exists() and any((candidate / "data").glob("*.parquet")):
+        if (candidate / "ground_truth" / "dev.csv").exists() and any(
+            (candidate / "data").glob("*.parquet")
+        ):
             return candidate
     raise FileNotFoundError(f"Could not locate FSD50K under {raw_dir}")
 
@@ -121,18 +125,24 @@ def _waveform_to_log_spectrogram(
         center=False,
     ).abs()
     if spec.shape[0] < REAL_AUDIO_FEATURE_DIM:
-        spec = torch.nn.functional.pad(spec, (0, 0, 0, REAL_AUDIO_FEATURE_DIM - spec.shape[0]))
+        spec = torch.nn.functional.pad(
+            spec, (0, 0, 0, REAL_AUDIO_FEATURE_DIM - spec.shape[0])
+        )
     else:
         spec = spec[:REAL_AUDIO_FEATURE_DIM, :]
     spec = torch.log1p(spec).transpose(0, 1)
     if spec.shape[0] == target_frames:
         return spec
     spec = spec.unsqueeze(0).transpose(1, 2)
-    spec = torch.nn.functional.interpolate(spec, size=target_frames, mode="linear", align_corners=False)
+    spec = torch.nn.functional.interpolate(
+        spec, size=target_frames, mode="linear", align_corners=False
+    )
     return spec.transpose(1, 2).squeeze(0)
 
 
-def _standardize_audio(train_audio: torch.Tensor, val_audio: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+def _standardize_audio(
+    train_audio: torch.Tensor, val_audio: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
     flattened = train_audio.reshape(-1, train_audio.shape[-1])
     mean = flattened.mean(dim=0, keepdim=True).reshape(1, 1, -1)
     std = flattened.std(dim=0, keepdim=True).reshape(1, 1, -1)
@@ -193,14 +203,20 @@ def _decode_wave_file(path: Path) -> np.ndarray:
         if waveform.dtype == np.uint8:
             waveform = (waveform / 128.0) - 1.0
         elif np.issubdtype(waveform.dtype, np.integer):
-            max_abs = float(np.iinfo(waveform.dtype).max) if waveform.dtype != np.uint8 else 128.0
+            max_abs = (
+                float(np.iinfo(waveform.dtype).max)
+                if waveform.dtype != np.uint8
+                else 128.0
+            )
             waveform = waveform / max_abs
         return np.asarray(waveform, dtype=np.float32)
     except Exception:
         return _decode_with_ffmpeg(path)
 
 
-def _encode_audio_examples(examples: Iterable[Tuple[Path, int]], *, sequence_length: int) -> Tuple[torch.Tensor, torch.Tensor]:
+def _encode_audio_examples(
+    examples: Iterable[Tuple[Path, int]], *, sequence_length: int
+) -> Tuple[torch.Tensor, torch.Tensor]:
     features: List[torch.Tensor] = []
     labels: List[int] = []
     for path, label in examples:
@@ -225,8 +241,12 @@ def _write_audio_dataset(
 ) -> Dict[str, object]:
     if not train_examples or not val_examples:
         raise ValueError(f"{dataset_id} produced an empty train or val split")
-    train_audio, train_labels = _encode_audio_examples(train_examples, sequence_length=sequence_length)
-    val_audio, val_labels = _encode_audio_examples(val_examples, sequence_length=sequence_length)
+    train_audio, train_labels = _encode_audio_examples(
+        train_examples, sequence_length=sequence_length
+    )
+    val_audio, val_labels = _encode_audio_examples(
+        val_examples, sequence_length=sequence_length
+    )
     train_audio, val_audio = _standardize_audio(train_audio, val_audio)
 
     dataset_dir = get_real_audio_dataset_dir(dataset_id, output_root)
@@ -249,7 +269,9 @@ def _write_audio_dataset(
         "split_strategy": split_strategy,
         "notes": notes,
     }
-    (dataset_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (dataset_dir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
     card = [
         f"# {REAL_AUDIO_DATASET_SPECS[dataset_id].source_name} Prepared Dataset Card",
         "",
@@ -271,7 +293,9 @@ def _write_audio_dataset(
     }
 
 
-def prepare_speech_commands_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_speech_commands_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     load_from_disk = _import_hf_load_from_disk()
     raw_root = _find_speech_commands_root(raw_dir.resolve())
     dataset = load_from_disk(str(raw_root))
@@ -299,11 +323,17 @@ def prepare_speech_commands_dataset(raw_dir: Path, output_root: Path, sequence_l
 
     dataset_dir = get_real_audio_dataset_dir("speech_commands", output_root)
     dataset_dir.mkdir(parents=True, exist_ok=True)
-    torch.save({"audio": train_audio, "labels": train_labels_tensor}, dataset_dir / "train.pt")
-    torch.save({"audio": val_audio, "labels": val_labels_tensor}, dataset_dir / "val.pt")
+    torch.save(
+        {"audio": train_audio, "labels": train_labels_tensor}, dataset_dir / "train.pt"
+    )
+    torch.save(
+        {"audio": val_audio, "labels": val_labels_tensor}, dataset_dir / "val.pt"
+    )
 
     int2str = train_split.features["label"].int2str
-    class_names = [int2str(index) for index in range(train_split.features["label"].num_classes)]
+    class_names = [
+        int2str(index) for index in range(train_split.features["label"].num_classes)
+    ]
     manifest = {
         "schema_version": PREPARED_AUDIO_SCHEMA_VERSION,
         "dataset": "speech_commands",
@@ -322,7 +352,9 @@ def prepare_speech_commands_dataset(raw_dir: Path, output_root: Path, sequence_l
             "Prepared tensors have shape [N, T, 128] for the canonical audio modality.",
         ],
     }
-    (dataset_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (dataset_dir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
     (dataset_dir / "README.md").write_text(
         "\n".join(
             [
@@ -360,7 +392,9 @@ def prepare_speech_commands_dataset(raw_dir: Path, output_root: Path, sequence_l
     }
 
 
-def prepare_esc50_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_esc50_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     root = _find_esc50_root(raw_dir.resolve())
     train_examples: List[Tuple[Path, int]] = []
     val_examples: List[Tuple[Path, int]] = []
@@ -388,11 +422,17 @@ def prepare_esc50_dataset(raw_dir: Path, output_root: Path, sequence_length: int
             "ESC-50 uses the official fold metadata; fold 5 is used as validation and folds 1-4 as training.",
             "This is the first non-speech environmental audio benchmark in the prepared-audio lineup.",
         ],
-        split_strategy={"type": "fold-holdout", "train_folds": [1, 2, 3, 4], "val_folds": [5]},
+        split_strategy={
+            "type": "fold-holdout",
+            "train_folds": [1, 2, 3, 4],
+            "val_folds": [5],
+        },
     )
 
 
-def prepare_urbansound8k_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_urbansound8k_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     root = _find_urbansound_root(raw_dir.resolve())
     train_examples: List[Tuple[Path, int]] = []
     val_examples: List[Tuple[Path, int]] = []
@@ -420,11 +460,17 @@ def prepare_urbansound8k_dataset(raw_dir: Path, output_root: Path, sequence_leng
             "UrbanSound8K uses the official fold metadata; fold 10 is used as validation and folds 1-9 as training.",
             "This benchmark extends the prepared-audio path into ambient urban events.",
         ],
-        split_strategy={"type": "fold-holdout", "train_folds": [1, 2, 3, 4, 5, 6, 7, 8, 9], "val_folds": [10]},
+        split_strategy={
+            "type": "fold-holdout",
+            "train_folds": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            "val_folds": [10],
+        },
     )
 
 
-def prepare_fsd50k_dataset(raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_fsd50k_dataset(
+    raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     import pyarrow.parquet as pq
 
     resolved_raw = raw_dir.resolve()
@@ -435,7 +481,11 @@ def prepare_fsd50k_dataset(raw_dir: Path, output_root: Path, sequence_length: in
     vocabulary_path = root / "ground_truth" / "vocabulary.csv"
     dev_truth_path = root / "ground_truth" / "dev.csv"
     eval_truth_path = root / "ground_truth" / "eval.csv"
-    if not vocabulary_path.exists() or not dev_truth_path.exists() or not eval_truth_path.exists():
+    if (
+        not vocabulary_path.exists()
+        or not dev_truth_path.exists()
+        or not eval_truth_path.exists()
+    ):
         raise FileNotFoundError(f"FSD50K metadata is incomplete under {root}")
 
     vocabulary: Dict[int, str] = {}
@@ -488,7 +538,9 @@ def prepare_fsd50k_dataset(raw_dir: Path, output_root: Path, sequence_length: in
                 label = val_lookup[stem]
             else:
                 continue
-            waveform = _decode_audio_bytes(row["audio"], Path(row["name"]).suffix or ".ogg")
+            waveform = _decode_audio_bytes(
+                row["audio"], Path(row["name"]).suffix or ".ogg"
+            )
             waveform_tensor = _resample_waveform(waveform, sequence_length)
             target_audio.append(_waveform_to_log_spectrogram(waveform_tensor))
             target_labels.append(label)
@@ -500,7 +552,9 @@ def prepare_fsd50k_dataset(raw_dir: Path, output_root: Path, sequence_length: in
             label = eval_lookup.get(stem)
             if label is None:
                 continue
-            waveform = _decode_audio_bytes(row["audio"], Path(row["name"]).suffix or ".ogg")
+            waveform = _decode_audio_bytes(
+                row["audio"], Path(row["name"]).suffix or ".ogg"
+            )
             waveform_tensor = _resample_waveform(waveform, sequence_length)
             val_audio.append(_waveform_to_log_spectrogram(waveform_tensor))
             val_labels.append(label)
@@ -512,13 +566,20 @@ def prepare_fsd50k_dataset(raw_dir: Path, output_root: Path, sequence_length: in
     val_audio_tensor = torch.stack(val_audio)
     train_labels_tensor = torch.tensor(train_labels, dtype=torch.long)
     val_labels_tensor = torch.tensor(val_labels, dtype=torch.long)
-    train_audio_tensor, val_audio_tensor = _standardize_audio(train_audio_tensor, val_audio_tensor)
+    train_audio_tensor, val_audio_tensor = _standardize_audio(
+        train_audio_tensor, val_audio_tensor
+    )
 
     class_names = [name for _, name in sorted(vocabulary.items())]
     dataset_dir = get_real_audio_dataset_dir("fsd50k", output_root)
     dataset_dir.mkdir(parents=True, exist_ok=True)
-    torch.save({"audio": train_audio_tensor, "labels": train_labels_tensor}, dataset_dir / "train.pt")
-    torch.save({"audio": val_audio_tensor, "labels": val_labels_tensor}, dataset_dir / "val.pt")
+    torch.save(
+        {"audio": train_audio_tensor, "labels": train_labels_tensor},
+        dataset_dir / "train.pt",
+    )
+    torch.save(
+        {"audio": val_audio_tensor, "labels": val_labels_tensor}, dataset_dir / "val.pt"
+    )
     manifest = {
         "schema_version": PREPARED_AUDIO_SCHEMA_VERSION,
         "dataset": "fsd50k",
@@ -537,7 +598,9 @@ def prepare_fsd50k_dataset(raw_dir: Path, output_root: Path, sequence_length: in
             "Development train/val plus eval are merged into the validation side to keep the current bounded audio classification protocol simple.",
         ],
     }
-    (dataset_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (dataset_dir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
     (dataset_dir / "README.md").write_text(
         "\n".join(
             [
@@ -571,7 +634,9 @@ def prepare_fsd50k_dataset(raw_dir: Path, output_root: Path, sequence_length: in
     }
 
 
-def prepare_real_audio_dataset(dataset: str, raw_dir: Path, output_root: Path, sequence_length: int) -> Dict[str, object]:
+def prepare_real_audio_dataset(
+    dataset: str, raw_dir: Path, output_root: Path, sequence_length: int
+) -> Dict[str, object]:
     if dataset == "speech_commands":
         return prepare_speech_commands_dataset(raw_dir, output_root, sequence_length)
     if dataset == "esc50":

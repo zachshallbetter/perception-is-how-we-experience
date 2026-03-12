@@ -1,7 +1,7 @@
 """Regression guards preventing legacy command/reference reintroduction."""
 
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 
 class LegacyGuardrailsTest(unittest.TestCase):
@@ -11,9 +11,6 @@ class LegacyGuardrailsTest(unittest.TestCase):
             Path("docs/training-guide.md"),
             Path("docs/baselines.md"),
             Path("scripts/README.md"),
-            Path("scripts/run_full_benchmark.sh"),
-            Path("scripts/run_experiments.bat"),
-            Path("scripts/run_experiments.ps1"),
             Path("scripts/validate_setup.py"),
             Path("src/experiments/ablation_study_config.py"),
         ]
@@ -46,7 +43,9 @@ class LegacyGuardrailsTest(unittest.TestCase):
         self.assertIn("from .core import", content)
 
     def test_orchestrator_does_not_use_legacy_iot_name(self):
-        content = Path("src/services/orchestration_service.py").read_text(encoding="utf-8")
+        content = Path("src/services/orchestration_service.py").read_text(
+            encoding="utf-8"
+        )
         self.assertNotIn("synthetic_iot", content)
 
 

@@ -183,32 +183,28 @@ Print the live/final status of a real-audio supervision sequence.
 bash scripts/real_audio_sequence_status.sh real-audio-seq-001
 ```
 
+## LaTeX Toolchain
+
+### `install_latex_toolchain.sh`
+Install the project LaTeX toolchain on macOS.
+
+```bash
+/Users/zachshallbetter/Projects/Perception/scripts/install_latex_toolchain.sh
+```
+
+### `build_latex_paper.sh`
+Build the PDF manuscript from the canonical LaTeX sources.
+
+```bash
+/Users/zachshallbetter/Projects/Perception/scripts/build_latex_paper.sh
+```
+
 ### `sync_titan_real_results.sh`
 Sync Titan-generated real-data evidence into the local `results/` tree so package generation and paper updates use the same canonical sequence reports.
 
 ```bash
 bash scripts/sync_titan_real_results.sh
 ```
-
-### `download_audioset.py` (user implementation)
-Download and preprocess AudioSet (22K balanced subset).
-- Requires: `yt-dlp`, `librosa`
-- Converts to 16kHz mono WAV files
-- User should implement using AudioSet's official download instructions
-
-### `preprocess_coco.py` (user implementation)
-Preprocess MSCOCO 2017 validation split (5K images).
-- Download from: https://cocodataset.org/
-- Expected structure: `data/coco/images/val2017/` + annotations JSON
-
-### `generate_av_mnist.py` (user implementation)
-Generate audio-visual MNIST pairs (5K samples).
-- Combines visual digits with generated speech
-
-### `preprocess_flickr.py` (user implementation)
-Preprocess Flickr30K (31K image-text pairs).
-- Download from: https://www.flickr30k.org/
-- Extract images and captions to parallel files
 
 ### `generate_split_cifar.py` (user implementation)
 Generate Split-CIFAR-100 (20 sequential tasks, 5 classes each).
@@ -579,22 +575,6 @@ python scripts/report_replay_depth_ablation.py \
 **Output**:
 - `ablation_report.md` in the selected ablation directory
 
-### `run_full_benchmark.sh` (legacy bulk benchmark path)
-Execute all 3 experiments × 3 seeds with evaluation.
-
-```bash
-bash scripts/run_full_benchmark.sh
-# Outputs: results/benchmark_YYYYMMDD_HHMMSS/
-```
-
-**Runs** (parallel-friendly):
-1. Continual Learning: Split-CIFAR-100 (3 seeds)
-2. Continual Learning: Permuted MNIST (3 seeds)
-3. IoT Streaming: Generated sensor data (3 seeds)
-4. Aggregation: Compile statistics
-
-**Duration**: ~6-12 hours on A100 (2h per seed × 3 seeds × 2 datasets)
-
 ## Analysis & Visualization
 
 ### `aggregate_results.py`
@@ -652,7 +632,7 @@ python scripts/plot_results.py \
 
 ## Notes
 
-- **External datasets** (AudioSet, COCO, Flickr30K): Users must implement download scripts or use standard dataset repositories
+- **External datasets**: Users must implement download scripts or use standard dataset repositories
 - **Generated data**: Use `generate_sensor_streaming_data.py` for quick validation without external dependencies
 - **GPU memory**: Reduce `--batch_size` or `--d_model` if OOM errors occur
 - **Reproducibility**: All scripts accept `--seed` parameter for deterministic runs

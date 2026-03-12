@@ -11,7 +11,6 @@ from typing import Dict, Iterable, Optional, Union
 import torch
 from torch.utils.data import Dataset
 
-
 PREPARED_SENSOR_SCHEMA_VERSION = 1
 DEFAULT_REAL_SENSOR_ROOT = Path("data/real-sensor")
 REAL_SENSOR_MODALITY_DIMS = {
@@ -94,13 +93,17 @@ def is_real_sensor_dataset(dataset_name: str) -> bool:
     return dataset_name in REAL_SENSOR_DATASET_SPECS
 
 
-def get_real_sensor_dataset_dir(dataset_name: str, root: Optional[Union[str, Path]] = None) -> Path:
+def get_real_sensor_dataset_dir(
+    dataset_name: str, root: Optional[Union[str, Path]] = None
+) -> Path:
     if not is_real_sensor_dataset(dataset_name):
         raise ValueError(f"Unknown real sensor dataset: {dataset_name}")
     return get_real_sensor_root(root) / dataset_name
 
 
-def get_real_sensor_manifest_path(dataset_name: str, root: Optional[Union[str, Path]] = None) -> Path:
+def get_real_sensor_manifest_path(
+    dataset_name: str, root: Optional[Union[str, Path]] = None
+) -> Path:
     return get_real_sensor_dataset_dir(dataset_name, root) / "manifest.json"
 
 
@@ -124,7 +127,9 @@ def real_sensor_dataset_is_prepared(
     return (dataset_dir / train_file).exists() and (dataset_dir / val_file).exists()
 
 
-def load_real_sensor_manifest(dataset_name: str, root: Optional[Union[str, Path]] = None) -> dict:
+def load_real_sensor_manifest(
+    dataset_name: str, root: Optional[Union[str, Path]] = None
+) -> dict:
     manifest_path = get_real_sensor_manifest_path(dataset_name, root)
     if not manifest_path.exists():
         raise FileNotFoundError(
@@ -143,15 +148,21 @@ def load_real_sensor_manifest(dataset_name: str, root: Optional[Union[str, Path]
     return payload
 
 
-def get_real_sensor_n_classes(dataset_name: str, root: Optional[Union[str, Path]] = None) -> int:
+def get_real_sensor_n_classes(
+    dataset_name: str, root: Optional[Union[str, Path]] = None
+) -> int:
     manifest = load_real_sensor_manifest(dataset_name, root)
     n_classes = manifest.get("n_classes")
     if not isinstance(n_classes, int) or n_classes <= 0:
-        raise ValueError(f"Manifest for '{dataset_name}' must define positive integer n_classes")
+        raise ValueError(
+            f"Manifest for '{dataset_name}' must define positive integer n_classes"
+        )
     return n_classes
 
 
-def _resolve_split_file(dataset_name: str, split: str, root: Optional[Union[str, Path]] = None) -> Path:
+def _resolve_split_file(
+    dataset_name: str, split: str, root: Optional[Union[str, Path]] = None
+) -> Path:
     manifest = load_real_sensor_manifest(dataset_name, root)
     split_file = manifest.get("splits", {}).get(split)
     if not split_file:
@@ -198,7 +209,9 @@ class PreparedRealSensorDataset(Dataset):
             if tensor is None:
                 raise ValueError(f"Prepared split missing modality tensor '{modality}'")
             if tensor.ndim != 3:
-                raise ValueError(f"Prepared modality '{modality}' must be rank-3 [N, T, C]")
+                raise ValueError(
+                    f"Prepared modality '{modality}' must be rank-3 [N, T, C]"
+                )
             if int(tensor.shape[0]) != n_sequences:
                 raise ValueError(
                     f"Prepared modality '{modality}' has {tensor.shape[0]} sequences, expected {n_sequences}"

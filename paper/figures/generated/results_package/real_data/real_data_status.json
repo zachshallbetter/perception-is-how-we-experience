@@ -18,15 +18,45 @@
   },
   "canonical_audio_sequence": {
     "sequence_id": "real-audio-seq-002",
-    "status": "running",
-    "completed": [],
-    "blocked": [],
+    "status": "completed",
+    "completed": [
+      {
+        "dataset": "speech_commands",
+        "family": "real-audio-seq-002-speech_commands",
+        "summary_file": "/ai/projects/Perception/results/real_audio_sequence_summaries/real-audio-seq-002-speech_commands.json",
+        "summary": {
+          "runs": 3,
+          "mean_accuracy": 0.8832231349762907,
+          "std_accuracy": 0.0018223153208631712,
+          "min_accuracy": 0.881787216990583,
+          "max_accuracy": 0.8857944299739531,
+          "seeds": [
+            42,
+            43,
+            44
+          ]
+        }
+      }
+    ],
+    "blocked": [
+      {
+        "dataset": "esc50",
+        "status": "awaiting-raw-data",
+        "raw_dir": "/ai/projects/Perception/data/raw/audio/esc50"
+      },
+      {
+        "dataset": "urbansound8k",
+        "status": "awaiting-raw-data",
+        "raw_dir": "/ai/projects/Perception/data/raw/audio/urbansound8k"
+      }
+    ],
     "expected_integrated_datasets": [
       "speech_commands",
       "esc50",
       "urbansound8k",
       "fsd50k"
-    ]
+    ],
+    "promotable": false
   },
   "bootstrap_sensor_sequence": {
     "sequence_id": "real-seq-004",
@@ -40,7 +70,7 @@
   },
   "canonical_sensor_sequence": {
     "sequence_id": "real-sensor-seq-001",
-    "status": null,
+    "status": "failed",
     "completed": [],
     "blocked": [],
     "expected_integrated_datasets": [
@@ -53,7 +83,8 @@
       "selfback",
       "geomagnetic_wlan",
       "realworld_har"
-    ]
+    ],
+    "promotable": false
   },
   "deferred_legacy_datasets": {
     "audio": {

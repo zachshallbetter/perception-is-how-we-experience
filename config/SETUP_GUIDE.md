@@ -100,15 +100,10 @@ For auto-push to GitHub:
   ├── eval.py
   ├── models.py
   ├── data_loader.py
-  ├── experiment_orchestrator.py
-  ├── run_experiments.ps1
   ├── requirements.txt
   ├── scripts/
   └── results/  (will be created)
   ```
-
-- [ ] Monitor dashboard location noted
-  - Will be created at: `monitor_dashboard.html` (root directory)
 
 - [ ] Results directory created
   ```powershell
@@ -143,82 +138,16 @@ This script validates:
 ✓ All checks passed! Ready to run experiments.
 
 Next steps:
-  1. Run quick test: .\run_experiments.ps1 -Mode quick
-  2. Run full benchmark: .\run_experiments.ps1 -Mode full -Parallel
-  3. Monitor: Open monitor_dashboard.html in browser
+  1. Check results/ for detailed metrics and checkpoints
 ```
 
 **If validation fails:** Follow error messages to fix issues, then re-run `validate_setup.py`
 
 ---
 
-## 🚀 Start Experiments
-
-### Quick Test (Safe Start)
-```powershell
-.\run_experiments.ps1 -Mode quick
-```
-- Duration: ~4 hours
-- Validates full pipeline
-- Minimal GPU stress
-
-### Full Benchmark (Production)
-```powershell
-.\run_experiments.ps1 -Mode full -Parallel
-```
-- Duration: ~14 hours (parallel on 3 GPUs)
-- Duration: ~40 hours (sequential on 1 GPU)
-- Generates publication-quality results
-
-### Monitor Progress
-While running, open in browser:
-- File → `monitor_dashboard.html`
-- Auto-refreshes every 30 seconds
-- Shows progress, ETA, per-GPU status
-
----
-
-## 📊 Monitor System Health
-
-Create a PowerShell monitoring script (`monitor_system.ps1`):
-
-```powershell
-# Show GPU, CPU, Memory usage every 5 seconds
-while($true) {
-    Clear-Host
-    Write-Host "=== GPU Status ===" -ForegroundColor Cyan
-    nvidia-smi --query-gpu=index,name,utilization.gpu,utilization.memory,memory.used,memory.total \
-        --format=csv,noheader,nounits | ForEach-Object {
-        Write-Host "GPU $_"
-    }
-
-    Write-Host "`n=== CPU Status ===" -ForegroundColor Cyan
-    $cpu = Get-CimInstance -ClassName Win32_Processor | Select-Object -ExpandProperty LoadPercentage
-    Write-Host "CPU: $cpu %"
-
-    Write-Host "`n=== Memory Status ===" -ForegroundColor Cyan
-    $mem = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty TotalPhysicalMemory
-    $memFree = Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object -ExpandProperty FreePhysicalMemory
-    $memUsed = [math]::Round(($mem - $memFree*1KB) / 1GB, 2)
-    $memTotal = [math]::Round($mem / 1GB, 2)
-    Write-Host "Memory: $memUsed GB / $memTotal GB"
-
-    Write-Host "`n=== Experiment Status ===" -ForegroundColor Cyan
-    $logFile = Get-Content experiment_orchestrator.log -Tail 3
-    Write-Host $logFile
-
-    Start-Sleep 5
-}
-```
-
-Run during experiments:
-```powershell
-.\monitor_system.ps1
-```
-
----
-
-## 🐛 Troubleshooting Setup
+  1. **Review Results**
+   - Open `results/summary.csv`
+   - Review `results/*/eval_results.json`
 
 ### Python not found
 ```powershell
@@ -258,18 +187,7 @@ git config credential.helper manager
 
 ## ✨ You're Ready!
 
-Once checklist is complete:
-
-```powershell
-# Start quick validation
-.\run_experiments.ps1 -Mode quick
-
-# If successful, start full benchmark
-.\run_experiments.ps1 -Mode full -Parallel
-
-# Monitor progress
-# Open monitor_dashboard.html in browser
-```
+Once checklist is complete, you can begin running individual benchmark scripts from the `scripts/` directory.
 
 ---
 
@@ -288,7 +206,6 @@ Once checklist is complete:
 
 1. **Review Results**
    - Open `results/summary.csv`
-   - Check `monitor_dashboard.html` final stats
    - Review `results/*/eval_results.json`
 
 2. **Generate Visualizations**
@@ -311,21 +228,9 @@ Once checklist is complete:
 
 ## 📞 Common Questions
 
-**Q: Can I run multiple experiments in parallel?**
-A: Yes! Use `run_experiments.ps1 -Mode full -Parallel` to use all 3 GPUs (14 hours total).
-
-**Q: Will my computer freeze during training?**
-A: No, GPU training doesn't freeze the system. You can work normally.
-
 **Q: How much disk space do I need?**
 A: ~50GB for full benchmark (model checkpoints + logs).
 
-**Q: Can I stop and resume experiments?**
-A: Yes, the orchestrator checks for completed experiments and skips them.
-
-**Q: What if an experiment fails?**
-A: Check `experiment_orchestrator.log` for details. The orchestrator will continue with remaining experiments.
-
 ---
 
-**You're all set! Run `.\run_experiments.ps1 -Mode quick` to begin.**
+**You're all set!**

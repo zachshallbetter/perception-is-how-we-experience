@@ -60,22 +60,22 @@ from .attention_heatmap import plot_attention_heatmap
 from .radar_comparison import plot_radar_comparison
 
 __all__ = [
-    'plot_accuracy_curves',
-    'plot_ablation_results',
-    'plot_efficiency_frontier',
-    'plot_comparison_table',
-    'plot_architecture_diagram',
-    'plot_attention_heatmap',
-    'plot_radar_comparison',
+    "plot_accuracy_curves",
+    "plot_ablation_results",
+    "plot_efficiency_frontier",
+    "plot_comparison_table",
+    "plot_architecture_diagram",
+    "plot_attention_heatmap",
+    "plot_radar_comparison",
 ]
 
 # Convenience dictionary for accessing all templates
 TEMPLATES = {
-    'accuracy_curves': plot_accuracy_curves,
-    'ablation_results': plot_ablation_results,
-    'efficiency_frontier': plot_efficiency_frontier,
-    'comparison_table': plot_comparison_table,
-    'architecture_diagram': plot_architecture_diagram,
-    'attention_heatmap': plot_attention_heatmap,
-    'radar_comparison': plot_radar_comparison,
+    "accuracy_curves": plot_accuracy_curves,
+    "ablation_results": plot_ablation_results,
+    "efficiency_frontier": plot_efficiency_frontier,
+    "comparison_table": plot_comparison_table,
+    "architecture_diagram": plot_architecture_diagram,
+    "attention_heatmap": plot_attention_heatmap,
+    "radar_comparison": plot_radar_comparison,
 }

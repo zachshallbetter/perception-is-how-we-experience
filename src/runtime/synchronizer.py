@@ -4,6 +4,7 @@ from typing import Dict, Iterable, List, Tuple
 
 import torch
 
+from src.runtime.errors import AppError, ErrorCode
 from src.runtime.live_schema import (
     CANONICAL_MODALITIES,
     FrameEnvelope,
@@ -11,7 +12,6 @@ from src.runtime.live_schema import (
     SensorWindow,
     StreamStatus,
 )
-from src.runtime.errors import AppError, ErrorCode
 
 
 class BaseSynchronizer:
@@ -40,7 +40,7 @@ class BaseSynchronizer:
             raise AppError(
                 ErrorCode.INVALID_ARGUMENT,
                 f"Window bounds diff {window_end_ms - window_start_ms} "
-                f"does not match expected {self.window_size_ms}"
+                f"does not match expected {self.window_size_ms}",
             )
 
         # Buffer incoming per modality
@@ -71,7 +71,9 @@ class BaseSynchronizer:
             elif len(series) < self.required_steps // 2:
                 status = StreamStatus.DEGRADED
 
-            tensor = torch.zeros((1, self.required_steps, feature_dim), dtype=torch.float32)
+            tensor = torch.zeros(
+                (1, self.required_steps, feature_dim), dtype=torch.float32
+            )
             valid_mask = torch.zeros((1, self.required_steps), dtype=torch.bool)
 
             if status != StreamStatus.MISSING:
@@ -80,7 +82,9 @@ class BaseSynchronizer:
                 for ts, payload in series:
                     bucket_idx = (ts - window_start_ms) // self.step_ms
                     if 0 <= bucket_idx < self.required_steps:
-                        tensor[0, bucket_idx, :] = torch.tensor(payload, dtype=torch.float32)
+                        tensor[0, bucket_idx, :] = torch.tensor(
+                            payload, dtype=torch.float32
+                        )
                         valid_mask[0, bucket_idx] = True
 
             results[mod_type] = SensorWindow(

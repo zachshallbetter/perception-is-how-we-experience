@@ -35,15 +35,15 @@ def plot_radar_comparison(
     angles += angles[:1]  # Complete the circle
 
     # Create figure
-    fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection='polar'))
+    fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection="polar"))
 
     # Default colors
     if colors is None:
         colors = {
-            'SensoryPerceiver': '#2E86AB',
-            'Perceiver IO': '#A23B72',
-            'LSTM': '#F18F01',
-            'Hand-Coded': '#6A994E',
+            "SensoryPerceiver": "#2E86AB",
+            "Perceiver IO": "#A23B72",
+            "LSTM": "#F18F01",
+            "Hand-Coded": "#6A994E",
         }
 
     # Plot each model
@@ -51,11 +51,12 @@ def plot_radar_comparison(
         values = list(values)
         values += values[:1]  # Complete the circle
 
-        color = colors.get(model_name, '#2E86AB')
+        color = colors.get(model_name, "#2E86AB")
 
         ax.plot(
-            angles, values,
-            'o-',
+            angles,
+            values,
+            "o-",
             linewidth=2.5,
             label=model_name,
             color=color,
@@ -67,21 +68,21 @@ def plot_radar_comparison(
 
     # Customize axes
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(categories, fontsize=11, fontweight='bold')
+    ax.set_xticklabels(categories, fontsize=11, fontweight="bold")
 
     # Set y-axis limits and ticks
     ax.set_ylim(0, 1)
     ax.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
-    ax.set_yticklabels(['0.2', '0.4', '0.6', '0.8', '1.0'], fontsize=10)
+    ax.set_yticklabels(["0.2", "0.4", "0.6", "0.8", "1.0"], fontsize=10)
     ax.set_rlabel_position(0)
 
     # Grid
-    ax.grid(True, linestyle='--', alpha=0.7)
+    ax.grid(True, linestyle="--", alpha=0.7)
 
     # Title and legend
-    plt.title(title, fontsize=14, fontweight='bold', pad=20)
+    plt.title(title, fontsize=14, fontweight="bold", pad=20)
     plt.legend(
-        loc='upper right',
+        loc="upper right",
         bbox_to_anchor=(1.3, 1.1),
         fontsize=11,
     )
@@ -91,38 +92,44 @@ def plot_radar_comparison(
     output_path.mkdir(parents=True, exist_ok=True)
 
     plt.tight_layout()
-    plt.savefig(output_path / 'radar_comparison.pdf', dpi=300, bbox_inches='tight', format='pdf')
-    plt.savefig(output_path / 'radar_comparison.svg', dpi=300, bbox_inches='tight', format='svg')
-    plt.savefig(output_path / 'radar_comparison.png', dpi=300, bbox_inches='tight', format='png')
+    plt.savefig(
+        output_path / "radar_comparison.pdf", dpi=300, bbox_inches="tight", format="pdf"
+    )
+    plt.savefig(
+        output_path / "radar_comparison.svg", dpi=300, bbox_inches="tight", format="svg"
+    )
+    plt.savefig(
+        output_path / "radar_comparison.png", dpi=300, bbox_inches="tight", format="png"
+    )
     plt.close()
 
     print(f"✅ Saved radar comparison to {output_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Example usage: multi-metric comparison across models
     # All values normalized to [0, 1] scale
 
     categories = [
-        'Accuracy',
-        'Speed',
-        'Robustness',
-        'Generalization',
-        'Interpretability',
+        "Accuracy",
+        "Speed",
+        "Robustness",
+        "Generalization",
+        "Interpretability",
     ]
 
     models_data = {
-        'SensoryPerceiver': [0.87, 0.65, 0.85, 0.82, 0.78],
-        'Perceiver IO': [0.82, 0.55, 0.75, 0.70, 0.65],
-        'LSTM': [0.80, 0.45, 0.68, 0.65, 0.72],
-        'Hand-Coded Fusion': [0.75, 0.90, 0.50, 0.40, 0.95],
+        "SensoryPerceiver": [0.87, 0.65, 0.85, 0.82, 0.78],
+        "Perceiver IO": [0.82, 0.55, 0.75, 0.70, 0.65],
+        "LSTM": [0.80, 0.45, 0.68, 0.65, 0.72],
+        "Hand-Coded Fusion": [0.75, 0.90, 0.50, 0.40, 0.95],
     }
 
     colors = {
-        'SensoryPerceiver': '#2E86AB',
-        'Perceiver IO': '#A23B72',
-        'LSTM': '#F18F01',
-        'Hand-Coded Fusion': '#6A994E',
+        "SensoryPerceiver": "#2E86AB",
+        "Perceiver IO": "#A23B72",
+        "LSTM": "#F18F01",
+        "Hand-Coded Fusion": "#6A994E",
     }
 
     plot_radar_comparison(

@@ -4,7 +4,7 @@
 \begin{table}[t]
   \centering
   \includegraphics[width=\linewidth]{../figures/generated/results_package/table_results_overview.pdf}
-  \caption{Split-CIFAR-100 continual-learning progression. Phase 1 is a legacy feature-only replay result sourced from the canonical paper section because the original run directory is not currently tracked as a local artifact. Phase 2 and Phase 3 are artifact-backed, with Phase 3 reporting the mean over 6 tuned-core Titan runs from family `20260311_140818`.}
+  \caption{Split-CIFAR-100 continual-learning progression. Phase 1 is a legacy feature-only replay result sourced from the canonical paper section because the original run directory is not currently tracked as a local artifact. Phase 2 and Phase 3 are artifact-backed, with Phase 3 reporting the mean over 6 tuned-core Titan runs from family \texttt{20260311\_140818}.}
   \label{tab:split-cifar-results-overview}
 \end{table}
 
@@ -32,6 +32,6 @@
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{../figures/generated/results_package/figure_real_data_evidence.pdf}
-  \caption{Real-data evidence overview. Bootstrap evidence comes from `real-audio-seq-001` on Speech Commands and `real-seq-004` on WISDM. Canonical evidence is promoted only from `real-audio-seq-002` and `real-sensor-seq-001` after those bounded integrated sequences complete successfully. Historical bootstrap reports may still list newly integrated datasets as candidates, so the package treats sequence stage, supervisor defaults, and blocked-state reports as the canonical source of truth.}
+  \caption{Real-data evidence overview. Bootstrap evidence comes from \texttt{real-audio-seq-001} on Speech Commands and \texttt{real-seq-004} on WISDM. Canonical evidence is promoted only when bounded integrated sequences finish with all expected datasets present and no blocked entries. \texttt{real-audio-seq-002} is currently completed but not promotable because blocked datasets remain, and \texttt{real-sensor-seq-001} is currently failed at \texttt{pamap2}.}
   \label{fig:real-data-evidence-overview}
 \end{figure}

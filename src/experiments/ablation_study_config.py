@@ -10,9 +10,9 @@ Usage:
     python -m src.train --experiment continual --dataset split_cifar --output_dir results/ablation_efficiency_small
 """
 
-from dataclasses import dataclass, asdict
-from typing import Dict, List
 import json
+from dataclasses import asdict, dataclass
+from typing import Dict, List
 
 
 @dataclass
@@ -245,7 +245,9 @@ class AblationStudy:
                 print(f"  {config.name}")
                 print(f"    Description: {config.description}")
                 print(f"    Hypothesis:  {config.hypothesis}")
-                print(f"    Expected:    {config.expected_accuracy_range[0]*100:.0f}%-{config.expected_accuracy_range[1]*100:.0f}%")
+                print(
+                    f"    Expected:    {config.expected_accuracy_range[0]*100:.0f}%-{config.expected_accuracy_range[1]*100:.0f}%"
+                )
                 print(f"    GPU time:    ~{gpu_hours:.1f}h")
 
         print("\n" + "=" * 80)

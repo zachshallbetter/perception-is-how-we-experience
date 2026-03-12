@@ -33,7 +33,9 @@ def validate_environment(required_env: Optional[Iterable[str]] = None) -> None:
             "PyTorch is not available in runtime environment",
         )
 
-    missing_vars = [name for name in (required_env or []) if name and name not in os.environ]
+    missing_vars = [
+        name for name in (required_env or []) if name and name not in os.environ
+    ]
     if missing_vars:
         raise AppError(
             ErrorCode.ENV_VALIDATION_FAILED,

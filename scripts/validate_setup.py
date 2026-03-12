@@ -9,16 +9,13 @@ Usage:
     python validate_setup.py --verbose
 """
 
-import sys
-import subprocess
-from pathlib import Path
-from argparse import ArgumentParser
 import logging
+import subprocess
+import sys
+from argparse import ArgumentParser
+from pathlib import Path
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -35,12 +32,12 @@ class Validator:
         self.passed = 0
         self.failed = 0
 
-    def _log(self, message: str, level: str = 'info'):
-        if level == 'info':
+    def _log(self, message: str, level: str = "info"):
+        if level == "info":
             logger.info(f"  ✓ {message}")
-        elif level == 'warn':
+        elif level == "warn":
             logger.warning(f"  ⚠ {message}")
-        elif level == 'error':
+        elif level == "error":
             logger.error(f"  ✗ {message}")
 
     def check_python(self) -> bool:
@@ -48,7 +45,7 @@ class Validator:
         logger.info("\n[1/8] Checking Python...")
         version = f"{sys.version_info.major}.{sys.version_info.minor}"
         if sys.version_info.major < 3 or sys.version_info.minor < 10:
-            self._log(f"Python {version} (need 3.10+)", 'error')
+            self._log(f"Python {version} (need 3.10+)", "error")
             return False
         self._log(f"Python {version}")
         return True
@@ -58,17 +55,18 @@ class Validator:
         logger.info("\n[2/8] Checking PyTorch...")
         try:
             import torch
+
             self._log(f"PyTorch {torch.__version__}")
 
             if not torch.cuda.is_available():
-                self._log("CUDA not available", 'error')
+                self._log("CUDA not available", "error")
                 return False
 
             n_gpus = torch.cuda.device_count()
             self._log(f"GPU devices: {n_gpus}")
 
             if n_gpus < 1:
-                self._log("No GPUs detected", 'error')
+                self._log("No GPUs detected", "error")
                 return False
 
             for i in range(n_gpus):
@@ -77,26 +75,26 @@ class Validator:
 
             return True
         except ImportError:
-            self._log("PyTorch not installed", 'error')
+            self._log("PyTorch not installed", "error")
             return False
         except Exception as e:
-            self._log(f"PyTorch error: {e}", 'error')
+            self._log(f"PyTorch error: {e}", "error")
             return False
 
     def check_dependencies(self) -> bool:
         """Verify core dependencies."""
         logger.info("\n[3/8] Checking dependencies...")
         required = [
-            ('numpy', 'numpy'),
-            ('torch', 'torch'),
-            ('torchvision', 'torchvision'),
-            ('torchaudio', 'torchaudio'),
-            ('timm', 'timm'),
-            ('tensorboard', 'tensorboard'),
-            ('tqdm', 'tqdm'),
-            ('pyyaml', 'yaml'),
-            ('omegaconf', 'omegaconf'),
-            ('scikit-learn', 'sklearn'),
+            ("numpy", "numpy"),
+            ("torch", "torch"),
+            ("torchvision", "torchvision"),
+            ("torchaudio", "torchaudio"),
+            ("timm", "timm"),
+            ("tensorboard", "tensorboard"),
+            ("tqdm", "tqdm"),
+            ("pyyaml", "yaml"),
+            ("omegaconf", "omegaconf"),
+            ("scikit-learn", "sklearn"),
         ]
 
         all_ok = True
@@ -105,7 +103,7 @@ class Validator:
                 __import__(import_name)
                 self._log(f"{label}")
             except ImportError:
-                self._log(f"{label} (missing)", 'error')
+                self._log(f"{label} (missing)", "error")
                 all_ok = False
 
         return all_ok
@@ -114,10 +112,10 @@ class Validator:
         """Verify optional dependencies."""
         logger.info("\n[4/8] Checking optional dependencies...")
         optional = [
-            ('matplotlib', 'Visualization'),
-            ('seaborn', 'Enhanced plots'),
-            ('librosa', 'Audio processing'),
-            ('cv2', 'Image processing'),
+            ("matplotlib", "Visualization"),
+            ("seaborn", "Enhanced plots"),
+            ("librosa", "Audio processing"),
+            ("cv2", "Image processing"),
         ]
 
         all_ok = True
@@ -126,7 +124,7 @@ class Validator:
                 __import__(pkg)
                 self._log(f"{pkg} - {desc}")
             except ImportError:
-                self._log(f"{pkg} - {desc} (optional, can install later)", 'warn')
+                self._log(f"{pkg} - {desc} (optional, can install later)", "warn")
 
         return True  # Optional failures are warnings, not hard fails
 
@@ -135,30 +133,30 @@ class Validator:
         logger.info("\n[5/8] Checking disk space...")
         try:
             import shutil
-            usage = shutil.disk_usage('results' if Path('results').exists() else '.')
-            free_gb = usage.free / (1024 ** 3)
+
+            usage = shutil.disk_usage("results" if Path("results").exists() else ".")
+            free_gb = usage.free / (1024**3)
 
             self._log(f"Free space: {free_gb:.1f} GB")
 
             if free_gb < 50:
-                self._log(f"Low disk space (need ~50GB for full benchmark)", 'warn')
+                self._log(f"Low disk space (need ~50GB for full benchmark)", "warn")
                 return False
 
             return True
         except Exception as e:
-            self._log(f"Disk check error: {e}", 'warn')
+            self._log(f"Disk check error: {e}", "warn")
             return True
 
     def check_files(self) -> bool:
         """Verify critical files exist."""
         logger.info("\n[6/8] Checking critical files...")
         required_files = [
-            'src/train.py',
-            'src/eval.py',
-            'src/models/core.py',
-            'src/data/loaders.py',
-            'src/experiments/experiment_orchestrator.py',
-            'requirements.txt',
+            "src/train.py",
+            "src/eval.py",
+            "src/models/core.py",
+            "src/data/loaders.py",
+            "requirements.txt",
         ]
 
         all_ok = True
@@ -166,7 +164,7 @@ class Validator:
             if Path(fname).exists():
                 self._log(fname)
             else:
-                self._log(f"{fname} (missing)", 'error')
+                self._log(f"{fname} (missing)", "error")
                 all_ok = False
 
         return all_ok
@@ -175,8 +173,8 @@ class Validator:
         """Create/verify data directories."""
         logger.info("\n[7/8] Checking data directories...")
         dirs = [
-            'results',
-            'data',
+            "results",
+            "data",
         ]
 
         for dirname in dirs:
@@ -194,13 +192,21 @@ class Validator:
         try:
             result = subprocess.run(
                 [
-                    sys.executable, '-m', 'src.train',
-                    '--experiment', 'sensor_streaming',
-                    '--dataset', 'sensor_streaming',
-                    '--epochs', '1',
-                    '--batch_size', '4',
-                    '--device', 'cuda:0',
-                    '--output_dir', 'results/validation_test',
+                    sys.executable,
+                    "-m",
+                    "src.train",
+                    "--experiment",
+                    "sensor_streaming",
+                    "--dataset",
+                    "sensor_streaming",
+                    "--epochs",
+                    "1",
+                    "--batch_size",
+                    "4",
+                    "--device",
+                    "cuda:0",
+                    "--output_dir",
+                    "results/validation_test",
                 ],
                 capture_output=True,
                 text=True,
@@ -211,8 +217,8 @@ class Validator:
                 self._log("Training test passed")
                 return True
             else:
-                error = result.stderr.split('\n')[-10:]  # Last 10 lines
-                self._log(f"Training test failed", 'error')
+                error = result.stderr.split("\n")[-10:]  # Last 10 lines
+                self._log(f"Training test failed", "error")
                 if self.verbose:
                     for line in error:
                         if line.strip():
@@ -220,17 +226,17 @@ class Validator:
                 return False
 
         except subprocess.TimeoutExpired:
-            self._log("Training test timeout (GPU issue?)", 'error')
+            self._log("Training test timeout (GPU issue?)", "error")
             return False
         except Exception as e:
-            self._log(f"Training test error: {e}", 'error')
+            self._log(f"Training test error: {e}", "error")
             return False
 
     def validate_all(self) -> bool:
         """Run all validation checks."""
-        logger.info("="*60)
+        logger.info("=" * 60)
         logger.info("Sensory Perceiver Setup Validation")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         checks = [
             ("Python version", self.check_python),
@@ -258,22 +264,24 @@ class Validator:
                 self.failed += 1
 
         # Summary
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
         logger.info("VALIDATION SUMMARY")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         for name, result in results:
             status = "✓ PASS" if result else "✗ FAIL"
             logger.info(f"{status:8} | {name}")
 
-        logger.info("="*60)
+        logger.info("=" * 60)
         logger.info(f"Total: {self.passed} passed, {self.failed} failed")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         if self.failed == 0:
             logger.info("\n✓ All checks passed! Ready to run experiments.\n")
             logger.info("Next steps:")
-            logger.info("  1. Run quick local test: python scripts/run_local.py --quick")
+            logger.info(
+                "  1. Run quick local test: python scripts/run_local.py --quick"
+            )
             logger.info(
                 "  2. Run baseline smoke: python scripts/run_baselines_cl.py --model perceiver --quick --batch_size 4"
             )
@@ -287,9 +295,8 @@ class Validator:
 
 
 def main():
-    parser = ArgumentParser(description='Validate Sensory Perceiver setup')
-    parser.add_argument('--verbose', action='store_true',
-                        help='Verbose error output')
+    parser = ArgumentParser(description="Validate Sensory Perceiver setup")
+    parser.add_argument("--verbose", action="store_true", help="Verbose error output")
     args = parser.parse_args()
 
     validator = Validator(verbose=args.verbose)
@@ -298,5 +305,5 @@ def main():
     sys.exit(0 if success else 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

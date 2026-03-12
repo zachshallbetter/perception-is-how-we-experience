@@ -20,8 +20,8 @@ from src.data.loaders import create_dataloaders
 from src.models import ContrastiveLoss, SensoryPerceiver
 from src.observability import MetricsCollector, emit_event, generate_trace_id
 from src.runtime import (
-    ErrorCode,
     TRAIN_CONFIG_SCHEMA_VERSION,
+    ErrorCode,
     TrainRuntimeConfig,
     classify_exception,
     resolve_training_setup,
@@ -111,7 +111,9 @@ class Trainer:
         if new_params:
             self.optimizer.add_param_group({"params": new_params})
 
-    def _update_feature_replay(self, features: torch.Tensor, labels: torch.Tensor) -> None:
+    def _update_feature_replay(
+        self, features: torch.Tensor, labels: torch.Tensor
+    ) -> None:
         """Update feature-only replay store used by replay-depth ablations."""
         if self.feature_replay_limit <= 0:
             return
@@ -124,7 +126,9 @@ class Trainer:
             self.feature_replay_features = torch.cat(
                 [self.feature_replay_features, feats], dim=0
             )
-            self.feature_replay_labels = torch.cat([self.feature_replay_labels, labs], dim=0)
+            self.feature_replay_labels = torch.cat(
+                [self.feature_replay_labels, labs], dim=0
+            )
 
         if self.feature_replay_features.shape[0] > self.feature_replay_limit:
             keep = self.feature_replay_features.shape[0] - self.feature_replay_limit
@@ -182,14 +186,23 @@ class Trainer:
             loss = self.criterion(logits, labels)
 
             if self.replay_mode == "er":
-                replay_inputs, replay_labels = self.model.get_replay_samples(labels.shape[0])
+                replay_inputs, replay_labels = self.model.get_replay_samples(
+                    labels.shape[0]
+                )
                 if replay_inputs is not None:
-                    replay_inputs = {key: value.to(self.device) for key, value in replay_inputs.items()}
+                    replay_inputs = {
+                        key: value.to(self.device)
+                        for key, value in replay_inputs.items()
+                    }
                     replay_labels = replay_labels.to(self.device)
 
                     rp_outputs, _ = self.model(replay_inputs, update_buffer=False)
                     rp_pooled = rp_outputs.mean(dim=1)
-                    rp_logits = self.classifier(rp_pooled) if self.classifier is not None else rp_pooled
+                    rp_logits = (
+                        self.classifier(rp_pooled)
+                        if self.classifier is not None
+                        else rp_pooled
+                    )
                     replay_loss = self.criterion(rp_logits, replay_labels)
                     loss = loss + replay_loss
             elif self.replay_mode == "distill":
@@ -200,12 +213,15 @@ class Trainer:
                     and self.teacher_classifier is not None
                 ):
                     replay_inputs = {
-                        key: value.to(self.device) for key, value in replay_inputs.items()
+                        key: value.to(self.device)
+                        for key, value in replay_inputs.items()
                     }
                     rp_outputs, _ = self.model(replay_inputs, update_buffer=False)
                     rp_pooled = rp_outputs.mean(dim=1)
                     student_logits = (
-                        self.classifier(rp_pooled) if self.classifier is not None else rp_pooled
+                        self.classifier(rp_pooled)
+                        if self.classifier is not None
+                        else rp_pooled
                     )
                     with torch.no_grad():
                         teacher_outputs, _ = self.teacher_model(
@@ -235,7 +251,8 @@ class Trainer:
                 replay_samples, _ = self.model.get_replay_samples(labels.shape[0])
                 if replay_samples is not None:
                     replay_samples = {
-                        key: value.to(self.device) for key, value in replay_samples.items()
+                        key: value.to(self.device)
+                        for key, value in replay_samples.items()
                     }
                     with torch.no_grad():
                         rp_outputs, _ = self.model(replay_samples, update_buffer=False)
@@ -342,7 +359,9 @@ class Trainer:
             {
                 "model_state_dict": self.model.state_dict(),
                 "classifier_state_dict": (
-                    self.classifier.state_dict() if self.classifier is not None else None
+                    self.classifier.state_dict()
+                    if self.classifier is not None
+                    else None
                 ),
                 "optimizer_state_dict": self.optimizer.state_dict(),
                 "config": self.config,
@@ -423,7 +442,9 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
             contrastive_temp=runtime_config.contrastive_temp,
         )
 
-        classifier = nn.Linear(runtime_config.d_model, n_classes).to(runtime_config.device)
+        classifier = nn.Linear(runtime_config.d_model, n_classes).to(
+            runtime_config.device
+        )
         criterion = nn.CrossEntropyLoss()
         replay_criterion = ContrastiveLoss(temperature=runtime_config.contrastive_temp)
         optimizer = optim.AdamW(

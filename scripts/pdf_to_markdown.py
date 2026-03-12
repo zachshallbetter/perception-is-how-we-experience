@@ -188,7 +188,12 @@ def extract_pdf_title(reader: PdfReader, fallback: str) -> str:
 
     # If the filename already looks like a real title, prefer it.
     # (Avoids cases where first-page extraction contains headers/duplicated lines.)
-    if (not arxiv_like) and (not re.search(r"\d", fallback)) and ("(" not in fallback) and (")" not in fallback):
+    if (
+        (not arxiv_like)
+        and (not re.search(r"\d", fallback))
+        and ("(" not in fallback)
+        and (")" not in fallback)
+    ):
         if 4 <= len(fallback) <= 120:
             return fallback
 
@@ -338,7 +343,9 @@ def _extract_urls_from_text(text: str) -> list[str]:
     return urls
 
 
-def _extract_urls_from_pdf_annotations(reader: PdfReader, max_pages: int = 3) -> list[str]:
+def _extract_urls_from_pdf_annotations(
+    reader: PdfReader, max_pages: int = 3
+) -> list[str]:
     urls: list[str] = []
 
     for i in range(min(max_pages, len(reader.pages))):
@@ -532,7 +539,9 @@ def choose_main_tex(arxiv_src_dir: Path) -> Path | None:
     if not candidates:
         return None
 
-    scored = sorted((( _score_tex_file(p), p) for p in candidates), reverse=True, key=lambda x: x[0])
+    scored = sorted(
+        ((_score_tex_file(p), p) for p in candidates), reverse=True, key=lambda x: x[0]
+    )
     best_score, best_path = scored[0]
     if best_score < 50:
         return None
@@ -665,11 +674,10 @@ def _strip_environments(tex: str, envs: set[str]) -> str:
 
     return "".join(out)
 
+
 # Convert common LaTeX citation macros to pandoc citations so they survive even
 # when we can't run citeproc due to broken .bib files.
-_LATEX_CITE_RE = re.compile(
-    r"\\cite\w*\*?\s*(?:\[[^\]]*\]\s*){0,2}\{([^}]+)\}"
-)
+_LATEX_CITE_RE = re.compile(r"\\cite\w*\*?\s*(?:\[[^\]]*\]\s*){0,2}\{([^}]+)\}")
 
 
 def _rewrite_latex_citations(s: str) -> str:
@@ -722,7 +730,7 @@ def _expand_latex_includes(path: Path, seen: set[Path], *, is_root: bool) -> str
         inc = Path(rel)
         if inc.suffix == "":
             inc = inc.with_suffix(".tex")
-        inc_path = (path.parent / inc)
+        inc_path = path.parent / inc
 
         # Replace the whole line with expanded content.
         out_lines.append(f"% [oz] begin {cmd}: {inc}\n")
@@ -965,7 +973,7 @@ def _inject_html_base_tag(html: str, base_url: str) -> str:
     if "<base" in hl:
         return html
 
-    base_tag = f"<base href=\"{base_url}\">"
+    base_tag = f'<base href="{base_url}">'
 
     m = re.search(r"<head[^>]*>", html, flags=re.IGNORECASE)
     if m:
@@ -1002,7 +1010,9 @@ def web_source_to_markdown(
     with tempfile.TemporaryDirectory(prefix="oz-websrc-") as td:
         td_path = Path(td)
 
-        req = urllib.request.Request(url, headers={"User-Agent": "oz-pdf-to-markdown/1.0"})
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "oz-pdf-to-markdown/1.0"}
+        )
         try:
             with urllib.request.urlopen(req, timeout=60) as resp:
                 content = resp.read()
@@ -1046,7 +1056,9 @@ def web_source_to_markdown(
                 res = res2
 
         if res.returncode != 0:
-            raise RuntimeError((res.stderr or "").strip() or "pandoc html conversion failed")
+            raise RuntimeError(
+                (res.stderr or "").strip() or "pandoc html conversion failed"
+            )
 
         body = _postprocess_pandoc_markdown(res.stdout)
 
@@ -1257,7 +1269,9 @@ def main() -> int:
         # If this filename collides with a different source, disambiguate.
         if md_path.exists():
             try:
-                head = md_path.read_text(encoding="utf-8", errors="ignore").splitlines()[:40]
+                head = md_path.read_text(
+                    encoding="utf-8", errors="ignore"
+                ).splitlines()[:40]
             except Exception:
                 head = []
 
@@ -1286,7 +1300,10 @@ def main() -> int:
             else:
                 prev.unlink(missing_ok=True)
 
-        print(f"Converting: {pdf.name} -> {md_path.relative_to(project_root)}", file=sys.stderr)
+        print(
+            f"Converting: {pdf.name} -> {md_path.relative_to(project_root)}",
+            file=sys.stderr,
+        )
 
         md_text: str | None = None
 
@@ -1345,11 +1362,7 @@ def main() -> int:
 
         if md_text is None:
             body = reader_to_markdown(reader)
-            md_text = (
-                f"# {title}\n\n"
-                f"<!-- Source: {pdf.name} -->\n\n"
-                f"{body}"
-            )
+            md_text = f"# {title}\n\n" f"<!-- Source: {pdf.name} -->\n\n" f"{body}"
             item["pipeline"] = "pdf"
 
         md_path.write_text(md_text, encoding="utf-8")
@@ -1358,7 +1371,9 @@ def main() -> int:
     if not args.no_report:
         report_path = (project_root / args.report_path).resolve()
         report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        report_path.write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
 
     return 0
 

@@ -6,12 +6,12 @@ Usage:
     python scripts/push_results.py --branch results/20260220
 """
 
-import subprocess
 import json
-from pathlib import Path
+import logging
+import subprocess
 from argparse import ArgumentParser
 from datetime import datetime
-import logging
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,36 +27,35 @@ def run_git_command(cmd: list, check: bool = True):
         return False, str(e)
 
 
-def push_results(message: str = None, branch: str = 'main'):
+def push_results(message: str = None, branch: str = "main"):
     """Commit and push experiment results."""
-    results_dir = Path('results')
+    results_dir = Path("results")
 
     if not results_dir.exists():
         logger.warning("No results directory found")
         return False
 
     # Check if git repo
-    success, _ = run_git_command(['git', 'rev-parse', '--git-dir'], check=False)
+    success, _ = run_git_command(["git", "rev-parse", "--git-dir"], check=False)
     if not success:
         logger.error("Not a git repository")
         return False
 
     # Add results
     logger.info("Staging results...")
-    run_git_command(['git', 'add', 'results/'])
-    run_git_command(['git', 'add', 'monitor_dashboard.html'])
-    run_git_command(['git', 'add', 'experiment_orchestrator.log'], check=False)
+    run_git_command(["git", "add", "results/"])
+    run_git_command(["git", "add", "monitor_dashboard.html"])
 
     # Create commit message
     if message is None:
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # Count experiments
         try:
-            log_file = Path('results/experiment_log.json')
+            log_file = Path("results/experiment_log.json")
             if log_file.exists():
                 with open(log_file) as f:
                     results = json.load(f)
-                    completed = len([r for r in results if r['status'] == 'completed'])
+                    completed = len([r for r in results if r["status"] == "completed"])
                     total = len(results)
                     message = f"Add experimental results: {completed}/{total} completed ({timestamp})"
             else:
@@ -66,10 +65,10 @@ def push_results(message: str = None, branch: str = 'main'):
 
     # Commit
     logger.info(f"Committing: {message}")
-    success, output = run_git_command(['git', 'commit', '-m', message], check=False)
+    success, output = run_git_command(["git", "commit", "-m", message], check=False)
 
     if not success:
-        if 'nothing to commit' in output:
+        if "nothing to commit" in output:
             logger.info("No changes to commit")
             return True
         else:
@@ -78,7 +77,7 @@ def push_results(message: str = None, branch: str = 'main'):
 
     # Push
     logger.info(f"Pushing to {branch}...")
-    success, output = run_git_command(['git', 'push', 'origin', branch], check=False)
+    success, output = run_git_command(["git", "push", "origin", branch], check=False)
 
     if success:
         logger.info("✓ Results pushed to GitHub")
@@ -89,11 +88,13 @@ def push_results(message: str = None, branch: str = 'main'):
 
 
 def main():
-    parser = ArgumentParser(description='Push experiment results to GitHub')
-    parser.add_argument('--message', type=str, default=None,
-                        help='Custom commit message')
-    parser.add_argument('--branch', type=str, default='main',
-                        help='Target branch (default: main)')
+    parser = ArgumentParser(description="Push experiment results to GitHub")
+    parser.add_argument(
+        "--message", type=str, default=None, help="Custom commit message"
+    )
+    parser.add_argument(
+        "--branch", type=str, default="main", help="Target branch (default: main)"
+    )
 
     args = parser.parse_args()
 
@@ -101,5 +102,5 @@ def main():
     exit(0 if success else 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

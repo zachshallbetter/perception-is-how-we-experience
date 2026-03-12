@@ -40,17 +40,18 @@ def plot_efficiency_frontier(
 
     # Default colors
     if colors is None:
-        colors = ['#2E86AB'] * len(model_names)
+        colors = ["#2E86AB"] * len(model_names)
 
     # Plot all points
     scatter = ax.scatter(
-        parameters, accuracies,
+        parameters,
+        accuracies,
         s=300,
         c=colors,
         alpha=0.7,
-        edgecolors='black',
+        edgecolors="black",
         linewidth=2,
-        zorder=3
+        zorder=3,
     )
 
     # Add labels for each point
@@ -59,14 +60,16 @@ def plot_efficiency_frontier(
             name,
             (param, acc),
             xytext=(8, 8),
-            textcoords='offset points',
+            textcoords="offset points",
             fontsize=10,
-            fontweight='bold'
+            fontweight="bold",
         )
 
     # Plot Pareto frontier if provided
     if pareto_models is not None:
-        pareto_indices = [model_names.index(m) for m in pareto_models if m in model_names]
+        pareto_indices = [
+            model_names.index(m) for m in pareto_models if m in model_names
+        ]
         if len(pareto_indices) > 0:
             pareto_x = [parameters[i] for i in pareto_indices]
             pareto_y = [accuracies[i] for i in pareto_indices]
@@ -76,56 +79,77 @@ def plot_efficiency_frontier(
             pareto_x_sorted, pareto_y_sorted = zip(*sorted_pairs)
 
             ax.plot(
-                pareto_x_sorted, pareto_y_sorted,
-                color='#F18F01',
-                linestyle='--',
+                pareto_x_sorted,
+                pareto_y_sorted,
+                color="#F18F01",
+                linestyle="--",
                 linewidth=2.5,
                 alpha=0.7,
-                label='Pareto Frontier',
-                zorder=2
+                label="Pareto Frontier",
+                zorder=2,
             )
 
     # Labels
-    ax.set_xlabel(xlabel, fontsize=12, fontweight='bold')
-    ax.set_ylabel(ylabel, fontsize=12, fontweight='bold')
-    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.set_xlabel(xlabel, fontsize=12, fontweight="bold")
+    ax.set_ylabel(ylabel, fontsize=12, fontweight="bold")
+    ax.set_title(title, fontsize=14, fontweight="bold")
 
     # Grid
-    ax.grid(True, alpha=0.3, linestyle='--')
+    ax.grid(True, alpha=0.3, linestyle="--")
 
     # Legend
     if pareto_models is not None:
         ax.legend(fontsize=10)
 
     # Remove top and right spines
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
 
     # Save
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     plt.tight_layout()
-    plt.savefig(output_path / 'efficiency_frontier.pdf', dpi=300, bbox_inches='tight', format='pdf')
-    plt.savefig(output_path / 'efficiency_frontier.svg', dpi=300, bbox_inches='tight', format='svg')
-    plt.savefig(output_path / 'efficiency_frontier.png', dpi=300, bbox_inches='tight', format='png')
+    plt.savefig(
+        output_path / "efficiency_frontier.pdf",
+        dpi=300,
+        bbox_inches="tight",
+        format="pdf",
+    )
+    plt.savefig(
+        output_path / "efficiency_frontier.svg",
+        dpi=300,
+        bbox_inches="tight",
+        format="svg",
+    )
+    plt.savefig(
+        output_path / "efficiency_frontier.png",
+        dpi=300,
+        bbox_inches="tight",
+        format="png",
+    )
     plt.close()
 
     print(f"✅ Saved efficiency frontier to {output_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Example usage with sample data
     model_names = [
-        'Small (100M)', 'Medium (234M)', 'Large (400M)',
-        'XL (600M)', 'XXL (800M)'
+        "Small (100M)",
+        "Medium (234M)",
+        "Large (400M)",
+        "XL (600M)",
+        "XXL (800M)",
     ]
     parameters = [100, 234, 400, 600, 800]
     accuracies = [82.1, 85.2, 86.1, 85.8, 85.4]
-    pareto_models = ['Small (100M)', 'Medium (234M)', 'Large (400M)']
+    pareto_models = ["Small (100M)", "Medium (234M)", "Large (400M)"]
 
     plot_efficiency_frontier(
-        model_names, parameters, accuracies,
+        model_names,
+        parameters,
+        accuracies,
         pareto_models=pareto_models,
-        title="SensoryPerceiver: Parameter Efficiency"
+        title="SensoryPerceiver: Parameter Efficiency",
     )

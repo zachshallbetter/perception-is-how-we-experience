@@ -40,67 +40,65 @@ def plot_accuracy_curves(
     # Set publication style
     sns.set_style("whitegrid")
     sns.set_palette("Set2")
-    plt.rcParams['font.size'] = 11
-    plt.rcParams['font.family'] = 'sans-serif'
+    plt.rcParams["font.size"] = 11
+    plt.rcParams["font.family"] = "sans-serif"
 
     # Create figure
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Plot with confidence bands
     ax.plot(
-        epochs, sp_mean,
-        label='SensoryPerceiver',
+        epochs,
+        sp_mean,
+        label="SensoryPerceiver",
         linewidth=2.5,
-        marker='o',
+        marker="o",
         markersize=4,
         markevery=5,
-        color='#2E86AB'
+        color="#2E86AB",
     )
     ax.fill_between(
-        epochs,
-        sp_mean - sp_std,
-        sp_mean + sp_std,
-        alpha=0.2,
-        color='#2E86AB'
+        epochs, sp_mean - sp_std, sp_mean + sp_std, alpha=0.2, color="#2E86AB"
     )
 
     ax.plot(
-        epochs, perceiver_mean,
-        label='Perceiver IO',
+        epochs,
+        perceiver_mean,
+        label="Perceiver IO",
         linewidth=2.5,
-        marker='s',
+        marker="s",
         markersize=4,
         markevery=5,
-        color='#A23B72'
+        color="#A23B72",
     )
     ax.fill_between(
         epochs,
         perceiver_mean - perceiver_std,
         perceiver_mean + perceiver_std,
         alpha=0.2,
-        color='#A23B72'
+        color="#A23B72",
     )
 
     # Labels and title
-    ax.set_xlabel(xlabel, fontsize=12, fontweight='bold')
-    ax.set_ylabel(ylabel, fontsize=12, fontweight='bold')
-    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.set_xlabel(xlabel, fontsize=12, fontweight="bold")
+    ax.set_ylabel(ylabel, fontsize=12, fontweight="bold")
+    ax.set_title(title, fontsize=14, fontweight="bold")
 
     # Legend
     ax.legend(
         fontsize=11,
-        loc='lower right',
+        loc="lower right",
         frameon=True,
         shadow=False,
         fancybox=False,
-        edgecolor='black',
-        framealpha=0.95
+        edgecolor="black",
+        framealpha=0.95,
     )
 
     # Clean up
-    ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+    ax.grid(True, alpha=0.3, linestyle="--", linewidth=0.5)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
     ax.set_ylim([0, 100])
 
     # Save
@@ -108,23 +106,31 @@ def plot_accuracy_curves(
     output_path.mkdir(parents=True, exist_ok=True)
 
     plt.tight_layout()
-    plt.savefig(output_path / 'accuracy_curves.pdf', dpi=300, bbox_inches='tight', format='pdf')
-    plt.savefig(output_path / 'accuracy_curves.svg', dpi=300, bbox_inches='tight', format='svg')
-    plt.savefig(output_path / 'accuracy_curves.png', dpi=300, bbox_inches='tight', format='png')
+    plt.savefig(
+        output_path / "accuracy_curves.pdf", dpi=300, bbox_inches="tight", format="pdf"
+    )
+    plt.savefig(
+        output_path / "accuracy_curves.svg", dpi=300, bbox_inches="tight", format="svg"
+    )
+    plt.savefig(
+        output_path / "accuracy_curves.png", dpi=300, bbox_inches="tight", format="png"
+    )
     plt.close()
 
     print(f"✅ Saved accuracy curves to {output_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Example usage with sample data
     epochs = np.arange(1, 51)
 
     # Generate sample data (replace with your actual results)
-    sp_mean = 0.65 + 0.25 * (1 - np.exp(-epochs/10)) + np.random.normal(0, 0.02, 50)
+    sp_mean = 0.65 + 0.25 * (1 - np.exp(-epochs / 10)) + np.random.normal(0, 0.02, 50)
     sp_std = 0.03 + 0.01 * np.random.random(50)
 
-    perceiver_mean = 0.60 + 0.20 * (1 - np.exp(-epochs/12)) + np.random.normal(0, 0.025, 50)
+    perceiver_mean = (
+        0.60 + 0.20 * (1 - np.exp(-epochs / 12)) + np.random.normal(0, 0.025, 50)
+    )
     perceiver_std = 0.035 + 0.01 * np.random.random(50)
 
     plot_accuracy_curves(epochs, sp_mean, sp_std, perceiver_mean, perceiver_std)

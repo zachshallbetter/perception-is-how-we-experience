@@ -1,5 +1,6 @@
 """Runtime contract and error definitions."""
 
+from .bootstrap import validate_environment
 from .contracts import (
     DEFAULT_CONTINUAL_TASKS,
     EvalRuntimeConfig,
@@ -10,7 +11,6 @@ from .contracts import (
     resolve_training_setup,
     validate_experiment_dataset,
 )
-from .bootstrap import validate_environment
 from .errors import AppError, ErrorCode, classify_exception, format_error
 from .mime_cases import (
     SENSOR_STREAMING_CANONICAL_LABEL,

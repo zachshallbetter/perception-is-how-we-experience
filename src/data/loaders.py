@@ -1,18 +1,18 @@
 """
 Multimodal dataset loaders for Sensory Perceiver experiments.
 
-Supports:
-- Multimodal classification (AudioSet, COCO, AV-MNIST, Flickr30K)
+- Multimodal audio-visual classification
 - Continual learning (Split-CIFAR, Permuted MNIST)
 - IoT stream simulation
 """
 
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader, ConcatDataset
-import numpy as np
-from pathlib import Path
-from typing import Dict, Tuple, List, Optional
+from torch.utils.data import ConcatDataset, DataLoader, Dataset
 
 from .real_audio import PreparedRealAudioDataset, is_real_audio_dataset
 from .real_sensor import PreparedRealSensorDataset, is_real_sensor_dataset
@@ -84,8 +84,8 @@ class PermutedMNIST(MultimodalDataset):
     """Continual learning: MNIST with random pixel permutations per task."""
 
     def __init__(self, n_tasks: int = 20, task_id: int = 0, split: str = "train"):
-        from torchvision.datasets import MNIST
         import torchvision.transforms as transforms
+        from torchvision.datasets import MNIST
 
         super().__init__(["vision"], split=split)
         self.n_tasks = n_tasks
@@ -123,7 +123,7 @@ class PermutedMNIST(MultimodalDataset):
 
 
 class AudioVisualProxyDataset(Dataset):
-    """Proxy for AudioSet / Ego4D multimodal benchmarking.
+    """Proxy for multimodal sequence benchmarking.
 
     Generates paired vision (image frames) and audio (spectrograms)
     to test the routing capabilities of multimodal models.
@@ -210,17 +210,23 @@ class SensorStreamingDataset(Dataset):
 
             smartwatch[index] = self._make_smartwatch_stream(
                 t,
-                *self._class_dynamics(self._binding_label(label, "smartwatch"), "smartwatch"),
+                *self._class_dynamics(
+                    self._binding_label(label, "smartwatch"), "smartwatch"
+                ),
                 context,
             )
             room_env[index] = self._make_room_env_stream(
                 t,
-                *self._class_dynamics(self._binding_label(label, "room_env"), "room_env"),
+                *self._class_dynamics(
+                    self._binding_label(label, "room_env"), "room_env"
+                ),
                 context,
             )
             robot_arm[index] = self._make_robot_arm_stream(
                 t,
-                *self._class_dynamics(self._binding_label(label, "robot_arm"), "robot_arm"),
+                *self._class_dynamics(
+                    self._binding_label(label, "robot_arm"), "robot_arm"
+                ),
                 context,
             )
 
@@ -231,7 +237,9 @@ class SensorStreamingDataset(Dataset):
         }
 
     def _class_dynamics(self, label: int, modality: str) -> Tuple[float, float, float]:
-        modality_bias = {"smartwatch": 0.0, "room_env": 0.18, "robot_arm": 0.36}[modality]
+        modality_bias = {"smartwatch": 0.0, "room_env": 0.18, "robot_arm": 0.36}[
+            modality
+        ]
         split_freq_scale = 1.0 if self.split == "train" else 1.08
         split_phase_shift = 0.0 if self.split == "train" else 0.22
         split_swing_scale = 1.0 if self.split == "train" else 0.92
@@ -279,10 +287,18 @@ class SensorStreamingDataset(Dataset):
         self, modality: str, tensor: torch.Tensor
     ) -> torch.Tensor:
         drift_scale = {"smartwatch": 0.45, "room_env": 2.5, "robot_arm": 0.3}[modality]
-        noise_scale = {"smartwatch": 0.18, "room_env": 0.35, "robot_arm": 0.14}[modality]
-        drift = torch.linspace(0.0, 1.0, self.sequence_length).view(1, self.sequence_length, 1)
+        noise_scale = {"smartwatch": 0.18, "room_env": 0.35, "robot_arm": 0.14}[
+            modality
+        ]
+        drift = torch.linspace(0.0, 1.0, self.sequence_length).view(
+            1, self.sequence_length, 1
+        )
         direction = torch.randn(1, 1, tensor.shape[-1])
-        return tensor + noise_scale * torch.randn_like(tensor) + drift_scale * drift * direction
+        return (
+            tensor
+            + noise_scale * torch.randn_like(tensor)
+            + drift_scale * drift * direction
+        )
 
     def _make_smartwatch_stream(
         self,
@@ -322,7 +338,10 @@ class SensorStreamingDataset(Dataset):
         shared_drift = context["drift_bias"] * t
         stream = torch.stack(
             [
-                20.0 + 0.6 * swing + 1.2 * torch.sin(waveform * 0.2) + 0.8 * shared_drift,
+                20.0
+                + 0.6 * swing
+                + 1.2 * torch.sin(waveform * 0.2)
+                + 0.8 * shared_drift,
                 45.0 + 3.2 * swing + 4.2 * torch.cos(waveform * 0.17),
                 430.0 + 35.0 * swing + 25.0 * torch.sin(waveform * 0.12 + 0.3),
                 220.0 + 20.0 * swing + 28.0 * torch.relu(torch.sin(waveform * 0.4)),
@@ -346,7 +365,9 @@ class SensorStreamingDataset(Dataset):
         for joint in range(6):
             joints.append(
                 0.2 * joint
-                + 0.28 * swing * torch.sin(waveform * (0.45 + 0.04 * joint) + joint * 0.3)
+                + 0.28
+                * swing
+                * torch.sin(waveform * (0.45 + 0.04 * joint) + joint * 0.3)
                 + (0.02 * joint) * shared_drift
             )
         forces = [
@@ -395,7 +416,7 @@ def create_dataloaders(
 
     Args:
         experiment: 'multimodal', 'continual', 'sensor_streaming'
-        dataset_name: 'coco', 'audioset', 'av_mnist', 'split_cifar', etc.
+        dataset_name: 'audiovisual', 'split_cifar', 'sensor_streaming', etc.
         batch_size: Batch size
         num_workers: Data loading workers
         seed: Random seed

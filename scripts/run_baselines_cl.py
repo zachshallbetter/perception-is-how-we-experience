@@ -1,26 +1,27 @@
+import argparse
+import json
+import random
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
-import numpy as np
-import random
-from pathlib import Path
-import json
-import argparse
-import time
-from tqdm import tqdm
-import sys
 import torchvision.transforms as T
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 # Add parent directory to path to allow imports
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from src.data.loaders import SplitCIFAR100
-from baselines.perceiver import PerceiverBaseline
-from baselines.hf_perceiver_io import PerceiverIOBaseline
-from baselines.vilt import ViLTBaseline
 from baselines.clip import CLIPBaseline
 from baselines.flava import FLAVABaseline
+from baselines.hf_perceiver_io import PerceiverIOBaseline
+from baselines.perceiver import PerceiverBaseline
+from baselines.vilt import ViLTBaseline
+from src.data.loaders import SplitCIFAR100
 from src.runtime import DEFAULT_CONTINUAL_TASKS
 
 # Most vision-language models expect 224x224 inputs

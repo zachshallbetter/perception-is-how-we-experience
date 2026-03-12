@@ -14,7 +14,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-
 TASK_RE = re.compile(r"Task\s+(\d+)/(\d+)", re.IGNORECASE)
 EPOCH_RE = re.compile(r"epoch\s+(\d+)/(\d+)", re.IGNORECASE)
 
@@ -96,7 +95,9 @@ def read_log_tail(path: Path, max_lines: int = 400) -> list[str]:
     return lines[-max_lines:]
 
 
-def parse_progress_from_lines(lines: list[str]) -> tuple[int | None, int | None, int | None, int | None]:
+def parse_progress_from_lines(
+    lines: list[str],
+) -> tuple[int | None, int | None, int | None, int | None]:
     task_current = task_total = epoch_current = epoch_total = None
     for line in lines:
         task_match = TASK_RE.search(line)
@@ -150,7 +151,10 @@ def parse_active_runs(log_dir: Path) -> list[ActiveRun]:
         if len(parts) < 5:
             continue
         pid_raw, etime_raw, cpu_raw, mem_raw, args_raw = parts
-        if "scripts/run_local.py" not in args_raw and "scripts/run_baselines_cl.py" not in args_raw:
+        if (
+            "scripts/run_local.py" not in args_raw
+            and "scripts/run_baselines_cl.py" not in args_raw
+        ):
             continue
         try:
             argv = shlex.split(args_raw)
@@ -162,7 +166,11 @@ def parse_active_runs(log_dir: Path) -> list[ActiveRun]:
         if "python" not in executable:
             continue
 
-        script = "run_local.py" if "scripts/run_local.py" in args_raw else "run_baselines_cl.py"
+        script = (
+            "run_local.py"
+            if "scripts/run_local.py" in args_raw
+            else "run_baselines_cl.py"
+        )
         output_dir = None
         label = script
         if "--output_dir" in argv:
@@ -173,8 +181,12 @@ def parse_active_runs(log_dir: Path) -> list[ActiveRun]:
 
         log_path = infer_log_path(log_dir, output_dir)
         lines = read_log_tail(log_path) if log_path else []
-        task_current, task_total, epoch_current, epoch_total = parse_progress_from_lines(lines)
-        fraction = progress_fraction(task_current, task_total, epoch_current, epoch_total)
+        task_current, task_total, epoch_current, epoch_total = (
+            parse_progress_from_lines(lines)
+        )
+        fraction = progress_fraction(
+            task_current, task_total, epoch_current, epoch_total
+        )
         elapsed_seconds = parse_etime(etime_raw)
         eta_seconds = None
         if fraction and fraction > 0:
@@ -287,7 +299,11 @@ def summarize_completed(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return summary
 
 
-def build_markdown(gpus: list[GPUStat], active_runs: list[ActiveRun], completed_rows: list[dict[str, Any]]) -> str:
+def build_markdown(
+    gpus: list[GPUStat],
+    active_runs: list[ActiveRun],
+    completed_rows: list[dict[str, Any]],
+) -> str:
     now = datetime.now().isoformat(timespec="seconds")
     lines: list[str] = []
     lines.append("# Titan Dashboard")
@@ -327,7 +343,11 @@ def build_markdown(gpus: list[GPUStat], active_runs: list[ActiveRun], completed_
     lines.append("")
 
     bwt_rows = sorted(
-        [row for row in completed_rows if row["run"].startswith("bwt_") and row.get("BWT") is not None],
+        [
+            row
+            for row in completed_rows
+            if row["run"].startswith("bwt_") and row.get("BWT") is not None
+        ],
         key=lambda row: row["BWT"],
         reverse=True,
     )
@@ -347,7 +367,10 @@ def build_markdown(gpus: list[GPUStat], active_runs: list[ActiveRun], completed_
     lines.append("")
 
     paper_core = [
-        row for row in completed_rows if row["run"].startswith("paper_runlocal_tuned_20t") and row.get("BWT") is not None
+        row
+        for row in completed_rows
+        if row["run"].startswith("paper_runlocal_tuned_20t")
+        and row.get("BWT") is not None
     ]
     lines.append("## Paper Core Summary")
     lines.append("")

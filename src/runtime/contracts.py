@@ -6,7 +6,11 @@ from typing import Dict, Optional, Tuple
 
 import torch
 
-from src.data.real_audio import get_real_audio_dataset_ids, get_real_audio_n_classes, is_real_audio_dataset
+from src.data.real_audio import (
+    get_real_audio_dataset_ids,
+    get_real_audio_n_classes,
+    is_real_audio_dataset,
+)
 from src.data.real_sensor import (
     get_real_sensor_dataset_ids,
     get_real_sensor_n_classes,
@@ -18,7 +22,6 @@ from .mime_cases import (
     SENSOR_STREAMING_EXPERIMENT_ID,
     get_sensor_streaming_modality_setup,
 )
-
 
 EXPERIMENT_DATASETS = {
     "continual": {"split_cifar", "permuted_mnist"},
@@ -108,7 +111,9 @@ def resolve_device(device_value: str) -> torch.device:
 
 
 def resolve_modality_setup(
-    experiment: str, dataset: Optional[str] = None, modality_routing_mode: str = "canonical"
+    experiment: str,
+    dataset: Optional[str] = None,
+    modality_routing_mode: str = "canonical",
 ) -> Tuple[Dict[str, Dict], int]:
     """Resolve modality config and class count for experiment."""
     if modality_routing_mode not in {"canonical", "merged"}:

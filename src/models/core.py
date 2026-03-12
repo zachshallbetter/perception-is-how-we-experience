@@ -8,11 +8,12 @@ Core components:
 - ContrastiveLoss: NT-Xent loss for replay mechanism
 """
 
+from typing import Any, Dict, Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from timm.layers import DropPath
-from typing import Any, Dict, Tuple, Optional
 
 from src.runtime.errors import AppError, ErrorCode
 
@@ -101,7 +102,9 @@ class PerceiverTower(nn.Module):
                 # (batch, seq_len, features) -> (seq_len, batch, dim)
                 batch, seq_len, _ = x.shape
                 if valid_mask is None:
-                    valid_mask = torch.ones((batch, seq_len), dtype=torch.bool, device=x.device)
+                    valid_mask = torch.ones(
+                        (batch, seq_len), dtype=torch.bool, device=x.device
+                    )
                 elif valid_mask.shape != (batch, seq_len):
                     raise AppError(
                         ErrorCode.INVALID_ARGUMENT,
@@ -121,7 +124,9 @@ class PerceiverTower(nn.Module):
                 x = self.conv(x)
                 x = x.unsqueeze(0)
                 batch = x.shape[1]
-                key_padding_mask = torch.zeros((batch, 1), dtype=torch.bool, device=x.device)
+                key_padding_mask = torch.zeros(
+                    (batch, 1), dtype=torch.bool, device=x.device
+                )
             else:
                 raise AppError(
                     ErrorCode.INVALID_ARGUMENT,
@@ -142,7 +147,9 @@ class PerceiverTower(nn.Module):
         x = self.norm(x)
 
         if key_padding_mask is not None:
-            valid_positions = (~key_padding_mask).transpose(0, 1).unsqueeze(-1).to(dtype=x.dtype)
+            valid_positions = (
+                (~key_padding_mask).transpose(0, 1).unsqueeze(-1).to(dtype=x.dtype)
+            )
             x = x * valid_positions
 
         return x  # (seq_len, batch, dim)
@@ -300,7 +307,9 @@ class SensoryPerceiver(nn.Module):
         for modality, payload in inputs.items():
             if modality in self.towers:
                 tensor, valid_mask = self._normalize_model_input(modality, payload)
-                emb = self.towers[modality](tensor, valid_mask=valid_mask)  # (seq_len, batch, dim)
+                emb = self.towers[modality](
+                    tensor, valid_mask=valid_mask
+                )  # (seq_len, batch, dim)
                 embeddings[modality] = emb
                 all_embeddings.append(emb)
                 replay_inputs[modality] = tensor
@@ -308,7 +317,9 @@ class SensoryPerceiver(nn.Module):
                 if valid_mask is None:
                     seq_len = emb.shape[0]
                     batch = emb.shape[1]
-                    key_padding = torch.zeros((batch, seq_len), dtype=torch.bool, device=emb.device)
+                    key_padding = torch.zeros(
+                        (batch, seq_len), dtype=torch.bool, device=emb.device
+                    )
                 else:
                     key_padding = ~valid_mask
                 all_key_padding_masks.append(key_padding)
@@ -337,7 +348,12 @@ class SensoryPerceiver(nn.Module):
         integrated = self.final_norm(integrated)
 
         if combined_key_padding_mask is not None:
-            valid_positions = (~combined_key_padding_mask).transpose(0, 1).unsqueeze(-1).to(dtype=integrated.dtype)
+            valid_positions = (
+                (~combined_key_padding_mask)
+                .transpose(0, 1)
+                .unsqueeze(-1)
+                .to(dtype=integrated.dtype)
+            )
             integrated = integrated * valid_positions
 
         # 5. Update replay buffer with raw inputs and labels
@@ -360,7 +376,9 @@ class SensoryPerceiver(nn.Module):
             tensor = payload
             if tensor.dim() == 3 and not self.towers[modality].use_conv:
                 batch, seq_len, _ = tensor.shape
-                valid_mask = torch.ones((batch, seq_len), dtype=torch.bool, device=tensor.device)
+                valid_mask = torch.ones(
+                    (batch, seq_len), dtype=torch.bool, device=tensor.device
+                )
             else:
                 valid_mask = None
             return tensor, valid_mask

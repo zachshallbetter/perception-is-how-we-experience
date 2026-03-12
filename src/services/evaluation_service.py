@@ -103,7 +103,9 @@ class Evaluator:
             all_labels.append(labels.cpu().numpy())
             if embeddings is not None:
                 # Shape: (modalities, batch, dim) -> (batch, modalities * dim)
-                pooled_emb = torch.stack([emb.mean(dim=0) for emb in embeddings.values()])
+                pooled_emb = torch.stack(
+                    [emb.mean(dim=0) for emb in embeddings.values()]
+                )
                 pooled_emb = pooled_emb.permute(1, 0, 2).contiguous()
                 pooled_emb = pooled_emb.view(pooled_emb.size(0), -1)
                 all_embeddings.append(pooled_emb.cpu().numpy())
@@ -133,7 +135,9 @@ class Evaluator:
         for class_id in range(self.n_classes):
             mask = labels == class_id
             if mask.sum() > 0:
-                per_class_acc[f"class_{class_id}"] = float(np.mean(preds[mask] == labels[mask]))
+                per_class_acc[f"class_{class_id}"] = float(
+                    np.mean(preds[mask] == labels[mask])
+                )
             else:
                 per_class_acc[f"class_{class_id}"] = None
 

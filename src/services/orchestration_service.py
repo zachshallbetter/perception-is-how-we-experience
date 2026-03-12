@@ -34,7 +34,9 @@ class ExperimentConfig:
         self.dataset = dataset
         self.gpu_id = gpu_id
         self.epochs = epochs
-        self.output_dir = Path(f"results/{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        self.output_dir = Path(
+            f"results/{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        )
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.status = "pending"
@@ -56,7 +58,11 @@ class ExperimentOrchestrator:
 
     def _resolve_experiment_for_dataset(self, dataset: str) -> str:
         """Resolve canonical experiment id for a dataset."""
-        if dataset in {"sensor_streaming", "sensor_streaming_small", "sensor_streaming_smoke"}:
+        if dataset in {
+            "sensor_streaming",
+            "sensor_streaming_small",
+            "sensor_streaming_smoke",
+        }:
             experiment = "sensor_streaming"
         elif dataset in {"split_cifar", "permuted_mnist"}:
             experiment = "continual"
@@ -309,7 +315,11 @@ class ExperimentOrchestrator:
             )
             avg_acc = (
                 np.mean(
-                    [exp.result.get("overall_accuracy", 0) for exp in completed if exp.result]
+                    [
+                        exp.result.get("overall_accuracy", 0)
+                        for exp in completed
+                        if exp.result
+                    ]
                 )
                 if completed
                 else 0
@@ -483,7 +493,9 @@ def run_orchestration(runtime_config: OrchestratorRuntimeConfig) -> Optional[str
         elif runtime_config.mode == "monitor":
             dashboard_path = orchestrator.generate_dashboard()
             metrics.increment("orchestration.runs.success")
-            metrics.observe("orchestration.duration_sec", time.perf_counter() - start_time)
+            metrics.observe(
+                "orchestration.duration_sec", time.perf_counter() - start_time
+            )
             metrics.write_json(metrics_path)
             emit_event(
                 logger,
@@ -507,9 +519,15 @@ def run_orchestration(runtime_config: OrchestratorRuntimeConfig) -> Optional[str
         duration_sec = time.perf_counter() - start_time
         metrics.increment("orchestration.runs.success")
         metrics.observe("orchestration.duration_sec", duration_sec)
-        metrics.observe("orchestration.experiments", float(len(orchestrator.experiments)))
-        completed = len([exp for exp in orchestrator.experiments if exp.status == "completed"])
-        failed = len([exp for exp in orchestrator.experiments if exp.status == "failed"])
+        metrics.observe(
+            "orchestration.experiments", float(len(orchestrator.experiments))
+        )
+        completed = len(
+            [exp for exp in orchestrator.experiments if exp.status == "completed"]
+        )
+        failed = len(
+            [exp for exp in orchestrator.experiments if exp.status == "failed"]
+        )
         metrics.observe("orchestration.completed", float(completed))
         metrics.observe("orchestration.failed", float(failed))
         metrics.write_json(metrics_path)

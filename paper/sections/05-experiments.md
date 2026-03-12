@@ -23,7 +23,7 @@ flowchart TD
 
 ## 5.2 Runtime and Reproducibility Setup
 
-- Runtime entrypoints: `src.train`, `src.eval`, `src.experiments.experiment_orchestrator`
+- Runtime entrypoints: `src.train`, `src.eval`
 - Service layer: `src/services/*`
 - Runtime contracts + typed errors: `src/runtime/*`
 - Observability: structured JSON events and metrics snapshots in `src/observability/*`

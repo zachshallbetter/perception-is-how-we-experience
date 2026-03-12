@@ -1,19 +1,20 @@
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-import time
-import argparse
-import sys
-from pathlib import Path
-import json
 
 # Add parent directory to path to allow imports
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from src.models import SensoryPerceiver
-from src.data.loaders import create_dataloaders
 from baselines.hf_perceiver_io import PerceiverIOBaseline
+from src.data.loaders import create_dataloaders
+from src.models import SensoryPerceiver
 
 
 def measure_latency(model, batch, device, n_runs=10):

@@ -12,7 +12,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from timm.layers import DropPath
-from typing import Dict, Tuple, Optional
+from typing import Any, Dict, Tuple, Optional
+
+from src.runtime.errors import AppError, ErrorCode
 
 
 class PerceiverTower(nn.Module):
@@ -71,7 +73,11 @@ class PerceiverTower(nn.Module):
         # Residual connections
         self.residual_enabled = True
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        valid_mask: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """
         Args:
             x: Input tensor
@@ -82,6 +88,8 @@ class PerceiverTower(nn.Module):
             (seq_len, batch, dim) for attention integration
         """
         # B: Convolutional or linear projection
+        key_padding_mask = None
+
         if self.use_conv:
             x = self.conv(x)  # (batch, dim, H', W')
             batch, dim, h, w = x.shape
@@ -92,22 +100,38 @@ class PerceiverTower(nn.Module):
             if x.dim() == 3:
                 # (batch, seq_len, features) -> (seq_len, batch, dim)
                 batch, seq_len, _ = x.shape
+                if valid_mask is None:
+                    valid_mask = torch.ones((batch, seq_len), dtype=torch.bool, device=x.device)
+                elif valid_mask.shape != (batch, seq_len):
+                    raise AppError(
+                        ErrorCode.INVALID_ARGUMENT,
+                        "PerceiverTower valid_mask must match non-conv batch/seq shape",
+                        context={
+                            "expected_mask_shape": (batch, seq_len),
+                            "actual_mask_shape": tuple(valid_mask.shape),
+                        },
+                    )
+                x = x * valid_mask.unsqueeze(-1).to(dtype=x.dtype)
                 x = x.reshape(batch * seq_len, self.input_dim)
                 x = self.conv(x)
                 x = x.view(batch, seq_len, self.dim).permute(1, 0, 2)
+                key_padding_mask = ~valid_mask
             elif x.dim() == 2:
                 # (batch, features) -> (1, batch, dim)
                 x = self.conv(x)
                 x = x.unsqueeze(0)
+                batch = x.shape[1]
+                key_padding_mask = torch.zeros((batch, 1), dtype=torch.bool, device=x.device)
             else:
-                raise ValueError(
-                    f"Expected non-conv input with 2 or 3 dims, got {x.dim()}"
+                raise AppError(
+                    ErrorCode.INVALID_ARGUMENT,
+                    f"Expected non-conv input with 2 or 3 dims, got {x.dim()}",
                 )
 
         seq_len, batch, _ = x.shape
 
         # D: Self-attention with residual
-        attn_out, _ = self.attn(x, x, x)
+        attn_out, _ = self.attn(x, x, x, key_padding_mask=key_padding_mask)
         x = x + attn_out
 
         # C: MLP with residual
@@ -116,6 +140,10 @@ class PerceiverTower(nn.Module):
 
         # F: Layer normalization
         x = self.norm(x)
+
+        if key_padding_mask is not None:
+            valid_positions = (~key_padding_mask).transpose(0, 1).unsqueeze(-1).to(dtype=x.dtype)
+            x = x * valid_positions
 
         return x  # (seq_len, batch, dim)
 
@@ -158,6 +186,8 @@ class SensoryPerceiver(nn.Module):
     5. Contrastive replay buffer stores/updates tokens
     6. Output: Unified representation for downstream tasks
     """
+
+    supports_live_valid_mask = True
 
     def __init__(
         self,
@@ -245,7 +275,7 @@ class SensoryPerceiver(nn.Module):
 
     def forward(
         self,
-        inputs: Dict[str, torch.Tensor],
+        inputs: Dict[str, Any],
         labels: Optional[torch.Tensor] = None,
         update_buffer: bool = True,
         return_embeddings: bool = False,
@@ -263,19 +293,39 @@ class SensoryPerceiver(nn.Module):
         """
         embeddings = {}
         all_embeddings = []
+        all_key_padding_masks = []
+        replay_inputs: Dict[str, torch.Tensor] = {}
 
         # 1. Route through towers
-        for modality, tensor in inputs.items():
+        for modality, payload in inputs.items():
             if modality in self.towers:
-                emb = self.towers[modality](tensor)  # (seq_len, batch, dim)
+                tensor, valid_mask = self._normalize_model_input(modality, payload)
+                emb = self.towers[modality](tensor, valid_mask=valid_mask)  # (seq_len, batch, dim)
                 embeddings[modality] = emb
                 all_embeddings.append(emb)
+                replay_inputs[modality] = tensor
+
+                if valid_mask is None:
+                    seq_len = emb.shape[0]
+                    batch = emb.shape[1]
+                    key_padding = torch.zeros((batch, seq_len), dtype=torch.bool, device=emb.device)
+                else:
+                    key_padding = ~valid_mask
+                all_key_padding_masks.append(key_padding)
 
         # 2. Concatenate all modality embeddings
         combined = torch.cat(all_embeddings, dim=0)  # (total_seq, batch, dim)
+        combined_key_padding_mask = (
+            torch.cat(all_key_padding_masks, dim=1) if all_key_padding_masks else None
+        )
 
         # 3. Cross-modal attention
-        attn_out, _ = self.global_attn(combined, combined, combined)
+        attn_out, _ = self.global_attn(
+            combined,
+            combined,
+            combined,
+            key_padding_mask=combined_key_padding_mask,
+        )
         integrated = combined + attn_out
 
         # 3b. Task-specific adapter (parameter isolation)
@@ -286,9 +336,13 @@ class SensoryPerceiver(nn.Module):
         integrated = self.output_proj(integrated)
         integrated = self.final_norm(integrated)
 
+        if combined_key_padding_mask is not None:
+            valid_positions = (~combined_key_padding_mask).transpose(0, 1).unsqueeze(-1).to(dtype=integrated.dtype)
+            integrated = integrated * valid_positions
+
         # 5. Update replay buffer with raw inputs and labels
         if update_buffer and labels is not None:
-            self._update_replay_buffer(inputs, labels.detach())
+            self._update_replay_buffer(replay_inputs, labels.detach())
 
         # Convert to (batch, seq_len, dim) for downstream
         integrated = integrated.permute(1, 0, 2)
@@ -296,6 +350,43 @@ class SensoryPerceiver(nn.Module):
         if return_embeddings:
             return integrated, embeddings
         return integrated, None
+
+    def _normalize_model_input(
+        self,
+        modality: str,
+        payload: Any,
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        if torch.is_tensor(payload):
+            tensor = payload
+            if tensor.dim() == 3 and not self.towers[modality].use_conv:
+                batch, seq_len, _ = tensor.shape
+                valid_mask = torch.ones((batch, seq_len), dtype=torch.bool, device=tensor.device)
+            else:
+                valid_mask = None
+            return tensor, valid_mask
+
+        if isinstance(payload, dict):
+            if "tensor" not in payload:
+                raise AppError(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "Structured modality payload is missing tensor",
+                    context={"modality": modality},
+                )
+            tensor = payload["tensor"]
+            valid_mask = payload.get("valid_mask")
+            if valid_mask is not None and not torch.is_tensor(valid_mask):
+                raise AppError(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "Structured modality valid_mask must be a tensor",
+                    context={"modality": modality},
+                )
+            return tensor, valid_mask
+
+        raise AppError(
+            ErrorCode.INVALID_ARGUMENT,
+            "Unsupported modality payload type",
+            context={"modality": modality, "payload_type": type(payload).__name__},
+        )
 
     def _update_replay_buffer(
         self, inputs: Dict[str, torch.Tensor], labels: torch.Tensor

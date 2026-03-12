@@ -80,6 +80,31 @@ Responsibilities:
 - smooth or debounce event outputs over time
 - expose current state and recent evidence to downstream consumers
 
+### 3.1 Live Adapter Boundary
+
+The repository now enforces a strict live input contract at the inference boundary:
+
+- each modality is represented as a structured payload,
+- each payload contains:
+  - `tensor`
+  - `valid_mask`
+  - `status`
+
+This is stricter than the older tensor-only model interface and is the correct long-term live contract.
+
+However, the core research model stack is still largely tensor-oriented. To avoid pretending the old interface is already a native live API, the repository supports an explicit adapter boundary:
+
+- live-capable models may declare `supports_live_valid_mask = True` and consume the structured payload directly
+- legacy tensor-only models must be wrapped by `LiveTensorAdapter`
+
+The adapter applies deterministic masking at the live boundary before handing tensors to the older model interface. This keeps the deployment contract honest:
+
+- the live service never silently drops `valid_mask`
+- the model either consumes the structured payload itself
+- or it is wrapped by an explicit compatibility layer
+
+This is a deliberate staging strategy. It lets the live system become contract-clean before the entire core model stack is refactored around native mask-aware inputs.
+
 ### 4. Adaptation Layer
 
 This is where the continual-learning result matters operationally.

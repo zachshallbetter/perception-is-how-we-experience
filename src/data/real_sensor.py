@@ -74,6 +74,26 @@ def get_real_sensor_manifest_path(dataset_name: str, root: Optional[Union[str, P
     return get_real_sensor_dataset_dir(dataset_name, root) / "manifest.json"
 
 
+def real_sensor_dataset_is_prepared(
+    dataset_name: str,
+    root: Optional[Union[str, Path]] = None,
+) -> bool:
+    manifest_path = get_real_sensor_manifest_path(dataset_name, root)
+    if not manifest_path.exists():
+        return False
+    try:
+        manifest = load_real_sensor_manifest(dataset_name, root)
+    except Exception:
+        return False
+    splits = manifest.get("splits", {})
+    train_file = splits.get("train")
+    val_file = splits.get("val")
+    if not train_file or not val_file:
+        return False
+    dataset_dir = get_real_sensor_dataset_dir(dataset_name, root)
+    return (dataset_dir / train_file).exists() and (dataset_dir / val_file).exists()
+
+
 def load_real_sensor_manifest(dataset_name: str, root: Optional[Union[str, Path]] = None) -> dict:
     manifest_path = get_real_sensor_manifest_path(dataset_name, root)
     if not manifest_path.exists():

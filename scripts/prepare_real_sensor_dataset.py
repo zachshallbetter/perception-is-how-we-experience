@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bootstrap prepared real-sensor dataset directories for WISDM/PAMAP2/OPPORTUNITY."""
+"""Bootstrap or prepare real-sensor datasets for WISDM/PAMAP2/OPPORTUNITY."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from src.data.real_sensor import (
     REAL_SENSOR_DATASET_SPECS,
     get_real_sensor_dataset_dir,
 )
+from src.data.real_sensor_prepare import prepare_wisdm_dataset
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,14 +35,24 @@ def parse_args() -> argparse.Namespace:
         default=256,
         help="Target sequence length for prepared canonical tensors",
     )
+    parser.add_argument(
+        "--bootstrap-only",
+        action="store_true",
+        help="Only create manifest/README scaffold even for supported prepared parsers",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    raw_dir = Path(args.raw_dir).resolve()
+    if args.dataset == "wisdm" and not args.bootstrap_only:
+        result = prepare_wisdm_dataset(raw_dir, Path(args.output_root), args.sequence_length)
+        print(json.dumps(result, indent=2))
+        return 0
+
     dataset_dir = get_real_sensor_dataset_dir(args.dataset, args.output_root)
     dataset_dir.mkdir(parents=True, exist_ok=True)
-    raw_dir = Path(args.raw_dir).resolve()
 
     manifest = {
         "schema_version": PREPARED_SENSOR_SCHEMA_VERSION,
@@ -66,6 +77,7 @@ def main() -> int:
             "Prepared split files must be torch.save payloads with keys: labels, smartwatch, room_env, robot_arm.",
             "Each modality tensor must have shape [N, T, C] with canonical feature dims 7/4/9.",
             "If the source dataset lacks a canonical modality, encode the chosen missing-modality strategy explicitly in this dataset card before use.",
+            "Use --bootstrap-only to preserve scaffold-only behavior after WISDM parser support landed.",
         ],
     }
 
@@ -87,7 +99,7 @@ Expected `torch.save()` payload for each split:
 
 Scaffold status:
 - bootstrap created
-- raw parsing implementation still TODO
+- raw parsing implementation still TODO for this dataset
 - this directory is ready for canonical prepared tensors
 """
 

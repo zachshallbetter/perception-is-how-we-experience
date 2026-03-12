@@ -56,6 +56,8 @@ The next decisive question is no longer "can we tweak BWT a little more with nea
 
 This matters because it is the shortest path from architectural argument to measured perception-side evidence. The bounded Titan-local supervisor is useful here not as an optimization oracle, but as a way to execute that evidence ladder in a fixed, interpretable order with explicit stop states.
 
+The same discipline now applies to the real-data path. The repository has begun a staged progression from hardened synthetic evidence toward prepared real datasets, with WISDM as the first executable target. Crucially, the real-data supervisor does not erase implementation boundaries: datasets without prepared canonical splits remain blocked, and broader candidates are tracked as queued rather than reported as if they were already empirical support. This keeps the paper aligned with actual executable evidence instead of with aspirational coverage.
+
 The completed branches already give a meaningful provisional answer. Canonical typed routing is ahead on:
 
 - the baseline comparison,

@@ -32,6 +32,6 @@
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{../figures/generated/results_package/figure_real_data_evidence.pdf}
-  \caption{Real-data evidence overview. Bootstrap evidence comes from `real-audio-seq-001` on Speech Commands and `real-seq-004` on WISDM. Canonical evidence is promoted from `real-audio-seq-002` and `real-sensor-seq-001` as those bounded integrated sequences complete. Historical bootstrap reports may still list newly integrated datasets as candidates, so the package treats sequence stage and current supervisor defaults as the canonical source of truth.}
+  \caption{Real-data evidence overview. Bootstrap evidence comes from `real-audio-seq-001` on Speech Commands and `real-seq-004` on WISDM. Canonical evidence is promoted only from `real-audio-seq-002` and `real-sensor-seq-001` after those bounded integrated sequences complete successfully. Historical bootstrap reports may still list newly integrated datasets as candidates, so the package treats sequence stage, supervisor defaults, and blocked-state reports as the canonical source of truth.}
   \label{fig:real-data-evidence-overview}
 \end{figure}

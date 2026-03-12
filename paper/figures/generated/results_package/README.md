@@ -1,6 +1,6 @@
 # Paper Results Package
 
-This package is generated from validated Split-CIFAR-100 results used by the canonical paper sections.
+This package is generated from the validated evidence used by the canonical paper sections.
 
 ## Sources
 
@@ -8,6 +8,8 @@ This package is generated from validated Split-CIFAR-100 results used by the can
 - Phase 2 uses `results/cl_baseline_reservoir_sampling/results.json`.
 - Phase 3 uses the discovered tuned-core family `20260311_140818` with 6 synchronized Titan runs.
 - The BWT sweep uses the completed `results/bwt_*/results.json` runs synchronized from Titan.
+- The completed synthetic sensor routing ladder is reported from canonical section text and synchronized sequence summaries.
+- Real-data evidence is split into bootstrap (`real-audio-seq-001`, `real-seq-004`) and canonical integrated (`real-audio-seq-002`, `real-sensor-seq-001`) stages.
 
 ## Included artifacts
 

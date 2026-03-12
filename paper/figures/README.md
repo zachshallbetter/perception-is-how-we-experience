@@ -6,7 +6,7 @@ Complete set of 7 reusable figure templates for SensoryPerceiver research papers
 
 ## Current Results Package
 
-The canonical Split-CIFAR-100 paper package is generated into:
+The canonical paper package now covers continual-learning, completed synthetic perception-side evidence, and bootstrap-versus-canonical real-data status. It is generated into:
 
 - `paper/figures/generated/results_package/`
 

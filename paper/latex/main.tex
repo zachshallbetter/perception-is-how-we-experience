@@ -1,33 +1,5 @@
-% ============================================================
-% Perception Is How We Experience
-% NeurIPS 2025 Submission
-% ============================================================
-%
-% TEMPLATE INSTRUCTIONS:
-%   1. Download neurips_2025.sty from https://neurips.cc/Conferences/2025/PaperInformation/StyleFiles
-%   2. Place neurips_2025.sty in this directory
-%   3. Replace \usepackage{neurips_template_stub} below with \usepackage{neurips_2025}
-%   4. Compile: pdflatex main.tex; bibtex main; pdflatex main.tex; pdflatex main.tex
-%
-% CITATION KEY MAP (inline [N] → \cite{citeN}):
-%   [1]=cite1  [2]=cite2  [3]=cite3  [4]=cite4  [5]=cite5
-%   [6]=cite6  [7]=cite7  [8]=cite8  [9]=cite9  [15]=cite15
-%   [17]=cite17  [18]=cite18  [20]=cite20
-%   Named keys: hip2022, perceiverar2022, dynconv2019, sdconv2020,
-%   odconv2022, kernelwarehouse2023, tea2020, tan2019,
-%   temporalperceiver2022, fromage2021, kirkpatrick2017,
-%   lopezmanzanares2017, chaudhry2019, buzzega2020
-% ============================================================
-
-% ---- Venue toggle ----
-% For NeurIPS: \usepackage[final]{neurips_2025}
-% For ICLR:   \usepackage{iclr2025_conference}
-% For ICML:   \usepackage[accepted]{icml2025}
-% For review (anonymous): \usepackage{neurips_2025}  (no [final])
-
 \documentclass{article}
 
-% ---- Stub preamble (replace with venue .sty) ----
 \usepackage[margin=1in, top=1in, bottom=1.25in]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -47,10 +19,9 @@
 \usepackage{parskip}
 \setlength{\parskip}{4pt}
 
-% ---- NeurIPS-compatible title block ----
 \title{Perception Is How We Experience:\\
-       A Multimodal Neural Architecture for Unified Sensory Integration\\
-       and Continual Learning via MIME-Type Routing}
+       Sensory Perceiver as a Typed Multimodal Architecture\\
+       with Replay-Centric Continual Learning}
 
 \author{
   Zach Shallbetter\\
@@ -62,463 +33,168 @@
 
 \maketitle
 
-% ============================================================
 \begin{abstract}
-% ============================================================
+Sensory Perceiver is a multimodal architecture that combines modality-specific towers with shared cross-modal attention in settings where systems must keep learning over time. The implementation keeps modality identity explicit through runtime-validated MIME-style contracts, while the current empirical core is a replay-centric continual-learning program. On Split-CIFAR-100, feature-only replay fails with severe forgetting (CIL 4.86\%, BWT $-53.80\%$), raw-input replay with reservoir sampling materially improves retention (CIL 19.54\%, BWT $-34.91\%$), and the current tuned-core configuration improves the multiseed mean further to CIL 23.96\% and BWT $-30.39\%$ over six Titan runs. The strongest mechanistic conclusion is therefore that replay signals must reach shared feature extractors, not only late task heads.
 
-Traditional neural architectures impose modality-specific assumptions through
-their inductive biases: convolutional networks encode spatial locality; recurrent
-networks encode temporal sequentiality. These assumptions limit generalization to
-the heterogeneous, continuously-arriving sensory streams that characterize
-real-world environments. We introduce the \textbf{Sensory Perceiver}, a neural
-architecture for unified multimodal perception. The architecture makes three
-primary contributions. First, \textbf{MIME-Type Unified Encoding} uses internet
-content-type metadata as a first-class architectural primitive, routing each
-modality through a dedicated PerceiverTower and enabling third-party extension
-without architectural retraining. Second, a \textbf{PerceiverTower} module
-(Conv2d front-end $\to$ flatten $\to$ MLP $\to$ 768-d embedding) processes each
-sensory modality independently before shared cross-modal attention integrates them
-via the Composite Dot Product: $\mathrm{CDP}(Q,K,V) = \mathrm{softmax}(QK^\top /
-\sqrt{d_k}) \cdot V$. Third, an \textbf{NT-Xent contrastive replay buffer}
-provides soft memory consolidation for continual learning, aligning current
-embeddings with replayed representations from prior tasks. Empirical results on
-Split-CIFAR-100 (10-task CIL protocol) establish that the architecture achieves
-57--68\% within-task accuracy on 5-class subproblems, with catastrophic forgetting
-characterizing the current replay formulation (CIL: 5.16\%, BWT: $-57.6\%$) and
-motivating the architectural extensions discussed herein. Synthetic ablation
-confirms modular component contributions: cross-modal attention (+16\%), MIME-Type
-tokens (+12\%), and replay (+9\%) over a concatenation baseline. We position the
-Sensory Perceiver as a research platform for biologically-grounded multimodal
-perception, with a clear path to full continual learning via gradient projection
-or parameter isolation.
-
+The strongest completed perception-side evidence is the hardened synthetic sensor-routing ladder, where typed canonical routing outperforms merged routing on the baseline, capacity-matched control, leave-one-out branches, corruption branch, and two of three single-modality noise branches, with \texttt{noise\_robot\_arm} as the main exception. Real-data evidence is now reported conservatively with an explicit bootstrap-versus-canonical split: bootstrap runs on Speech Commands and WISDM are includable now, while bounded integrated sequences (\texttt{real-audio-seq-002} and \texttt{real-sensor-seq-001}) remain pending until their sequence reports complete successfully. The current contribution is therefore a disciplined blueprint for building domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone.
 \end{abstract}
 
-% ============================================================
 \section{Introduction}
-% ============================================================
 
-Human perception operates through the seamless integration of multiple sensory
-streams~\citep{cite17,cite18}. Hearing someone speak requires coordinating visual
-cues (lip movement), auditory signals (speech), and contextual memory (conversation
-history). This integration happens effortlessly and continuously, adapting as
-circumstances change. Current neural architectures do not model this process
-directly.
-
-Recurrent neural networks~\citep{cite7,cite5} process data sequentially, encoding
-temporal dependencies but struggling with long-range integration across modalities.
-Convolutional networks~\citep{cite6} apply local filters efficiently but see only
-local receptive fields and require separate architectures for each modality. The
-Transformer~\citep{cite1} introduced scaled dot-product attention as a
-modality-agnostic sequence primitive, enabling the Perceiver
-family~\citep{cite2,cite3} to process diverse inputs through a cross-attention
-bottleneck — but without addressing modality identity, continual learning, or the
-biological plausibility of the integration mechanism.
-
-We propose the \textbf{Sensory Perceiver}, a neural architecture that addresses
-three specific gaps:
-
-\begin{enumerate}[leftmargin=*, itemsep=2pt]
-  \item \textbf{Modality identity}: Existing architectures treat modality
-    as implicit in the input format. MIME-Type encoding makes it an explicit,
-    routable first-class signal.
-  \item \textbf{Scalable integration}: A modular PerceiverTower design allows new
-    sensory modalities to be added via protocol registration, without retraining
-    the shared attention mechanism.
-  \item \textbf{Continual learning}: An NT-Xent contrastive replay buffer provides
-    a soft gradient constraint for preserving prior task representations, motivated
-    by hippocampal replay during sleep~\citep{cite11,cite12}.
+Sensory Perceiver is motivated by a simple systems question: how should a perception model be structured if it must ingest heterogeneous sensory inputs, keep modality identity explicit, and continue adapting without full retraining each time new data arrives? The repository's answer combines three ideas:
+\begin{enumerate}[leftmargin=*]
+  \item modality-specific towers preserve sensor identity rather than collapsing heterogeneous streams into one generic input;
+  \item a shared cross-modal core integrates those streams into a common latent representation;
+  \item replay-centric continual learning attempts to preserve that shared representation over time.
 \end{enumerate}
 
-\paragraph{Contributions.}
-(1) MIME-Type Unified Encoding — the first architecture to use content-type
-metadata as an architectural routing primitive.
-(2) PerceiverTower module with formally specified tensor shapes and a 3-step
-modality registration protocol.
-(3) Empirical characterization of NT-Xent replay on Split-CIFAR-100, establishing
-the hyperparameter sensitivity of the replay mechanism and the path to effective
-continual learning.
-(4) A complete literature synthesis covering the Perceiver family, dynamic
-convolution efficiency, temporal perception, and continual learning baselines,
-positioning the architecture relative to existing work.
+The broad framing is machine perception, but the evidence is intentionally bounded. The strongest validated result remains the continual-learning lane on Split-CIFAR-100. The strongest completed perception-side result is the synthetic sensor-routing ladder. Real-data support exists as bootstrap evidence on Speech Commands and WISDM, while the bounded integrated sequences remain pending. This manuscript follows that evidence boundary rather than the broadest architectural ambition.
 
-% ============================================================
-\section{Background}
-% ============================================================
-
-\paragraph{Biological perception.}
-Wertheimer~\citep{cite17} established that perception follows organizational
-principles — proximity, similarity, continuity — that are holistic rather than
-additive. Individual sensory elements are perceived as integrated wholes before
-being decomposed into parts. Dehaene et al.~\citep{cite18} formalized this as the
-\emph{Global Workspace Theory}: a shared cognitive workspace in prefrontal cortex
-broadcasts processed sensory signals to specialized downstream modules, enabling
-unified conscious perception from distributed sensory inputs. These principles
-motivate our cross-modal attention design, where the shared latent space functions
-as a differentiable global workspace.
-
-\paragraph{Neural foundations.}
-The perceptron~\citep{cite8} and the logical neuron~\citep{cite20} established that
-networks of threshold units can implement Boolean logic, providing the substrate
-for learned sensory transformation. Capsule networks~\citep{cite9} introduced the
-idea of routing-by-agreement — selecting which higher-level entity receives
-lower-level signals — a conceptual predecessor to MIME-Type routing.
-
-\paragraph{Attention mechanisms.}
-Bahdanau et al.~\citep{cite4} introduced alignment-based attention for sequence
-transduction, establishing learned query-context alignment as the core mechanism
-for integrating information across positions. Vaswani et al.~\citep{cite1} scaled
-this to the Transformer, which removed recurrence entirely in favor of
-parallelizable scaled dot-product attention. Sensory Perceiver inherits this
-formulation as the Composite Dot Product (CDP):
-\begin{equation}
-  \mathrm{CDP}(Q, K, V) = \mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right) V
-\end{equation}
-where the $1/\sqrt{d_k}$ scaling factor prevents dot-product magnitudes from
-growing excessively large, which would push softmax into regions of near-zero
-gradient~\citep{cite1}.
-
-% ============================================================
 \section{Related Work}
-\label{sec:related}
-% ============================================================
 
-\subsection{Transformer Foundations}
+Sensory Perceiver sits at the intersection of multimodal integration, continual learning, and systems-oriented runtime design. The architectural lineage runs through attention-based sequence models and the Perceiver family, which demonstrated that a shared latent core can process heterogeneous inputs without a separate end-to-end architecture per modality. The continual-learning lineage runs through replay, reservoir sampling, EWC, SI, and gradient-projection methods, all of which address catastrophic forgetting from different directions.
 
-The Transformer~\citep{cite1} introduced scaled dot-product attention as a
-general-purpose sequence modeling primitive. By decoupling position encoding from
-attention, the Transformer enabled modality-agnostic processing that set the stage
-for all subsequent cross-modal architectures. Earlier alignment-based
-attention~\citep{cite4} and RNN-based sequence models~\citep{cite5,cite7}
-established learned query-context alignment as the core mechanism for sequence
-understanding.
+The implementation here differs in emphasis. The central claim is not that MIME-style modality semantics are parsed directly inside model forward passes, but that explicit modality contracts at the runtime boundary reduce interface drift and make typed routing experimentally tractable. The empirical center of gravity is replay-path design: raw-input replay through the shared backbone matters much more in the current codebase than mild follow-on regularization.
 
-\subsection{The Perceiver Family}
+\section{Methods}
 
-\textbf{Perceiver}~\citep{cite2} addressed the quadratic attention cost of
-Transformers by introducing a cross-attention bottleneck: a small latent array
-(256--2048 latents) attends to a high-dimensional byte array of arbitrary size,
-decoupling input dimensionality from compute. This enabled a single architecture
-to process images, audio, point clouds, and video without modality-specific
-preprocessing.
+\subsection{Architecture}
 
-\textbf{Perceiver IO}~\citep{cite3} extended this to arbitrary structured outputs
-via query-based output decoding. Perceiver IO's modality embedding approach is the
-closest published precedent to MIME-Type encoding. The key distinction: Perceiver
-IO's features are byte-level position encodings, while MIME-Type encoding carries
-explicit content-type semantics enabling protocol-level routing and third-party
-extension.
+Each modality is routed through its own tower and then integrated through a shared cross-modal attention core. The current codebase treats modality identity as a canonical runtime concept rather than an implicit property of tensor shape. MIME-style modality registries are used for validation and setup derivation at the contract boundary, while downstream model dispatch remains modality-key based.
 
-\textbf{HiP}~\citep{hip2022} introduced hierarchical kernel sharing and grouped
-cross-attention, scaling to millions of inputs with near-linear complexity.
-\textbf{Perceiver AR}~\citep{perceiverar2022} added causal masking into Perceiver
-cross-attention, enabling autoregressive generation over sequences of 100k+~tokens.
-
-\textbf{Comparison.} Sensory Perceiver differs from the Jaegle et al.\ family in
-primary design goal: Jaegle et al.\ optimize for computational universality and
-throughput; Sensory Perceiver optimizes for biological plausibility,
-modality-typed routing, and continual learning. MIME-Type routing has no
-counterpart in any of~\citet{cite2,cite3,hip2022}.
-
-\subsection{Efficient and Dynamic Convolutions}
-
-PerceiverTower uses Conv2d front-ends for spatial modalities. \textbf{Dynamic
-Convolution}~\citep{dynconv2019} replaced static kernels with an input-dependent
-linear mixture of $n$ kernels, adapting the effective kernel per input without
-changing inference cost. \textbf{ODConv}~\citep{odconv2022} extended this to four
-attention axes simultaneously. \textbf{KernelWarehouse}~\citep{kernelwarehouse2023}
-is the most parameter-efficient formulation: partitioning kernels into shared
-cell warehouses enables $n > 100$ kernels per layer with $10\times$ fewer
-parameters than vanilla dynamic convolution. For PerceiverTowers,
-KernelWarehouse-style cell partitioning would reduce per-tower parameter cost
-substantially.
-
-\subsection{Temporal Modeling}
-
-\textbf{TEA}~\citep{tea2020} proposed Motion Excitation and Multiple Temporal
-Aggregation for video understanding at two scales, informing replay buffer design.
-\textbf{2D-TAN}~\citep{tan2019} introduced 2D temporal adjacent networks for
-language-guided moment localization. \textbf{Temporal
-Perceiver}~\citep{temporalperceiver2022} applied Perceiver's latent compression to
-temporal boundary detection — the most compatible design for extending Sensory
-Perceiver to streaming applications.
-
-\subsection{Multimodal Fusion and Language Grounding}
-
-\textbf{FROMAGe}~\citep{fromage2021} demonstrated that frozen LLM representations
-can be extended to new modalities by adding a visual encoder that projects image
-features into the LLM's embedding space. This freeze-and-extend strategy is
-philosophically aligned with the MIME-Type extension protocol, which adds new
-PerceiverTowers without retraining the shared attention mechanism.
+For live settings, the implementation now supports a stricter inference contract with structured per-modality payloads:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{tensor}
+  \item \texttt{valid\_mask}
+  \item \texttt{status}
+\end{itemize}
+The preferred path is native mask-aware model support, with an explicit adapter available for legacy tensor-only models.
 
 \subsection{Continual Learning}
 
-\textbf{EWC}~\citep{kirkpatrick2017} applies parameter-level regularization using
-the Fisher information matrix to protect task-critical weights. \textbf{GEM and
-A-GEM}~\citep{lopezmanzanares2017,chaudhry2019} constrain gradient updates to not
-increase loss on episodic memory examples from prior tasks.
-\textbf{DER++}~\citep{buzzega2020} showed that replaying network logits rather than
-labels provides a richer consolidation signal. \textbf{NT-Xent}~\citep{cite15} —
-used as Sensory Perceiver's replay loss — was introduced in SimCLR as a
-self-supervised objective maximizing agreement between augmented views.
+The continual-learning program is replay-centric. Phase 1 used replay too high in the stack and failed badly. Phase 2 moved replay back to raw inputs with reservoir sampling, restoring replay gradients through shared feature extractors. The current tuned-core path improves on that configuration without changing the main conclusion: replay-path design is the strongest validated retention lever in this repository.
 
-% ============================================================
-\section{Architecture}
-\label{sec:arch}
-% ============================================================
+\subsection{Perception-Side Evaluation}
 
-\subsection{MIME-Type Unified Encoding}
+The completed synthetic perception-side ladder compares:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{canonical}: typed modality routing with modality-specific towers,
+  \item \textbf{merged}: one generic sensor stream without explicit typed modality separation.
+\end{itemize}
+It includes a baseline, a capacity-matched control, leave-one-out branches, binding corruption, and single-modality noise stress tests. Real-data evaluation now uses an explicit evidence taxonomy:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{bootstrap}: first executable real-data runs used to validate ingestion and end-to-end operation,
+  \item \textbf{canonical integrated}: bounded multi-dataset sequences promoted only after successful completion.
+\end{itemize}
 
-The primary architectural contribution is treating content-type metadata as a
-first-class signal. Each sensory modality is identified by a MIME-Type string
-(e.g., \texttt{image/rgb}, \texttt{audio/pcm-16bit},
-\texttt{application/force-torque}). Three steps register a new modality:
-(1)~define a MIME-Type identifier from the \texttt{sensor/}\! namespace;
-(2)~implement a PerceiverTower mapping the raw input to a 768-d embedding;
-(3)~register the tower in the factory. No retraining of the shared attention is
-required. Conflicts are resolved by MIME-Type specificity (more specific type wins)
-and registration timestamp (first-registered wins on ties).
-
-This encoding has no direct precedent in existing literature. Perceiver IO's
-modality embeddings are byte-level position encodings; MIME-Type encoding carries
-explicit content-type semantics enabling protocol-level routing.
-
-\subsection{PerceiverTower Module}
-
-Each PerceiverTower processes one modality through a fixed pipeline:
-\begin{equation}
-  \mathbf{e}_m = \mathrm{MLP}\!\left(\mathrm{flatten}\!\left(\mathrm{Conv2d}(\mathbf{x}_m)\right)\right) \in \mathbb{R}^{768}
-\end{equation}
-where $\mathbf{x}_m$ is the modality-specific input and the Conv2d front-end
-applies local feature extraction before the global embedding. The
-\texttt{flatten(start\_dim=1)} operation before the MLP correctly reshapes the
-spatial feature map to a 1-D vector per sample in the batch.
-
-Tower outputs are concatenated into a modality sequence $[\mathbf{e}_1 \,\|\,
-\mathbf{e}_2 \,\|\, \ldots \,\|\, \mathbf{e}_M] \in \mathbb{R}^{M \times 768}$,
-to which multi-head self-attention is applied. This enables each modality to attend
-to all others, producing learned cross-modal relationships.
-
-\subsection{Composite Dot Product Attention}
-
-Cross-modal integration uses the CDP formulation (Equation 1) with $d_k = 768 /
-n_{\mathrm{heads}}$. The $1/\sqrt{d_k}$ scaling factor is critical to numerical
-stability: without it, dot-product magnitudes grow as $O(\sqrt{d_k})$, pushing
-the softmax into near-zero gradient regions~\citep{cite1}.
-
-\subsection{Experience Replay with NT-Xent Loss}
-
-The continual learning mechanism maintains a buffer of $(z, y)$ pairs where $z$
-is a 768-d embedding and $y$ is the task label. At each training step, the total
-loss is:
-\begin{equation}
-  \mathcal{L} = \mathcal{L}_{\mathrm{CE}}(\hat{y}, y) + \lambda \cdot \mathcal{L}_{\mathrm{NT\text{-}Xent}}(z_{\mathrm{current}}, z_{\mathrm{replay}})
-\end{equation}
-where $\lambda$ is the replay weight hyperparameter and NT-Xent~\citep{cite15}
-aligns current embeddings with replayed embeddings from the buffer, providing a
-soft gradient constraint that preserves the geometry of earlier task
-representations.
-
-% ============================================================
 \section{Experiments}
-\label{sec:exp}
-% ============================================================
 
-We report results on Split-CIFAR-100 under the Class-Incremental Learning (CIL)
-protocol~\citep{lopezmanzanares2017}, using the following metrics:
-\begin{itemize}[itemsep=2pt]
-  \item \textbf{CIL}: mean accuracy across all tasks at final evaluation ($\mathrm{mean}(R[T{-}1, :])$)
-  \item \textbf{BWT}: backward transfer, $\mathrm{mean}(R[T{-}1,j] - R[j,j])$ for $j < T$; negative values indicate catastrophic forgetting
-  \item \textbf{FWT}: forward transfer, $\mathrm{mean}(R[t, t{+}1])$ for $t < T{-}1$; zero-shot accuracy on unseen tasks
+\subsection{Continual-Learning Lane}
+
+The continual-learning lane uses Split-CIFAR-100 as the narrow but code-aligned benchmark for catastrophic forgetting. The canonical current result is the tuned-core six-seed family executed on Titan Node. The associated figures and tables are generated directly from artifact-backed runs in the results package.
+
+\subsection{Synthetic Sensor Routing Lane}
+
+The synthetic sensor ladder is complete. It is the strongest completed perception-side evidence path, but it remains synthetic and therefore bounded. Its purpose is to test whether typed routing matters under controlled stress rather than to stand in for broad real-world multimodal validation.
+
+\subsection{Real-Data Lane}
+
+The real-data lane is intentionally conservative. Bootstrap evidence is includable now:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{real-audio-seq-001} on \texttt{speech\_commands}
+  \item \texttt{real-seq-004} on \texttt{wisdm}
+\end{itemize}
+Canonical integrated evidence is still pending:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{real-audio-seq-002} on \texttt{speech\_commands}, \texttt{esc50}, and \texttt{urbansound8k}
+  \item \texttt{real-sensor-seq-001} on the integrated real-sensor lineup
+\end{itemize}
+Blocked states remain explicit:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{audioset}: blocked because local media is missing
+  \item \texttt{ubiqlog}: blocked because no canonical supervised task has been defined
 \end{itemize}
 
-\textbf{Dataset.} Split-CIFAR-100 partitions CIFAR-100 into 10 sequential tasks of
-5 classes each. Each task presents 2,500 training images and 500 test images from
-the designated classes. The model sees only the current task's training data at
-each step, making it a strict CIL benchmark.
-
-\textbf{Model.} We instantiate a Sensory Perceiver with $d_{\mathrm{model}} = 256$,
-4 attention heads, MLP hidden dimension 512, dropout 0.1, and a single
-PerceiverTower for the image modality (MIME-Type: \texttt{image/rgb}). The model
-has 1.09M parameters. Hardware: Apple M1 MPS.
-
-We report two configurations (Table~\ref{tab:cl_results}) differing in replay
-weight $\lambda$, buffer size, and learning rate, each targeting a specific failure
-mode identified in the baseline run.
-
-% ============================================================
 \section{Results}
-\label{sec:results}
-% ============================================================
 
-\subsection{Continual Learning on Split-CIFAR-100}
+\subsection{Continual-Learning Core}
 
-\begin{table}[h]
-\centering
-\caption{Continual learning results on Split-CIFAR-100 (10 tasks, 5 classes/task).
-         Both runs use seed 42. Baseline: $\lambda=0.1$, buffer=1000, lr=$10^{-4}$.
-         Tuned: $\lambda=0.5$, buffer=5000, lr=$3\times10^{-4}$.}
-\label{tab:cl_results}
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Config} & \textbf{CIL} $\uparrow$ & \textbf{BWT} $\uparrow$ & \textbf{FWT} & \textbf{Within-task avg} $\uparrow$ \\
-\midrule
-Baseline & 5.02\% & $-53.6\%$ & 0.00\% & 58.0\% \\
-Tuned    & \textbf{5.16\%} & $-57.6\%$ & 0.00\% & 57.0\% \\
-\bottomrule
-\end{tabular}
-\end{table}
+The current artifact-backed continual-learning story is summarized by the generated results package:
+\input{../figures/generated/results_package/latex_results_package.tex}
 
-\paragraph{Within-task competence.}
-Diagonal values of the accuracy matrix $R[j,j]$ confirm that the architecture
-learns each 5-class subproblem effectively: per-task accuracy ranges from 54.6\%
-(T5) to 71.8\% (T4) in the tuned run, comparable to simple CNN baselines on the
-same splits. This establishes that PerceiverTower and cross-modal attention
-function correctly as feature extractors and integrators.
+The tuned-core six-seed result is the strongest validated configuration in the codebase:
+\begin{itemize}[leftmargin=*]
+  \item CIL mean: 23.96\%
+  \item BWT mean: $-30.39\%$
+  \item Task 0 retention mean: 25.1\%
+\end{itemize}
+The exploratory BWT sweep remains useful negative evidence: none of the completed EWC, SI, larger-buffer ER, or contrastive replay settings surpass the tuned-core baseline.
 
-\paragraph{Catastrophic forgetting.}
-Final retention values $R[T{-}1, j]$ for $j < T{-}1$ are near-zero across both
-configurations, indicating near-total catastrophic forgetting. With $\lambda = 0.1$
-(baseline), the NT-Xent loss contributes only $\approx$10\% of gradient signal
-relative to the current-task cross-entropy, providing insufficient pressure to
-preserve earlier representations. T0 drops from 66.6\% to 0.0\% after a single
-subsequent training phase.
+\subsection{Completed Synthetic Sensor Routing Evidence}
 
-\paragraph{Tuning analysis.}
-Increasing $\lambda$ to 0.5 (5$\times$) and the buffer to 5000 produces marginal
-CIL improvement ($+0.14$ pp) and partial T9 recovery (0\% $\to$ 4.0\%), but does
-not close the forgetting gap — BWT worsens by 4~pp. The increased learning rate
-($3\times10^{-4}$ vs.\ $10^{-4}$) helps later tasks reach effective learning
-regimes (T9 loss drops from plateau to a convergent trajectory) but simultaneously
-amplifies the forgetting gradient on earlier tasks. The recency gradient in final
-retention (T8 retains 45.0\% vs.\ 0\% for T0--T7) is the defining signature of
-catastrophic forgetting in the absence of effective replay.
+The completed synthetic sensor ladder establishes the strongest finished perception-side result in the repository. Canonical typed routing is ahead on the baseline, the capacity-matched control, all leave-one-out branches, the binding-corruption branch, and two of the three single-modality noise branches. The paired gaps are:
+\begin{itemize}[leftmargin=*]
+  \item baseline: $+0.4583$
+  \item capacity-matched baseline: $+0.3767$
+  \item drop smartwatch: $+0.3317$
+  \item drop room environment: $+0.7950$
+  \item drop robot arm: $+0.6333$
+  \item corrupt bindings: $+0.2717$
+  \item noise smartwatch: $+0.0633$
+  \item noise room environment: $+0.0617$
+  \item noise robot arm: $-0.0933$
+\end{itemize}
+The supervisor's final state for the ladder is \texttt{canonical-dominant}. The important nuance is that the result is strong but not uniform: \texttt{noise\_robot\_arm} is the one completed branch where merged routing wins.
 
-This outcome is consistent with the continual learning
-literature~\citep{chaudhry2019,buzzega2020}: simple replay loss weighting without
-architectural support typically requires much stronger regularization. The key
-finding — that $5\times$ stronger replay weight produces near-zero CIL improvement
-— motivates the architectural extensions discussed in Section~\ref{sec:discussion}.
+\subsection{Bootstrap Real-Data Evidence}
 
-\subsection{Synthetic Component Ablation}
+Figure~\ref{fig:real-data-evidence-overview} summarizes the current real-data package state. The completed bootstrap results are:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{real-audio-seq-001} on Speech Commands: mean accuracy 88.32\%
+  \item \texttt{real-seq-004} on WISDM: canonical-minus-merged gap $+4.19$ percentage points
+\end{itemize}
+These runs establish that the first real audio and real sensor paths work end to end on Titan, but they are not yet the canonical integrated comparison set for the next paper update. The generated package under \texttt{paper/figures/generated/results\_package/real\_data/} is the source of truth for bootstrap-versus-canonical status.
 
-To isolate component contributions, we evaluate five variants on structured
-synthetic multimodal data with known ground-truth labels (Table~\ref{tab:ablation}).
-Synthetic results characterize the design space; they do not constitute claims on
-real-world benchmarks.
-
-\begin{table}[h]
-\centering
-\caption{Component ablation on synthetic multimodal data. Values are normalized
-         CIL scores (0--1 scale). ``Contribution'' measures relative decrease from
-         the full model.}
-\label{tab:ablation}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Model Variant} & \textbf{CIL (synthetic)} & \textbf{Contribution} \\
-\midrule
-Full Sensory Perceiver   & 0.80 & --- \\
-Without Replay           & 0.71 & $-11\%$ (replay) \\
-Without Modality Tokens  & 0.68 & $-15\%$ (MIME-Type) \\
-Without Attention        & 0.64 & $-20\%$ (cross-modal attention) \\
-Concatenation Baseline   & 0.55 & $-31\%$ (architectural value) \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Each component serves a distinct function: cross-modal attention ($-20\%$) learns
-which modalities to integrate, MIME-Type tokens ($-15\%$) enable modality-specific
-routing, and experience replay ($-11\%$) reduces catastrophic forgetting. The
-$-31\%$ architectural value relative to concatenation demonstrates that the
-structured attention hierarchy is critical to multimodal performance.
-
-% ============================================================
 \section{Discussion}
-\label{sec:discussion}
-% ============================================================
 
-\subsection{Limitations of the Current Prototype}
+\subsection{What Is Strongest Right Now}
 
-The empirical results reveal a clear limitation: the NT-Xent replay mechanism in
-its current 2-loss-weight formulation does not effectively prevent catastrophic
-forgetting. This is not a failure of the architectural concept — within-task
-accuracy (57--68\%) confirms the PerceiverTower and attention mechanism function
-as intended — but a tuning problem that requires architectural support rather than
-hyperparameter adjustment.
+The strongest evidence in the repository is still replay-centric continual learning. The central mechanistic insight survives every implementation pass so far: replay must reach shared feature extractors, not only late task heads. The tuned-core Split-CIFAR-100 result is therefore still the main quantitative anchor for the paper.
 
-Three interventions from the continual learning literature are directly applicable
-and represent the immediate engineering path:
+\subsection{What The Synthetic Sensor Ladder Adds}
 
-\begin{enumerate}[leftmargin=*, itemsep=2pt]
-  \item \textbf{Gradient projection (GEM/A-GEM)}: Constrain the gradient update
-    to not increase loss on replay exemplars~\citep{lopezmanzanares2017,chaudhry2019},
-    providing a hard rather than soft constraint.
-  \item \textbf{Logit replay (DER++)}: Replay network logits rather than contrastive
-    pair embeddings~\citep{buzzega2020}, encoding the full soft probability
-    distribution over all prior classes.
-  \item \textbf{Parameter isolation (PackNet)}: Prune and freeze task-specific
-    weights after each task, preventing interference via shared parameter channels.
+The completed synthetic sensor ladder materially strengthens the broader perception story. It shows that typed routing is not just runtime hygiene; it changes performance on a controlled benchmark, survives a capacity-matched control, and remains favorable under multiple structured stressors. At the same time, the \texttt{noise\_robot\_arm} reversal prevents overclaiming. The right interpretation is ``strong controlled support'' rather than ``uniform dominance.''
+
+\subsection{What The Real-Data Lane Adds}
+
+The real-data lane now matters because it prevents the project from staying trapped in synthetic-only evidence. Bootstrap Speech Commands and WISDM runs prove that the real-data path is executable. However, the paper should still treat the integrated sequences as pending. This bootstrap-versus-canonical split is the main guardrail against overstating progress while Titan is still running bounded evidence chains.
+
+\subsection{Claim Surface Versus Evidence Surface}
+
+The architectural concept is broader than the current evidence. That is acceptable only if the manuscript stays explicit about the gap. Today the evidence hierarchy is:
+\begin{enumerate}[leftmargin=*]
+  \item strongest validated result: replay-centric continual learning,
+  \item strongest completed perception-side result: synthetic sensor routing ladder,
+  \item completed bootstrap real-data evidence: Speech Commands and WISDM,
+  \item canonical integrated real-data evidence: pending.
 \end{enumerate}
+That hierarchy is the one this manuscript defends.
 
-\subsection{MIME-Type Encoding: Positioning and Novelty}
+\subsection{Practical Interpretation}
 
-MIME-Type Unified Encoding has no direct precedent in the literature surveyed.
-Perceiver IO~\citep{cite3} uses modality embeddings for a different goal (arbitrary
-input-output routing) without addressing continual learning. FROMAGe's
-freeze-and-extend strategy~\citep{fromage2021} is philosophically aligned but
-operates at the LLM embedding level rather than as an architectural routing
-primitive.
-
-The extension protocol — adding a PerceiverTower without retraining shared
-attention — is the key practical claim. It enables ecosystems of third-party
-modality encoders composable with a fixed cross-modal attention core, analogous to
-how HTTP content negotiation enables heterogeneous clients and servers to exchange
-typed content without shared assumptions about format.
-
-\subsection{Architectural Extensions}
-
-The literature synthesis in Section~\ref{sec:related} identifies well-characterized
-future extensions:
-\begin{itemize}[itemsep=2pt]
-  \item \textbf{Hierarchical scaling}: HiP-style~\citep{hip2022} grouped cross-attention
-    for $M > 16$ modalities with near-linear complexity.
-  \item \textbf{Autoregressive generation}: Perceiver AR-style~\citep{perceiverar2022}
-    causal masking for temporal sensory streams.
-  \item \textbf{Parameter efficiency}: KernelWarehouse~\citep{kernelwarehouse2023}
-    cell partitioning across PerceiverTowers to reduce per-modality parameter cost.
-  \item \textbf{Query-based decoding}: Perceiver IO's~\citep{cite3} task-specific
-    query arrays for dense predictions from the shared backbone.
+For an applied reader, the present result is not a finished universal perception product. It is a disciplined blueprint for building domain-specific systems that:
+\begin{itemize}[leftmargin=*]
+  \item keep modality identity explicit,
+  \item validate modality semantics at the runtime boundary,
+  \item remain useful when one stream is degraded,
+  \item and adapt over time without constant full retraining.
 \end{itemize}
 
-% ============================================================
 \section{Conclusion}
-% ============================================================
 
-We introduced the Sensory Perceiver, a neural architecture for unified multimodal
-perception organized around three contributions: MIME-Type Unified Encoding,
-PerceiverTower modules with formally specified tensor shapes and registration
-protocol, and NT-Xent contrastive replay for continual learning. Empirical results
-on Split-CIFAR-100 establish within-task learning competence and characterize
-catastrophic forgetting as the principal failure mode of the current replay
-formulation, motivating gradient projection or logit replay as the next engineering
-step.
+Sensory Perceiver now has one coherent evidence story. Replay-centric continual learning remains the strongest validated result, with the tuned-core six-seed Titan family as the current quantitative anchor. The completed synthetic sensor ladder provides the strongest finished perception-side evidence, showing a strong but not unconditional advantage for typed routing. Bootstrap real-data evidence on Speech Commands and WISDM establishes that the real-data path is executable, while canonical integrated sequences remain explicitly pending until their bounded reports complete successfully.
 
-MIME-Type routing represents a genuinely novel architectural primitive — making
-modality identity an explicit, first-class signal with protocol-level semantics.
-The connection between internet content negotiation and neural sensory routing
-suggests that infrastructure design patterns from network protocols may offer
-productive priors for neural architecture design — a direction we hope inspires
-further work at the intersection of systems design and machine learning.
-
-The Sensory Perceiver is designed to be extended: new modalities require only
-tower registration; new tasks require only replay mechanism improvements; new
-scales require only hierarchical attention. These properties make it a research
-platform as much as an architecture, providing a well-characterized starting point
-for the full empirical evaluation required before publication.
-
-% ============================================================
-% References
-% ============================================================
+This is the right stopping point for the current manuscript. It does not overclaim in-flight runs, it preserves blocked states such as AudioSet media acquisition and UbiqLog task definition, and it keeps the broad machine-perception framing tied to what the code and artifacts actually support. If the pending integrated sequences complete successfully, the next revision can promote them into the canonical results package. Until then, the present paper should be read as a code-aligned architecture paper with a strong continual-learning core, a completed synthetic perception-side ladder, and a cautiously advancing real-data evidence path.
 
 \bibliographystyle{abbrvnat}
 \bibliography{references}

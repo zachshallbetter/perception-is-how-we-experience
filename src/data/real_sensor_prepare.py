@@ -26,7 +26,13 @@ WISDM_SENSOR_DIRS = {
 
 
 def _find_wisdm_raw_root(raw_dir: Path) -> Path:
-    candidates = [raw_dir, raw_dir / "raw", raw_dir / "WISDM" / "raw"]
+    candidates = [
+        raw_dir,
+        raw_dir / "raw",
+        raw_dir / "WISDM" / "raw",
+        raw_dir / "wisdm-dataset" / "raw",
+        raw_dir / "WISDM-dataset" / "raw",
+    ]
     for candidate in candidates:
         if (candidate / "phone" / "accel").exists() and (candidate / "watch" / "gyro").exists():
             return candidate

@@ -47,9 +47,13 @@ The strongest current evidence is still replay-centric continual learning. The n
 Real-data scaffolding now plugs into the same `sensor_streaming` experiment family through prepared canonical manifests under `data/real-sensor/`. Current real-data status is explicit:
 - `wisdm`: first working raw-to-canonical converter
 - `pamap2`, `opportunity`: scaffolded in the runtime, parser pending
-- `uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`: documented candidate queue only
+- sensor candidates only: `uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`
+- audio status:
+  - `speech_commands`: first working prepared-audio path
+  - `esc50`, `urbansound8k`, `audioset`: candidate/scaffold status
 
 The real-data path is also prepared for bounded autonomous progression on Titan through `scripts/run_real_sensor_sequence_autonomous.sh`, which only launches datasets that are actually prepared and reports blocked/candidate datasets explicitly. See `docs/real-sensor-datasets.md`.
+The same bounded pattern now exists for audio through `scripts/run_real_audio_sequence_autonomous.sh`, with `speech_commands` as the first integrated audio dataset in the `multimodal` experiment family.
 
 ## Who This Is For
 
@@ -166,6 +170,12 @@ Autonomous real-data routing sequence:
 ```bash
 PYTHON_BIN=/ai/envs/perception/bin/python \
 bash scripts/run_real_sensor_sequence_autonomous.sh <sequence-id>
+```
+
+Autonomous real-audio sequence:
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/run_real_audio_sequence_autonomous.sh <sequence-id>
 ```
 
 Periodic campaign monitor:

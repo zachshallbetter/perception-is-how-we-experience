@@ -188,6 +188,12 @@ One-command sensor ladder status:
 bash scripts/sensor_sequence_status.sh <family>
 ```
 
+One-command real-audio sequence status:
+
+```bash
+bash scripts/real_audio_sequence_status.sh <sequence-id>
+```
+
 Autonomy report output:
 
 ```bash
@@ -315,7 +321,8 @@ python scripts/validate_setup.py --verbose
 - Real-data progression uses the same `sensor_streaming` experiment family, but support is explicitly staged:
   - `wisdm`: runnable once raw files exist under `data/raw/wisdm`
   - `pamap2`, `opportunity`: scaffold only
-  - `uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`: candidate queue only
+  - sensor/body candidate queue only: `uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`
+  - audio candidate queue only: `speech_commands`, `esc50`, `urbansound8k`, `audioset`
 - Prepare WISDM with:
   - `python3 scripts/prepare_real_sensor_dataset.py --dataset wisdm --raw-dir data/raw/wisdm`
 - Launch one real-data routing comparison with:
@@ -325,3 +332,10 @@ python scripts/validate_setup.py --verbose
 - Check the real-data supervisor with:
   - `bash scripts/real_sensor_sequence_status.sh real-seq-001`
 - The real-data supervisor only launches datasets that are actually prepared. It auto-prepares `wisdm` if raw files are present and reports scaffold-only / candidate datasets explicitly instead of pretending they are runnable.
+- Audio now has its first runnable Titan path:
+  - `speech_commands`: integrated into the `multimodal` runtime family and bounded Titan supervisor
+  - `esc50`, `urbansound8k`, `audioset`: still blocked/candidate until prepared parsers land
+- Run the bounded real-audio supervisor with:
+  - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/run_real_audio_sequence_autonomous.sh real-audio-seq-001`
+- Check the real-audio supervisor with:
+  - `bash scripts/real_audio_sequence_status.sh real-audio-seq-001`

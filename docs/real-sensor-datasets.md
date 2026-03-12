@@ -1,4 +1,4 @@
-# Real Sensor Dataset Scaffold
+# Real Dataset Scaffold
 
 This document defines the real-data path for:
 
@@ -6,7 +6,7 @@ This document defines the real-data path for:
 - `pamap2`
 - `opportunity`
 
-and the next queued candidate datasets:
+the next queued sensor/body candidates:
 
 - `uci_har`
 - `hhar`
@@ -15,6 +15,13 @@ and the next queued candidate datasets:
 - `selfback`
 - `geomagnetic_wlan`
 
+and the audio lineup:
+
+- `speech_commands`
+- `esc50`
+- `urbansound8k`
+- `audioset`
+
 The goal is to plug real datasets into the existing `sensor_streaming` experiment family without inventing a second runtime or a parallel experiment contract.
 
 Current implementation status:
@@ -22,12 +29,18 @@ Current implementation status:
 - `wisdm`: prepared raw-to-canonical parser implemented
 - `pamap2`: scaffold only
 - `opportunity`: scaffold only
-- `uci_har`: candidate only
-- `hhar`: candidate only
-- `mhealth`: candidate only
-- `ubiqlog`: candidate only
-- `selfback`: candidate only
-- `geomagnetic_wlan`: candidate only
+- sensor/body candidates:
+  - `uci_har`
+  - `hhar`
+  - `mhealth`
+  - `ubiqlog`
+  - `selfback`
+  - `geomagnetic_wlan`
+- audio datasets:
+  - `speech_commands`: prepared raw-to-canonical parser implemented
+  - `esc50`: scaffold only
+  - `urbansound8k`: scaffold only
+  - `audioset`: metadata-only scaffold
 
 ## Dataset Matrix
 
@@ -42,6 +55,10 @@ Current implementation status:
 | `ubiqlog` | smartphone context logging | candidate only | requires a different event/context projection strategy |
 | `selfback` | activity / coaching sensing | candidate only | parser and canonical projection not implemented |
 | `geomagnetic_wlan` | indoor localization | candidate only | useful localization benchmark, but not yet integrated into the current modality contract |
+| `speech_commands` | spoken command recognition | runnable once raw files are present | first working prepared-audio path in the `multimodal` experiment family |
+| `esc50` | environmental audio classification | scaffold only | good non-speech semantic audio follow-on after Speech Commands |
+| `urbansound8k` | urban event audio classification | scaffold only | useful ambient audio benchmark once prepared audio path exists |
+| `audioset` | large-scale weakly labeled audio events | scaffold only | metadata staged, but audio ingest path not implemented |
 
 ## Canonical Direction
 
@@ -73,6 +90,20 @@ Each split file must be a `torch.save()` payload with:
 - `robot_arm`: `FloatTensor[N, T, 9]`
 
 This keeps the real-data path aligned with the same canonical modality registry used by the synthetic sensor ladder.
+
+Audio datasets are tracked in the same bounded real-data lineup, but they are not forced through the `smartwatch` / `room_env` / `robot_arm` contract. The audio contract is separate:
+
+- experiment: `multimodal`
+- modality contract: `audio`
+- prepared dataset ids:
+  - `speech_commands`
+  - `esc50`
+  - `urbansound8k`
+  - `audioset`
+- prepared datasets live under `data/real-audio/<dataset>/`
+- each prepared split provides:
+  - `labels`: `LongTensor[N]`
+  - `audio`: `FloatTensor[N, T, 128]`
 
 ## Important Boundary
 
@@ -137,7 +168,7 @@ It is bounded and honest:
 1. it only launches datasets that are actually prepared
 2. it will auto-prepare `wisdm` if `data/raw/wisdm` exists
 3. it marks `pamap2` and `opportunity` as blocked until real parsers or prepared splits exist
-4. it records candidate-only datasets as queued, not runnable
+4. it records sensor and audio candidate datasets as queued, not runnable
 
 Status command:
 
@@ -171,3 +202,14 @@ The same runtime path also works for:
 - `opportunity`
 
 provided their prepared manifests and split files are present.
+
+The prepared audio path is intentionally separate from the canonical tri-modal sensor contract. Current audio integration order is:
+
+1. `speech_commands`
+2. `esc50`
+3. `urbansound8k`
+4. `audioset`
+
+Current audio status:
+- `speech_commands`: integrated into the runtime and Titan automation path
+- `esc50`, `urbansound8k`, `audioset`: tracked next targets, not runnable evidence yet

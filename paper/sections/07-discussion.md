@@ -56,32 +56,31 @@ The next decisive question is no longer "can we tweak BWT a little more with nea
 
 This matters because it is the shortest path from architectural argument to measured perception-side evidence. The bounded Titan-local supervisor is useful here not as an optimization oracle, but as a way to execute that evidence ladder in a fixed, interpretable order with explicit stop states.
 
-The same discipline now applies to the real-data path. The repository has begun a staged progression from hardened synthetic evidence toward prepared real datasets, with WISDM as the first executable target. Crucially, the real-data supervisor does not erase implementation boundaries: datasets without prepared canonical splits remain blocked, and broader candidates are tracked as queued rather than reported as if they were already empirical support. This keeps the paper aligned with actual executable evidence instead of with aspirational coverage.
+The same discipline now applies to the real-data path. The repository has begun a staged progression from hardened synthetic evidence toward prepared real datasets, with WISDM as the first executable sensor target and Speech Commands as the first executable audio target. Crucially, the real-data supervisors do not erase implementation boundaries: datasets without prepared canonical splits remain blocked, and broader sensor/body or audio candidates are tracked as queued rather than reported as if they were already empirical support. This keeps the paper aligned with actual executable evidence instead of with aspirational coverage.
 
-The completed branches already give a meaningful provisional answer. Canonical typed routing is ahead on:
+The completed ladder now gives a meaningful answer. Canonical typed routing is ahead on:
 
 - the baseline comparison,
 - the capacity-matched control,
 - all completed leave-one-out branches,
 - the binding-corruption branch,
-- and the completed single-modality noise branches.
+- two of the three single-modality noise branches.
 
-The pattern is not uniform in magnitude. The strongest support appears in the baseline, capacity-matched, and leave-one-out branches. The weakest support appears under single-modality noise, where the merged route recovers much of the gap. That is exactly the kind of nuance we want: it suggests typed routing is helpful, but not magically robust to every stressor.
+The pattern is not uniform in magnitude. The strongest support appears in the baseline, capacity-matched, and leave-one-out branches. The weakest support appears under single-modality noise, where the merged route recovers much of the gap. In `noise_robot_arm`, merged routing actually wins. That is exactly the kind of nuance we want: it suggests typed routing is helpful, but not magically robust to every stressor.
 
 The right current discussion stance is therefore:
 
 1. typed routing now has stronger direct evidence than it did before this ladder,
 2. capacity confounding is no longer the leading explanation for the baseline gap,
-3. the claim should still be framed as controlled synthetic support until the final branch completes and until a real-domain benchmark exists.
+3. the claim should still be framed as controlled synthetic support until real-domain benchmarks exist.
 
 ## 7.7 Next Experimental Priorities
 
-1. Finish and aggregate the final pending `noise_robot_arm` branch.
-2. Turn the completed sensor ladder into a paper-ready figure/table package alongside the continual-learning package.
-3. Add confidence intervals and fuller statistical treatment to the tuned-core continual benchmark.
-4. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
-5. Replace or augment synthetic `sensor_streaming` evidence with at least one real-domain sensor benchmark.
-6. Add real multimodal ingestion/evaluation paths and report them separately from proxy datasets.
+1. Turn the completed sensor ladder into a paper-ready figure/table package alongside the continual-learning package.
+2. Add confidence intervals and fuller statistical treatment to the tuned-core continual benchmark.
+3. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
+4. Replace or augment synthetic `sensor_streaming` evidence with at least one real-domain sensor benchmark.
+5. Add real multimodal ingestion/evaluation paths and report them separately from proxy datasets.
 
 ## 7.8 Practical Implications
 

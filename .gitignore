@@ -13,3 +13,4 @@ data/
 !src/data/*.py
 monitor_dashboard.html
 experiment_orchestrator.log
+.env.local

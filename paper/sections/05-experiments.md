@@ -55,13 +55,22 @@ In parallel with the hardened synthetic ladder, the repository now has an explic
 
 - `wisdm`: first working raw-to-canonical preparation path
 - `pamap2`, `opportunity`: prepared-data scaffold exists, parser pending
-- `uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`: candidate queue only
+- sensor/body candidates: `uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`
+- audio candidates: `speech_commands`, `esc50`, `urbansound8k`, `audioset`
 
 This path is intentionally conservative. Real-data routing experiments are only launched once prepared manifests and canonical `train.pt` / `val.pt` splits exist. A bounded Titan-local real-data supervisor is now available to:
 
 - auto-prepare `wisdm` if raw files are present,
 - launch canonical-vs-merged routing comparisons for prepared datasets,
 - and record blocked or candidate datasets explicitly rather than silently treating them as runnable evidence.
+
+Audio is now part of the runnable real-data path, but only in a narrow first form. The repository now defines:
+
+- one prepared audio contract under `data/real-audio/`,
+- one first working parser for `speech_commands`,
+- and one bounded Titan-local audio supervisor for launching prepared audio runs.
+
+`esc50`, `urbansound8k`, and `audioset` remain staged rather than promoted into current evidence.
 
 ## 5.4 Evaluation Metrics
 

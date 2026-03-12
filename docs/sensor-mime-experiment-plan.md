@@ -107,9 +107,9 @@ This sequence is now automatable through `scripts/run_sensor_sequence_autonomous
 - If canonical and merged are effectively tied, treat MIME semantics as a runtime/architecture contribution rather than a demonstrated model-performance contribution.
 - If merged wins, narrow the paper’s modality-routing claim sharply.
 
-## Current Provisional Reading
+## Current Completed Reading
 
-Completed ladder branches currently show:
+Completed ladder branches show:
 
 - baseline gap: `+0.4583`
 - capacity-matched baseline gap: `+0.3767`
@@ -121,17 +121,15 @@ Completed ladder branches currently show:
 - noise gaps:
   - `noise_smartwatch`: `+0.0633`
   - `noise_room_env`: `+0.0617`
-
-Pending:
-
-- `noise_robot_arm`
+  - `noise_robot_arm`: `-0.0933`
 
 So the current honest reading is:
 
-- typed canonical routing is leading on every completed branch,
+- typed canonical routing is leading on the overall ladder and on every branch except `noise_robot_arm`,
 - that lead survives a capacity-matched control,
 - but the margin becomes much smaller under single-modality noise stress,
-- which means the result is promising and useful, but still not a license to overclaim robustness.
+- and merged routing can win under specific stress (`noise_robot_arm`),
+- which means the result is strong synthetic support, but still not a license to overclaim robustness.
 
 ## Why This Matters
 
@@ -145,7 +143,7 @@ to:
 
 ## Decision States
 
-The bounded Titan-local supervisor reduces the baseline comparison to one of three states:
+The bounded Titan-local supervisor reduces the baseline comparison to one of four states:
 
 1. `canonical-dominant`
    - typed routing wins clearly

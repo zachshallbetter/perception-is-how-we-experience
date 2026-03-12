@@ -50,6 +50,26 @@ CANDIDATE_DATASETS = {
         "status": "candidate-not-integrated",
         "notes": "Indoor localization candidate; canonical projection not implemented.",
     },
+    "speech_commands": {
+        "source_name": "Speech Commands",
+        "status": "candidate-not-integrated",
+        "notes": "First audio candidate; requires canonical audio modality contract and prepared split schema.",
+    },
+    "esc50": {
+        "source_name": "ESC-50",
+        "status": "candidate-not-integrated",
+        "notes": "Environmental audio candidate; blocked until audio prepared-data path exists.",
+    },
+    "urbansound8k": {
+        "source_name": "UrbanSound8K",
+        "status": "candidate-not-integrated",
+        "notes": "Ambient audio candidate; blocked until audio launcher and prepared contract exist.",
+    },
+    "audioset": {
+        "source_name": "AudioSet",
+        "status": "candidate-not-integrated",
+        "notes": "Large-scale audio target; too heavy for first integration pass and no prepared audio path yet.",
+    },
 }
 
 
@@ -59,7 +79,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--root", default=ROOT_DIR)
     parser.add_argument("--python-bin", default=os.environ.get("PYTHON_BIN", "python3"))
     parser.add_argument("--datasets", default="wisdm,pamap2,opportunity")
-    parser.add_argument("--candidate-datasets", default="uci_har,hhar,mhealth,ubiqlog,selfback,geomagnetic_wlan")
+    parser.add_argument("--candidate-datasets", default="uci_har,hhar,mhealth,ubiqlog,selfback,geomagnetic_wlan,speech_commands,esc50,urbansound8k,audioset")
     parser.add_argument("--results-root", default="results")
     parser.add_argument("--prepared-root", default="data/real-sensor")
     parser.add_argument("--raw-root", default="data/raw")

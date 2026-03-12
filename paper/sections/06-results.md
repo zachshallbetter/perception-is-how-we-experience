@@ -12,7 +12,7 @@ Generated paper assets for this section are packaged under `paper/figures/genera
 - `latex_results_package.tex`
 - `package_manifest.json`
 
-At present, the packaged quantitative story is still centered on the continual-learning lane. The active `sensor_streaming` routing ladder is the next perception-side evidence path. The baseline, capacity-matched control, leave-one-out branches, corruption branch, and two of the three noise branches have completed; the final `noise_robot_arm` branch is still running and is therefore treated as pending rather than folded into the provisional table below.
+At present, the packaged quantitative story is still centered on the continual-learning lane. The completed `sensor_streaming` routing ladder is the current perception-side evidence path. It now includes the baseline, capacity-matched control, leave-one-out branches, corruption branch, and all three single-modality noise branches.
 
 For an applied reader, the present Results section should be read as establishing one validated operational rule: if a perception system must keep learning over time, replay design at the shared backbone matters more than simply adding lightweight regularizers around the edges.
 
@@ -109,9 +109,9 @@ Therefore, this section claims a robust replay-centric continual result, not a s
 4. The active sensor/MIME routing ladder is not yet fully complete, so the present quantitative section should still be read as the continual-learning evidence core rather than the final perception-side evidence picture.
 5. Real multimodal dataset ingestion (AudioSet/Ego4D-scale) is not yet an active training/eval path in this code branch.
 
-## 6.8 Provisional Sensor/MIME Routing Summary
+## 6.8 Completed Sensor/MIME Routing Summary
 
-The active `sensor_streaming` ladder now provides a provisional perception-side result on the hardened synthetic sensor benchmark. We compare:
+The completed `sensor_streaming` ladder now provides the current perception-side result on the hardened synthetic sensor benchmark. We compare:
 
 - `canonical`: typed modality routing (`smartwatch`, `room_env`, `robot_arm`) with modality-specific towers
 - `merged`: one generic sensor stream without explicit typed modality separation
@@ -128,16 +128,14 @@ Completed paired gaps so far are:
 | corrupt bindings | 1.0000 | 0.7283 | +0.2717 |
 | noise smartwatch | 1.0000 | 0.9367 | +0.0633 |
 | noise room environment | 1.0000 | 0.9383 | +0.0617 |
-
-Pending:
-
-- `noise_robot_arm` (`3/6` complete at the time of writing)
+| noise robot arm | 0.8817 | 0.9750 | -0.0933 |
 
 Interpretation:
 
-- Typed canonical routing is ahead on every completed branch so far.
+- Typed canonical routing is ahead on the baseline, capacity-matched, leave-one-out, corruption, and two of the three noise branches.
 - The capacity-matched control remains clearly positive (**+0.3767**), which reduces the risk that the baseline result is only a front-end capacity artifact.
 - Leave-one-out and corruption conditions still favor canonical routing strongly, which suggests the result is not limited to the easiest baseline comparison.
-- The smallest margins occur under single-modality noise, where merged routing narrows the gap substantially but does not erase it in the completed branches.
+- The smallest margins occur under single-modality noise, where merged routing narrows the gap substantially.
+- `noise_robot_arm` is the only completed branch where merged routing wins (**-0.0933**), so the full ladder should be described as strongly favorable to canonical routing overall, but not uniformly dominant under every stress condition.
 
-This should still be treated as **provisional synthetic evidence** rather than a final broad perception claim. However, it is the strongest direct support so far that typed routing matters for more than runtime hygiene on the current controlled sensor task.
+Overall supervisor state for this ladder was **`canonical-dominant`**. This should still be treated as **completed synthetic evidence** rather than a final broad perception claim. However, it is now the strongest direct support so far that typed routing matters for more than runtime hygiene on the current controlled sensor task.

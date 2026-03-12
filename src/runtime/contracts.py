@@ -6,6 +6,7 @@ from typing import Dict, Optional, Tuple
 
 import torch
 
+from src.data.real_audio import get_real_audio_dataset_ids, get_real_audio_n_classes, is_real_audio_dataset
 from src.data.real_sensor import get_real_sensor_dataset_ids, get_real_sensor_n_classes
 
 from .errors import AppError, ErrorCode
@@ -23,7 +24,7 @@ EXPERIMENT_DATASETS = {
         "sensor_streaming_small",
         *get_real_sensor_dataset_ids(),
     },
-    "multimodal": {"audiovisual"},
+    "multimodal": {"audiovisual", *get_real_audio_dataset_ids()},
 }
 
 DEFAULT_CONTINUAL_TASKS = {
@@ -140,6 +141,13 @@ def resolve_modality_setup(
                     "experiment": experiment,
                     "modality_routing_mode": modality_routing_mode,
                 },
+            )
+        if dataset is not None and is_real_audio_dataset(dataset):
+            return (
+                {
+                    "audio": {"input_dim": 128, "use_conv": False},
+                },
+                get_real_audio_n_classes(dataset),
             )
         return (
             {

@@ -14,6 +14,7 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, Tuple, List, Optional
 
+from .real_audio import PreparedRealAudioDataset, is_real_audio_dataset
 from .real_sensor import PreparedRealSensorDataset, is_real_sensor_dataset
 
 
@@ -460,7 +461,10 @@ def create_dataloaders(
             )
 
     elif experiment == "multimodal":
-        if dataset_name == "audiovisual":
+        if is_real_audio_dataset(dataset_name):
+            train_ds = PreparedRealAudioDataset(dataset_name, "train")
+            val_ds = PreparedRealAudioDataset(dataset_name, "val")
+        elif dataset_name == "audiovisual":
             train_ds = AudioVisualProxyDataset(
                 n_sequences=1000, n_classes=10, seed=seed
             )

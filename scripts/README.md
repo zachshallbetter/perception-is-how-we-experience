@@ -84,6 +84,73 @@ Print the live/final status of a real-data supervision sequence.
 bash scripts/real_sensor_sequence_status.sh real-seq-001
 ```
 
+### `prepare_real_audio_dataset.py`
+Prepare or bootstrap a prepared real-audio dataset for:
+- `speech_commands`
+- `esc50`
+- `urbansound8k`
+- `audioset`
+
+```bash
+python3 scripts/prepare_real_audio_dataset.py \
+  --dataset speech_commands \
+  --raw-dir data/raw/audio
+```
+
+Behavior:
+- `speech_commands`: parses the saved Hugging Face dataset and writes prepared canonical `train.pt` / `val.pt`
+- `esc50`, `urbansound8k`, `audioset`: scaffold only
+
+Prepared outputs:
+- `data/real-audio/<dataset>/manifest.json`
+- `data/real-audio/<dataset>/README.md`
+- `data/real-audio/speech_commands/train.pt`
+- `data/real-audio/speech_commands/val.pt`
+
+### `launch_real_audio_routing_titan.sh`
+Launch a prepared real-audio benchmark family on Titan.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+DATASET=speech_commands \
+bash scripts/launch_real_audio_routing_titan.sh
+```
+
+This currently assumes the dataset has already been prepared under `data/real-audio/<dataset>/`.
+
+### `summarize_real_audio_results.py`
+Aggregate completed real-audio runs for one dataset/family.
+
+```bash
+python3 scripts/summarize_real_audio_results.py \
+  --results-root results \
+  --dataset speech_commands \
+  --family real-audio-seq-001-speech_commands
+```
+
+### `run_real_audio_sequence_autonomous.sh`
+Run the bounded Titan-local real-audio supervisor.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/run_real_audio_sequence_autonomous.sh real-audio-seq-001
+```
+
+### `real_audio_ai_supervisor.py`
+Real-audio supervisor for prepared datasets.
+
+Current policy:
+- auto-prepares `speech_commands` if raw files exist
+- runs the prepared `multimodal` audio benchmark once a dataset is prepared
+- records `esc50`, `urbansound8k`, and `audioset` as blocked/candidate until their prepared parsers exist
+
+### `real_audio_sequence_status.sh`
+Print the live/final status of a real-audio supervision sequence.
+
+```bash
+bash scripts/real_audio_sequence_status.sh real-audio-seq-001
+```
+
 ### `download_audioset.py` (user implementation)
 Download and preprocess AudioSet (22K balanced subset).
 - Requires: `yt-dlp`, `librosa`

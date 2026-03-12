@@ -9,7 +9,9 @@ from unittest.mock import patch
 import torch
 
 from src.data.loaders import SensorStreamingDataset
+from src.data.real_audio import PreparedRealAudioDataset, real_audio_dataset_is_prepared
 from src.data.real_sensor import PreparedRealSensorDataset, real_sensor_dataset_is_prepared
+from src.data.real_audio_prepare import prepare_speech_commands_dataset
 from src.data.real_sensor_prepare import prepare_wisdm_dataset
 from src.runtime import (
     AppError,
@@ -139,6 +141,20 @@ class RuntimeContractsTest(unittest.TestCase):
         config = TrainRuntimeConfig.from_namespace(args)
         self.assertEqual(config.replay_mode, "distill")
         self.assertEqual(config.distillation_temp, 2.0)
+
+    def test_validate_experiment_dataset_accepts_real_audio_dataset(self):
+        validate_experiment_dataset("multimodal", "speech_commands")
+
+    @patch("src.runtime.contracts.get_real_audio_n_classes", return_value=35)
+    def test_resolve_training_setup_real_audio_dataset_uses_manifest_class_count(self, _mock_n_classes):
+        modality_configs, n_classes, n_tasks = resolve_training_setup(
+            "multimodal",
+            "speech_commands",
+            continual_task_count=1,
+        )
+        self.assertEqual(modality_configs, {"audio": {"input_dim": 128, "use_conv": False}})
+        self.assertEqual(n_classes, 35)
+        self.assertEqual(n_tasks, 1)
 
     def test_training_schema_requires_version(self):
         with self.assertRaises(AppError) as context:
@@ -436,6 +452,87 @@ class RuntimeContractsTest(unittest.TestCase):
             self.assertEqual(tuple(sample["smartwatch"].shape), (8, 7))
             self.assertEqual(tuple(sample["room_env"].shape), (8, 4))
             self.assertEqual(tuple(sample["robot_arm"].shape), (8, 9))
+
+    def test_prepared_real_audio_dataset_loads_canonical_split(self):
+        with TemporaryDirectory() as tmpdir:
+            dataset_dir = Path(tmpdir) / "speech_commands"
+            dataset_dir.mkdir(parents=True, exist_ok=True)
+            (dataset_dir / "manifest.json").write_text(
+                """{
+  "schema_version": 1,
+  "dataset": "speech_commands",
+  "source_name": "Speech Commands",
+  "description": "test",
+  "sequence_length": 96,
+  "feature_dim": 128,
+  "feature_type": "log_spectrogram",
+  "n_classes": 3,
+  "class_names": ["yes", "no", "up"],
+  "splits": {"train": "train.pt", "val": "val.pt"}
+}
+""",
+                encoding="utf-8",
+            )
+            payload = {
+                "labels": torch.tensor([0, 1, 2], dtype=torch.long),
+                "audio": torch.randn(3, 96, 128),
+            }
+            torch.save(payload, dataset_dir / "train.pt")
+            torch.save(payload, dataset_dir / "val.pt")
+
+            dataset = PreparedRealAudioDataset("speech_commands", "train", root=tmpdir)
+            sample = dataset[0]
+            self.assertEqual(tuple(sample["audio"].shape), (96, 128))
+            self.assertTrue(real_audio_dataset_is_prepared("speech_commands", tmpdir))
+
+    def test_prepare_speech_commands_dataset_builds_prepared_splits(self):
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            raw_root = root / "speech_commands_hf"
+            raw_root.mkdir(parents=True, exist_ok=True)
+            (raw_root / "dataset_dict.json").write_text("{}", encoding="utf-8")
+
+            class DummyLabelFeature:
+                num_classes = 2
+
+                @staticmethod
+                def int2str(index: int) -> str:
+                    return ["yes", "no"][index]
+
+            class DummySplit:
+                def __init__(self, rows):
+                    self._rows = rows
+                    self.features = {"label": DummyLabelFeature()}
+
+                def __iter__(self):
+                    return iter(self._rows)
+
+            dataset = {
+                "train": DummySplit(
+                    [
+                        {"audio": {"array": [0.1, 0.2, 0.3, 0.4]}, "label": 0},
+                        {"audio": {"array": [0.2, 0.1, 0.0, -0.1]}, "label": 1},
+                    ]
+                ),
+                "validation": DummySplit(
+                    [
+                        {"audio": {"array": [0.0, 0.1, 0.0, -0.1]}, "label": 0},
+                    ]
+                ),
+            }
+
+            with patch("src.data.real_audio_prepare._import_hf_load_from_disk", return_value=lambda path: dataset):
+                result = prepare_speech_commands_dataset(root, root / "prepared", sequence_length=128)
+
+            self.assertEqual(result["n_classes"], 2)
+            prepared_root = root / "prepared" / "speech_commands"
+            self.assertTrue((prepared_root / "manifest.json").exists())
+            self.assertTrue((prepared_root / "train.pt").exists())
+            self.assertTrue((prepared_root / "val.pt").exists())
+
+            dataset = PreparedRealAudioDataset("speech_commands", "train", root=root / "prepared")
+            sample = dataset[0]
+            self.assertEqual(tuple(sample["audio"].shape), (96, 128))
 
 
 if __name__ == "__main__":

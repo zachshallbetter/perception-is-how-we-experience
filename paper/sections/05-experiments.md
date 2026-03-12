@@ -9,6 +9,18 @@ This paper’s empirical claims are grounded in **Split-CIFAR-100 continual lear
 - **Current tuned core**: the paper-primary `scripts/run_local.py --tuned` configuration on Titan Node.
 - **Preliminary BWT sweep**: replay-buffer, EWC, and SI follow-on ablations, interpreted as exploratory rather than final paper-primary evidence.
 
+```mermaid
+flowchart TD
+    A["Continual-learning lane"] --> A1["Phase 1: feature-only replay"]
+    A --> A2["Phase 2: raw-input replay + reservoir"]
+    A --> A3["Tuned-core 6-seed family"]
+    A --> A4["Exploratory BWT sweep"]
+    B["Perception-side lane"] --> B1["Synthetic sensor ladder"]
+    B --> B2["Bootstrap real-data runs"]
+    B --> B3["Canonical integrated sequences"]
+    B3 --> B4["Promote only if completed with no blocked datasets"]
+```
+
 ## 5.2 Runtime and Reproducibility Setup
 
 - Runtime entrypoints: `src.train`, `src.eval`, `src.experiments.experiment_orchestrator`
@@ -100,7 +112,7 @@ To avoid over-claiming:
 
 1. Task-adapter rollover is implemented in the service path and can be enabled via `adapter_rollover` with `continual_task_count > 1`.
 2. MIME routing is implemented as canonical modality-case registry + validation, while model dispatch uses modality keys in input dicts.
-3. Real-data evidence is split into bootstrap and canonical integrated stages. Speech Commands and WISDM bootstrap runs are includable now; integrated canonical sequences remain pending until their bounded reports complete successfully. The active integrated lineups now include HF-backed `fsd50k` and `realworld_har`, while legacy `audioset` and `ubiqlog` stay outside the bounded chain.
+3. Real-data evidence is split into bootstrap and canonical integrated stages. Speech Commands and WISDM bootstrap runs are includable now. `real-audio-seq-002` is completed but did not clear the evidence gate because `esc50` and `urbansound8k` were still blocked on Titan; `real-sensor-seq-001` is currently failed at `pamap2`. The active integrated lineups now include HF-backed `fsd50k` and `realworld_har`, while legacy `audioset` and `ubiqlog` stay outside the bounded chain.
 4. Preliminary BWT sweeps are interpreted as follow-on evidence only if they beat the tuned-core continual baseline; otherwise they are diagnostic evidence about what does not improve forgetting.
 5. The sensor/MIME lane is bounded by explicit decision states (`canonical-dominant`, `capacity-confounded`, `competitive`, `merged-favored`) and should not be described as an unconstrained autonomous search for perfect results.
 

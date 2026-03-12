@@ -173,7 +173,8 @@ Current policy:
 - auto-prepares `speech_commands`, `esc50`, `urbansound8k`, and `fsd50k`
 - runs the prepared `multimodal` audio benchmark once a dataset is prepared
 - can be chained into a sensor sequence with `chain_audio_to_sensor_sequence.sh` once the bounded audio sequence completes
-- treats `real-audio-seq-001` as bootstrap evidence and `real-audio-seq-002` onward as the canonical integrated audio lane
+- treats `real-audio-seq-001` as bootstrap evidence
+- treats `real-audio-seq-002` onward as the canonical integrated audio lane only after the sequence clears the evidence gate: all expected datasets complete and no blocked entries remain
 
 ### `real_audio_sequence_status.sh`
 Print the live/final status of a real-audio supervision sequence.

@@ -1,2 +1,3 @@
 stage,canonical,dataset,family,runs,mean_accuracy,std_accuracy,min_accuracy,max_accuracy,status
 bootstrap,False,speech_commands,real-audio-seq-001-speech_commands,3,0.8832231349762907,0.0018223153208631712,0.881787216990583,0.8857944299739531,completed
+canonical,True,speech_commands,real-audio-seq-002-speech_commands,3,0.8832231349762907,0.0018223153208631712,0.881787216990583,0.8857944299739531,completed

@@ -58,6 +58,14 @@ This matters because it is the shortest path from architectural argument to meas
 
 The same discipline now applies to the real-data path. The repository now distinguishes **bootstrap** real-data evidence from the **canonical integrated** sequences that will carry the next paper-facing quantitative claim. WISDM and Speech Commands established the first executable sensor and audio paths, but the bounded integrated sequences (`real-audio-seq-002` and `real-sensor-seq-001`) are the ones promoted as the current canonical evidence package once they complete. Crucially, the real-data supervisors do not erase implementation boundaries: datasets without prepared canonical splits remain blocked, and broader sensor/body or audio candidates are tracked as queued rather than reported as if they were already empirical support. This keeps the paper aligned with actual executable evidence instead of with aspirational coverage.
 
+```mermaid
+flowchart LR
+    A["Bootstrap real-data evidence<br/>speech_commands + wisdm"] --> B["Canonical integrated gate"]
+    B -->|"all expected datasets complete<br/>and no blocked states"| C["Promotable canonical evidence"]
+    B -->|"blocked datasets remain"| D["Completed but not promotable"]
+    B -->|"family exits without artifacts"| E["Failed sequence"]
+```
+
 The completed ladder now gives a meaningful answer. Canonical typed routing is ahead on:
 
 - the baseline comparison,
@@ -73,6 +81,8 @@ The right current discussion stance is therefore:
 1. typed routing now has stronger direct evidence than it did before this ladder,
 2. capacity confounding is no longer the leading explanation for the baseline gap,
 3. the claim should still be framed as controlled synthetic support until real-domain benchmarks exist.
+
+The current real-data gate reinforces the same discipline. `real-audio-seq-002` should not be promoted simply because the sequence report says `completed`; it completed with blocked datasets still present. `real-sensor-seq-001` should not be described as merely pending; its current report is a failed sequence at `pamap2`. Those distinctions are exactly why the bootstrap-versus-canonical taxonomy exists.
 
 ## 7.7 Next Experimental Priorities
 

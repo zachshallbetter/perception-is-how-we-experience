@@ -4,13 +4,15 @@ We report a code-aligned continual-learning result progression on Split-CIFAR-10
 
 Generated paper assets for this section are packaged under `paper/figures/generated/results_package/`:
 
-- `table_results_overview.png`
-- `figure_phase_progression.png`
-- `figure_tuned_core_multiseed.png`
-- `figure_bwt_sweep_ranked.png`
-- `captions.md`
-- `latex_results_package.tex`
-- `package_manifest.json`
+- [table_results_overview.png](/Users/zachshallbetter/Projects/Perception/paper/figures/generated/results_package/table_results_overview.png)
+- [figure_phase_progression.png](/Users/zachshallbetter/Projects/Perception/paper/figures/generated/results_package/figure_phase_progression.png)
+- [figure_tuned_core_multiseed.png](/Users/zachshallbetter/Projects/Perception/paper/figures/generated/results_package/figure_tuned_core_multiseed.png)
+- [figure_bwt_sweep_ranked.png](/Users/zachshallbetter/Projects/Perception/paper/figures/generated/results_package/figure_bwt_sweep_ranked.png)
+- [figure_real_data_evidence.png](/Users/zachshallbetter/Projects/Perception/paper/figures/generated/results_package/figure_real_data_evidence.png)
+- [captions.md](/Users/zachshallbetter/Projects/Perception/paper/figures/generated/results_package/captions.md)
+- [latex_results_package.tex](/Users/zachshallbetter/Projects/Perception/paper/figures/generated/results_package/latex_results_package.tex)
+- [package_manifest.json](/Users/zachshallbetter/Projects/Perception/paper/figures/generated/results_package/package_manifest.json)
+- [real_data_status.json](/Users/zachshallbetter/Projects/Perception/paper/figures/generated/results_package/real_data/real_data_status.json)
 
 At present, the packaged quantitative story is still centered on the continual-learning lane. The completed `sensor_streaming` routing ladder is the current perception-side evidence path. It now includes the baseline, capacity-matched control, leave-one-out branches, corruption branch, and all three single-modality noise branches.
 
@@ -107,7 +109,7 @@ Therefore, this section claims a robust replay-centric continual result, not a s
 2. The tuned-core result has multiseed coverage, but confidence intervals and broader statistical treatment are still needed.
 3. Preliminary BWT sweep results are diagnostic and not yet strong enough to replace the tuned-core result as the main reported configuration.
 4. The synthetic sensor/MIME routing ladder is complete and reportable, but it remains controlled synthetic evidence rather than the final real-domain perception claim.
-5. Real-data evidence is now split into bootstrap and canonical integrated stages. Bootstrap WISDM and Speech Commands runs are includable; the bounded integrated sequences remain pending until their reports complete successfully.
+5. Real-data evidence is now split into bootstrap and canonical integrated stages. Bootstrap WISDM and Speech Commands runs are includable; canonical integrated promotion still requires all expected datasets to finish with no blocked entries.
 
 ## 6.8 Completed Sensor/MIME Routing Summary
 
@@ -145,9 +147,9 @@ Overall supervisor state for this ladder was **`canonical-dominant`**. This shou
 The real-data lane is now packaged with an explicit bootstrap-versus-canonical split so the paper does not overread early runs:
 
 - **Bootstrap audio evidence**: `real-audio-seq-001` on `speech_commands`
-- **Canonical audio evidence**: `real-audio-seq-002` on `speech_commands`, `esc50`, and `urbansound8k`
+- **Canonical audio candidate**: `real-audio-seq-002` on `speech_commands`, `esc50`, `urbansound8k`, and `fsd50k`
 - **Bootstrap sensor evidence**: `real-seq-004` on `wisdm`
-- **Canonical sensor evidence**: `real-sensor-seq-001` on the integrated real-sensor lineup
+- **Canonical sensor candidate**: `real-sensor-seq-001` on the integrated real-sensor lineup including `realworld_har`
 
 Completed bootstrap real-data results are:
 
@@ -158,12 +160,14 @@ Interpretation:
 
 - These bootstrap runs establish that the first real audio and real sensor paths work end to end on Titan.
 - They are useful evidence, but they are not the canonical integrated comparison set for the next paper update.
-- The canonical real-data evidence package is promoted only from the bounded integrated sequences (`real-audio-seq-002` and `real-sensor-seq-001`) once their sequence reports complete successfully.
+- `real-audio-seq-002` is now **completed but not promotable**. It finished the `speech_commands` family, but the same sequence report recorded `esc50` and `urbansound8k` as blocked because Titan did not yet have those raw datasets at launch time.
+- `real-sensor-seq-001` is now **failed rather than merely pending**. The current report shows the sequence reused `wisdm`, launched `pamap2`, and then stopped with `0/6` expected `eval_results.json` artifacts for the `pamap2` family.
+- The canonical real-data evidence package is promoted only from bounded integrated sequences once they complete with all expected datasets present and no blocked entries.
 
 Operationally, the generated package under `paper/figures/generated/results_package/real_data/` is the source of truth for current real-data status. It separates:
 
 - bootstrap evidence
-- canonical integrated evidence
+- canonical integrated evidence candidates
 - deferred legacy sources outside the active bounded chain
 
 This keeps historical bootstrap reports from being mistaken for the current integrated claim surface.

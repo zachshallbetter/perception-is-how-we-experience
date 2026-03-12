@@ -180,13 +180,27 @@ The current repository should still be read as a design reference and research p
 
 If you are orienting yourself to the project, read in this order:
 
-1. `README.md` for project scope and operating model.
-2. `docs/README.md` for the documentation map.
-3. `docs/productization-roadmap.md` for the path from research result to usable system.
-4. `docs/live-deployment-architecture.md` for the concrete live-system interpretation of the current architecture.
-5. `docs/training-guide.md` for the canonical Titan workflow.
-6. `docs/sensor-mime-experiment-plan.md` for the current perception-side evidence ladder.
-7. `paper/sections/README.md` plus `paper/sections/06-results.md` and `paper/sections/07-discussion.md` for the current paper-aligned claim surface.
+1. [README.md](/Users/zachshallbetter/Projects/Perception/README.md) for project scope and operating model.
+2. [docs/README.md](/Users/zachshallbetter/Projects/Perception/docs/README.md) for the documentation map.
+3. [docs/productization-roadmap.md](/Users/zachshallbetter/Projects/Perception/docs/productization-roadmap.md) for the path from research result to usable system.
+4. [docs/live-deployment-architecture.md](/Users/zachshallbetter/Projects/Perception/docs/live-deployment-architecture.md) for the concrete live-system interpretation of the current architecture.
+5. [docs/training-guide.md](/Users/zachshallbetter/Projects/Perception/docs/training-guide.md) for the canonical Titan workflow.
+6. [docs/sensor-mime-experiment-plan.md](/Users/zachshallbetter/Projects/Perception/docs/sensor-mime-experiment-plan.md) for the current perception-side evidence ladder.
+7. [paper/sections/README.md](/Users/zachshallbetter/Projects/Perception/paper/sections/README.md), [paper/sections/06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md), and [paper/sections/07-discussion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md) for the current paper-aligned claim surface.
+
+## Concept Map
+
+```mermaid
+flowchart LR
+    A["Typed modality contracts"] --> B["Modality-specific towers"]
+    B --> C["Shared cross-modal core"]
+    C --> D["Task / state predictions"]
+    E["Replay-centric continual learning"] --> C
+    F["Bounded supervisors on Titan"] --> G["Bootstrap evidence"]
+    F --> H["Canonical integrated evidence"]
+    G --> I["Paper results package"]
+    H --> I
+```
 
 ## Quick Start
 

@@ -17,6 +17,10 @@
 \usepackage{natbib}
 \usepackage{enumitem}
 \usepackage{parskip}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric}
+\pgfplotsset{compat=1.18}
 \setlength{\parskip}{4pt}
 
 \title{Perception Is How We Experience:\\
@@ -36,7 +40,7 @@
 \begin{abstract}
 Sensory Perceiver is a multimodal architecture that combines modality-specific towers with shared cross-modal attention in settings where systems must keep learning over time. The implementation keeps modality identity explicit through runtime-validated MIME-style contracts, while the current empirical core is a replay-centric continual-learning program. On Split-CIFAR-100, feature-only replay fails with severe forgetting (CIL 4.86\%, BWT $-53.80\%$), raw-input replay with reservoir sampling materially improves retention (CIL 19.54\%, BWT $-34.91\%$), and the current tuned-core configuration improves the multiseed mean further to CIL 23.96\% and BWT $-30.39\%$ over six Titan runs. The strongest mechanistic conclusion is therefore that replay signals must reach shared feature extractors, not only late task heads.
 
-The strongest completed perception-side evidence is the hardened synthetic sensor-routing ladder, where typed canonical routing outperforms merged routing on the baseline, capacity-matched control, leave-one-out branches, corruption branch, and two of three single-modality noise branches, with \texttt{noise\_robot\_arm} as the main exception. Real-data evidence is now reported conservatively with an explicit bootstrap-versus-canonical split: bootstrap runs on Speech Commands and WISDM are includable now, while bounded integrated sequences (\texttt{real-audio-seq-002} and \texttt{real-sensor-seq-001}) remain pending until their sequence reports complete successfully. The current contribution is therefore a disciplined blueprint for building domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone.
+The strongest completed perception-side evidence is the hardened synthetic sensor-routing ladder, where typed canonical routing outperforms merged routing on the baseline, capacity-matched control, leave-one-out branches, corruption branch, and two of three single-modality noise branches, with \texttt{noise\_robot\_arm} as the main exception. Real-data evidence is now reported conservatively with an explicit bootstrap-versus-canonical split: bootstrap runs on Speech Commands and WISDM are includable now, while canonical integrated promotion remains gated. In the current synced reports, \texttt{real-audio-seq-002} is completed but not promotable because blocked datasets remained, and \texttt{real-sensor-seq-001} is failed at \texttt{pamap2}. The current contribution is therefore a disciplined blueprint for building domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone.
 \end{abstract}
 
 \section{Introduction}
@@ -48,7 +52,7 @@ Sensory Perceiver is motivated by a simple systems question: how should a percep
   \item replay-centric continual learning attempts to preserve that shared representation over time.
 \end{enumerate}
 
-The broad framing is machine perception, but the evidence is intentionally bounded. The strongest validated result remains the continual-learning lane on Split-CIFAR-100. The strongest completed perception-side result is the synthetic sensor-routing ladder. Real-data support exists as bootstrap evidence on Speech Commands and WISDM, while the bounded integrated sequences remain pending. This manuscript follows that evidence boundary rather than the broadest architectural ambition.
+The broad framing is machine perception, but the evidence is intentionally bounded. The strongest validated result remains the continual-learning lane on Split-CIFAR-100. The strongest completed perception-side result is the synthetic sensor-routing ladder. Real-data support exists as bootstrap evidence on Speech Commands and WISDM, while canonical integrated promotion is still blocked by incomplete or failed bounded sequences. This manuscript follows that evidence boundary rather than the broadest architectural ambition.
 
 \section{Related Work}
 
@@ -61,6 +65,34 @@ The implementation here differs in emphasis. The central claim is not that MIME-
 \subsection{Architecture}
 
 Each modality is routed through its own tower and then integrated through a shared cross-modal attention core. The current codebase treats modality identity as a canonical runtime concept rather than an implicit property of tensor shape. MIME-style modality registries are used for validation and setup derivation at the contract boundary, while downstream model dispatch remains modality-key based.
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[
+      font=\small,
+      box/.style={draw, rounded corners, align=center, minimum height=1cm, minimum width=2.5cm, fill=blue!6},
+      core/.style={draw, rounded corners, align=center, minimum height=1cm, minimum width=3cm, fill=orange!10},
+      arrow/.style={-Latex, thick}
+    ]
+    \node[box] (input) {Typed modality\\input};
+    \node[box, right=1.0cm of input, yshift=1.2cm] (tower1) {Tower\\smartwatch};
+    \node[box, right=1.0cm of input] (tower2) {Tower\\room\_env};
+    \node[box, right=1.0cm of input, yshift=-1.2cm] (tower3) {Tower\\robot\_arm / audio};
+    \node[core, right=1.2cm of tower2] (shared) {Shared cross-modal\\attention};
+    \node[box, right=1.2cm of shared] (head) {Adapters +\\output head};
+    \node[box, below=0.8cm of shared] (replay) {Replay buffer};
+    \draw[arrow] (input) -- (tower1);
+    \draw[arrow] (input) -- (tower2);
+    \draw[arrow] (input) -- (tower3);
+    \draw[arrow] (tower1) -- (shared);
+    \draw[arrow] (tower2) -- (shared);
+    \draw[arrow] (tower3) -- (shared);
+    \draw[arrow] (replay) -- (shared);
+    \draw[arrow] (shared) -- (head);
+  \end{tikzpicture}
+  \caption{Sensory Perceiver keeps modality identity explicit through separate towers, integrates those streams in a shared core, and applies replay to the shared backbone rather than only to late heads.}
+  \label{fig:sensory-perceiver-architecture}
+\end{figure}
 
 For live settings, the implementation now supports a stricter inference contract with structured per-modality payloads:
 \begin{itemize}[leftmargin=*]
@@ -87,6 +119,29 @@ It includes a baseline, a capacity-matched control, leave-one-out branches, bind
   \item \textbf{canonical integrated}: bounded multi-dataset sequences promoted only after successful completion.
 \end{itemize}
 
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[
+      font=\small,
+      box/.style={draw, rounded corners, align=center, minimum height=0.95cm, minimum width=3.2cm, fill=green!8},
+      gate/.style={draw, diamond, aspect=2, align=center, fill=yellow!14},
+      fail/.style={draw, rounded corners, align=center, minimum height=0.95cm, minimum width=3.1cm, fill=red!8},
+      arrow/.style={-Latex, thick}
+    ]
+    \node[box] (bootstrap) {Bootstrap evidence\\Speech Commands + WISDM};
+    \node[gate, right=1.8cm of bootstrap] (gate) {Canonical\\promotion gate};
+    \node[box, right=1.8cm of gate] (promote) {Promotable canonical\\integrated evidence};
+    \node[fail, above right=1.0cm and 1.4cm of gate] (blocked) {Completed but\\blocked};
+    \node[fail, below right=1.0cm and 1.4cm of gate] (failed) {Failed family};
+    \draw[arrow] (bootstrap) -- (gate);
+    \draw[arrow] (gate) -- node[above]{all expected datasets,\ no blocked entries} (promote);
+    \draw[arrow] (gate) -- node[above]{blocked datasets remain} (blocked);
+    \draw[arrow] (gate) -- node[below]{missing eval artifacts} (failed);
+  \end{tikzpicture}
+  \caption{The bounded evidence gate used for real-data promotion. Bootstrap runs prove executability; canonical promotion requires every expected dataset family to finish successfully without blocked entries.}
+  \label{fig:real-data-evidence-gate}
+\end{figure}
+
 \section{Experiments}
 
 \subsection{Continual-Learning Lane}
@@ -104,7 +159,7 @@ The real-data lane is intentionally conservative. Bootstrap evidence is includab
   \item \texttt{real-audio-seq-001} on \texttt{speech\_commands}
   \item \texttt{real-seq-004} on \texttt{wisdm}
 \end{itemize}
-Canonical integrated evidence is still pending:
+Canonical integrated evidence is still not promotable:
 \begin{itemize}[leftmargin=*]
   \item \texttt{real-audio-seq-002} on \texttt{speech\_commands}, \texttt{esc50}, \texttt{urbansound8k}, and \texttt{fsd50k}
   \item \texttt{real-sensor-seq-001} on the integrated real-sensor lineup including \texttt{realworld\_har}
@@ -153,7 +208,7 @@ Figure~\ref{fig:real-data-evidence-overview} summarizes the current real-data pa
   \item \texttt{real-audio-seq-001} on Speech Commands: mean accuracy 88.32\%
   \item \texttt{real-seq-004} on WISDM: canonical-minus-merged gap $+4.19$ percentage points
 \end{itemize}
-These runs establish that the first real audio and real sensor paths work end to end on Titan, but they are not yet the canonical integrated comparison set for the next paper update. The generated package under \texttt{paper/figures/generated/results\_package/real\_data/} is the source of truth for bootstrap-versus-canonical status.
+These runs establish that the first real audio and real sensor paths work end to end on Titan, but they are not yet the canonical integrated comparison set for the next paper update. \texttt{real-audio-seq-002} is completed but not promotable because blocked datasets remained, and \texttt{real-sensor-seq-001} is currently failed at \texttt{pamap2}. The generated package under \texttt{paper/figures/generated/results\_package/real\_data/} is the source of truth for bootstrap-versus-canonical status.
 
 \section{Discussion}
 
@@ -167,7 +222,7 @@ The completed synthetic sensor ladder materially strengthens the broader percept
 
 \subsection{What The Real-Data Lane Adds}
 
-The real-data lane now matters because it prevents the project from staying trapped in synthetic-only evidence. Bootstrap Speech Commands and WISDM runs prove that the real-data path is executable. However, the paper should still treat the integrated sequences as pending. This bootstrap-versus-canonical split is the main guardrail against overstating progress while Titan is still running bounded evidence chains.
+The real-data lane now matters because it prevents the project from staying trapped in synthetic-only evidence. Bootstrap Speech Commands and WISDM runs prove that the real-data path is executable. However, the paper should still treat the integrated sequences as unpromoted. \texttt{real-audio-seq-002} is completed but not promotable because blocked datasets remained, while \texttt{real-sensor-seq-001} is currently failed at \texttt{pamap2}. This bootstrap-versus-canonical split is the main guardrail against overstating progress while Titan is still resolving bounded evidence chains.
 
 \subsection{Claim Surface Versus Evidence Surface}
 
@@ -176,7 +231,7 @@ The architectural concept is broader than the current evidence. That is acceptab
   \item strongest validated result: replay-centric continual learning,
   \item strongest completed perception-side result: synthetic sensor routing ladder,
   \item completed bootstrap real-data evidence: Speech Commands and WISDM,
-  \item canonical integrated real-data evidence: pending.
+  \item canonical integrated real-data evidence: not yet promotable.
 \end{enumerate}
 That hierarchy is the one this manuscript defends.
 
@@ -190,11 +245,33 @@ For an applied reader, the present result is not a finished universal perception
   \item and adapt over time without constant full retraining.
 \end{itemize}
 
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[
+      font=\small,
+      box/.style={draw, rounded corners, align=center, minimum height=1cm, minimum width=2.8cm, fill=purple!7},
+      arrow/.style={-Latex, thick}
+    ]
+    \node[box] (capture) {Typed capture\\envelopes};
+    \node[box, right=0.9cm of capture] (sync) {Synchronization\\buffer};
+    \node[box, right=0.9cm of sync] (infer) {Mask-aware\\inference};
+    \node[box, right=0.9cm of infer] (surface) {User-facing\\product surface};
+    \node[box, below=0.9cm of infer] (adapt) {Bounded adaptation\\queue + replay gate};
+    \draw[arrow] (capture) -- (sync);
+    \draw[arrow] (sync) -- (infer);
+    \draw[arrow] (infer) -- (surface);
+    \draw[arrow] (infer) -- (adapt);
+    \draw[arrow] (adapt) |- (infer);
+  \end{tikzpicture}
+  \caption{Live-system interpretation of the repository. Inference can be continuous, but adaptation remains bounded, replay-backed, and auditable rather than fully online and self-mutating.}
+  \label{fig:live-system-stack}
+\end{figure}
+
 \section{Conclusion}
 
-Sensory Perceiver now has one coherent evidence story. Replay-centric continual learning remains the strongest validated result, with the tuned-core six-seed Titan family as the current quantitative anchor. The completed synthetic sensor ladder provides the strongest finished perception-side evidence, showing a strong but not unconditional advantage for typed routing. Bootstrap real-data evidence on Speech Commands and WISDM establishes that the real-data path is executable, while canonical integrated sequences remain explicitly pending until their bounded reports complete successfully.
+Sensory Perceiver now has one coherent evidence story. Replay-centric continual learning remains the strongest validated result, with the tuned-core six-seed Titan family as the current quantitative anchor. The completed synthetic sensor ladder provides the strongest finished perception-side evidence, showing a strong but not unconditional advantage for typed routing. Bootstrap real-data evidence on Speech Commands and WISDM establishes that the real-data path is executable, while canonical integrated promotion remains blocked until bounded sequences finish cleanly.
 
-This is the right stopping point for the current manuscript. It does not overclaim in-flight runs, it preserves blocked states such as AudioSet media acquisition and UbiqLog task definition, and it keeps the broad machine-perception framing tied to what the code and artifacts actually support. If the pending integrated sequences complete successfully, the next revision can promote them into the canonical results package. Until then, the present paper should be read as a code-aligned architecture paper with a strong continual-learning core, a completed synthetic perception-side ladder, and a cautiously advancing real-data evidence path.
+This is the right stopping point for the current manuscript. It does not overclaim incomplete evidence, it preserves deferred legacy sources such as AudioSet and UbiqLog, and it keeps the broad machine-perception framing tied to what the code and artifacts actually support. If future bounded sequences finish cleanly, the next revision can promote them into the canonical results package. Until then, the present paper should be read as a code-aligned architecture paper with a strong continual-learning core, a completed synthetic perception-side ladder, and a cautiously advancing real-data evidence path.
 
 \bibliographystyle{abbrvnat}
 \bibliography{references}

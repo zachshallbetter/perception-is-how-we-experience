@@ -29,9 +29,9 @@ Authoritative files for current paper claims:
 
 If you want:
 
-- the shortest current claim surface: read `01-abstract.md`, `06-results.md`, and `07-discussion.md`
-- the implementation boundary and honesty constraints: read `00-implementation-status-matrix.md` and `10-concept-implementation-audit.md`
-- the broader user/product interpretation: pair the paper with `../Paper Overview.md`, `../../README.md`, and `../../docs/productization-roadmap.md`
+- the shortest current claim surface: read [01-abstract.md](/Users/zachshallbetter/Projects/Perception/paper/sections/01-abstract.md), [06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md), and [07-discussion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md)
+- the implementation boundary and honesty constraints: read [00-implementation-status-matrix.md](/Users/zachshallbetter/Projects/Perception/paper/sections/00-implementation-status-matrix.md) and [10-concept-implementation-audit.md](/Users/zachshallbetter/Projects/Perception/paper/sections/10-concept-implementation-audit.md)
+- the broader user/product interpretation: pair the paper with [Paper Overview.md](/Users/zachshallbetter/Projects/Perception/paper/Paper%20Overview.md), [README.md](/Users/zachshallbetter/Projects/Perception/README.md), and [productization-roadmap.md](/Users/zachshallbetter/Projects/Perception/docs/productization-roadmap.md)
 
 ## Monolith Generation Policy
 

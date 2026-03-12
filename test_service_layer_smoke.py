@@ -12,6 +12,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
 from src.models import SensoryPerceiver
+from src.runtime.live_schema import ModalityType, SensorWindow, StreamStatus
 from src.runtime import (
     AppError,
     ErrorCode,
@@ -21,6 +22,7 @@ from src.runtime import (
     TrainRuntimeConfig,
 )
 from src.services.evaluation_service import run_evaluation
+from src.services.inference import LiveTensorAdapter, resolve_inference_plan
 from src.services.orchestration_service import ExperimentOrchestrator, run_orchestration
 from src.services.training_service import run_training
 
@@ -59,6 +61,79 @@ def chdir(path: Path):
 
 
 class ServiceLayerSmokeTest(unittest.TestCase):
+    def test_live_inference_service_accepts_native_mask_aware_model(self):
+        model = SensoryPerceiver(
+            modality_configs={"smartwatch": {"input_dim": 7, "use_conv": False}},
+            dim=16,
+            num_heads=2,
+            mlp_dim=32,
+            depth=1,
+            dropout=0.1,
+            replay_buffer_size=8,
+            contrastive_temp=0.07,
+            enable_parameter_isolation=False,
+        )
+        classifier = nn.Linear(16, 3)
+
+        class LiveInferenceModel(nn.Module):
+            supports_live_valid_mask = True
+
+            def __init__(self, backbone: nn.Module, head: nn.Module):
+                super().__init__()
+                self.backbone = backbone
+                self.head = head
+
+            def forward(self, inputs):
+                outputs, _ = self.backbone(inputs, update_buffer=False, return_embeddings=False)
+                pooled = outputs.mean(dim=1)
+                return self.head(pooled)
+
+        windows = {
+            ModalityType.SMARTWATCH: SensorWindow(
+                modality=ModalityType.SMARTWATCH,
+                tensor=torch.randn(1, 4, 7),
+                valid_mask=torch.tensor([[True, True, False, True]], dtype=torch.bool),
+                status=StreamStatus.DEGRADED,
+            )
+        }
+
+        plan = resolve_inference_plan(
+            windows,
+            LiveInferenceModel(model, classifier),
+            {ModalityType.SMARTWATCH},
+        )
+        self.assertIsNone(plan.error_code)
+        self.assertEqual(tuple(plan.prediction_logits.shape), (1, 3))
+
+    def test_live_inference_service_accepts_legacy_model_via_adapter(self):
+        class LegacyTensorModel(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.head = nn.Linear(4 * 7, 2)
+
+            def forward(self, inputs):
+                tensor = inputs["smartwatch"]
+                flat = tensor.reshape(tensor.shape[0], -1)
+                return self.head(flat)
+
+        wrapped = LiveTensorAdapter(LegacyTensorModel())
+        windows = {
+            ModalityType.SMARTWATCH: SensorWindow(
+                modality=ModalityType.SMARTWATCH,
+                tensor=torch.randn(1, 4, 7),
+                valid_mask=torch.tensor([[True, False, True, True]], dtype=torch.bool),
+                status=StreamStatus.DEGRADED,
+            )
+        }
+
+        plan = resolve_inference_plan(
+            windows,
+            wrapped,
+            {ModalityType.SMARTWATCH},
+        )
+        self.assertIsNone(plan.error_code)
+        self.assertEqual(tuple(plan.prediction_logits.shape), (1, 2))
+
     @patch("src.services.training_service.create_dataloaders", new=_mock_create_dataloaders)
     def test_run_training_writes_core_artifacts(self):
         with tempfile.TemporaryDirectory() as tmpdir:

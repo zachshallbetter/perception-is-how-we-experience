@@ -44,6 +44,7 @@ from src.services.inference import (
     build_live_model_inputs,
     resolve_inference_plan,
 )
+from src.models import SensoryPerceiver
 
 
 class RuntimeContractsTest(unittest.TestCase):
@@ -149,6 +150,32 @@ class RuntimeContractsTest(unittest.TestCase):
         self.assertIn("smartwatch", captured)
         self.assertTrue(torch.allclose(captured["smartwatch"][0, 1, :], torch.zeros(7)))
         self.assertIsNone(plan.error_code)
+
+    def test_sensory_perceiver_supports_native_live_valid_mask_inputs(self):
+        model = SensoryPerceiver(
+            modality_configs={"smartwatch": {"input_dim": 7, "use_conv": False}},
+            dim=16,
+            num_heads=2,
+            mlp_dim=32,
+            depth=1,
+            dropout=0.1,
+            replay_buffer_size=8,
+            contrastive_temp=0.07,
+            enable_parameter_isolation=False,
+        )
+
+        inputs = {
+            "smartwatch": {
+                "tensor": torch.randn(1, 3, 7),
+                "valid_mask": torch.tensor([[True, False, True]], dtype=torch.bool),
+                "status": "degraded",
+            }
+        }
+        output, embeddings = model(inputs, update_buffer=False, return_embeddings=True)
+        self.assertEqual(output.shape[0], 1)
+        self.assertEqual(output.shape[2], 16)
+        self.assertIn("smartwatch", embeddings)
+        self.assertTrue(getattr(model, "supports_live_valid_mask", False))
 
     @staticmethod
     def _make_sensor_window(

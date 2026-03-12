@@ -5,15 +5,15 @@ This document defines the real-data path for:
 - `wisdm`
 - `pamap2`
 - `opportunity`
-
-the next queued sensor/body candidates:
-
 - `uci_har`
 - `hhar`
 - `mhealth`
-- `ubiqlog`
 - `selfback`
 - `geomagnetic_wlan`
+
+the still-blocked sensor/body candidate:
+
+- `ubiqlog`
 
 and the audio lineup:
 
@@ -27,38 +27,37 @@ The goal is to plug real datasets into the existing `sensor_streaming` experimen
 Current implementation status:
 
 - `wisdm`: prepared raw-to-canonical parser implemented
-- `pamap2`: scaffold only
-- `opportunity`: scaffold only
-- sensor/body candidates:
-  - `uci_har`
-  - `hhar`
-  - `mhealth`
-  - `ubiqlog`
-  - `selfback`
-  - `geomagnetic_wlan`
+- `pamap2`: prepared raw-to-canonical parser implemented
+- `opportunity`: prepared raw-to-canonical parser implemented
+- `uci_har`: prepared raw-to-canonical parser implemented
+- `hhar`: prepared raw-to-canonical parser implemented
+- `mhealth`: prepared raw-to-canonical parser implemented
+- `selfback`: prepared raw-to-canonical parser implemented
+- `geomagnetic_wlan`: prepared raw-to-canonical parser implemented
+- `ubiqlog`: blocked until a canonical supervised task is defined
 - audio datasets:
   - `speech_commands`: prepared raw-to-canonical parser implemented
-  - `esc50`: scaffold only
-  - `urbansound8k`: scaffold only
-  - `audioset`: metadata-only scaffold
+  - `esc50`: prepared raw-to-canonical parser implemented
+  - `urbansound8k`: prepared raw-to-canonical parser implemented (requires `ffmpeg` fallback for non-PCM WAVs)
+  - `audioset`: metadata-only scaffold, blocked until audio media is acquired
 
 ## Dataset Matrix
 
 | Dataset | Domain | Current status | Notes |
 | --- | --- | --- | --- |
 | `wisdm` | phone + smartwatch activity sensing | runnable once raw files are present | first working raw-to-canonical real-data path |
-| `pamap2` | body-worn IMU + heart rate | scaffold only | canonical prepared contract exists, parser pending |
-| `opportunity` | wearable + ambient + object sensing | scaffold only | canonical prepared contract exists, parser pending |
-| `uci_har` | smartphone inertial activity sensing | candidate only | likely useful control dataset, but single-device and not yet mapped into the tri-modal contract |
-| `hhar` | heterogeneous phone/watch sensing | candidate only | strong next wearable candidate once WISDM path is stable |
-| `mhealth` | multimodal body sensing | candidate only | good body-sensing follow-on after PAMAP2 |
-| `ubiqlog` | smartphone context logging | candidate only | requires a different event/context projection strategy |
-| `selfback` | activity / coaching sensing | candidate only | parser and canonical projection not implemented |
-| `geomagnetic_wlan` | indoor localization | candidate only | useful localization benchmark, but not yet integrated into the current modality contract |
+| `pamap2` | body-worn IMU + heart rate | runnable once raw files are present | body-sensing projection into canonical sensor contract |
+| `opportunity` | wearable + ambient + object sensing | runnable once raw files are present | locomotion target with canonical proxy routing |
+| `uci_har` | smartphone inertial activity sensing | runnable once raw files are present | single-device benchmark projected into the tri-modal contract |
+| `hhar` | heterogeneous phone/watch sensing | runnable once raw files are present | strong wearable routing benchmark with user-holdout splits |
+| `mhealth` | multimodal body sensing | runnable once raw files are present | chest/wrist/ankle sensors projected into canonical modalities |
+| `ubiqlog` | smartphone context logging | blocked | requires an explicit supervised task definition |
+| `selfback` | activity / coaching sensing | runnable once raw files are present | phone/watch accelerometer routing benchmark |
+| `geomagnetic_wlan` | indoor localization | runnable once raw files are present | phone/watch/WLAN localization benchmark |
 | `speech_commands` | spoken command recognition | runnable once raw files are present | first working prepared-audio path in the `multimodal` experiment family |
-| `esc50` | environmental audio classification | scaffold only | good non-speech semantic audio follow-on after Speech Commands |
-| `urbansound8k` | urban event audio classification | scaffold only | useful ambient audio benchmark once prepared audio path exists |
-| `audioset` | large-scale weakly labeled audio events | scaffold only | metadata staged, but audio ingest path not implemented |
+| `esc50` | environmental audio classification | runnable once raw files are present | non-speech semantic audio follow-on after Speech Commands |
+| `urbansound8k` | urban event audio classification | runnable once raw files are present | ambient audio benchmark with `ffmpeg` fallback for non-PCM WAVs |
+| `audioset` | large-scale weakly labeled audio events | blocked | metadata staged, but no local audio media |
 
 ## Canonical Direction
 
@@ -129,8 +128,8 @@ python3 scripts/prepare_real_sensor_dataset.py \
 
 Behavior:
 
-- `wisdm`: parses the raw inertial files and writes prepared `train.pt` / `val.pt`
-- `pamap2` and `opportunity`: create scaffold only
+- integrated sensor datasets parse raw files and write prepared `train.pt` / `val.pt`
+- `ubiqlog` remains blocked until a supervised task is defined
 
 To force scaffold-only behavior even for WISDM:
 
@@ -166,9 +165,9 @@ The Titan-local real-data supervisor is:
 It is bounded and honest:
 
 1. it only launches datasets that are actually prepared
-2. it will auto-prepare `wisdm` if `data/raw/wisdm` exists
-3. it marks `pamap2` and `opportunity` as blocked until real parsers or prepared splits exist
-4. it records sensor and audio candidate datasets as queued, not runnable
+2. it auto-prepares any integrated sensor dataset whose raw root exists locally
+3. it leaves `ubiqlog` explicitly blocked until a canonical supervised task exists
+4. it records blocked audio candidates separately from runnable sensor datasets
 
 Status command:
 
@@ -200,6 +199,11 @@ The same runtime path also works for:
 
 - `pamap2`
 - `opportunity`
+- `uci_har`
+- `hhar`
+- `mhealth`
+- `selfback`
+- `geomagnetic_wlan`
 
 provided their prepared manifests and split files are present.
 
@@ -212,4 +216,6 @@ The prepared audio path is intentionally separate from the canonical tri-modal s
 
 Current audio status:
 - `speech_commands`: integrated into the runtime and Titan automation path
-- `esc50`, `urbansound8k`, `audioset`: tracked next targets, not runnable evidence yet
+- `esc50`: integrated into the runtime and Titan automation path
+- `urbansound8k`: integrated into the runtime and Titan automation path
+- `audioset`: still blocked until audio media is acquired locally

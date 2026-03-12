@@ -19,6 +19,11 @@ Prepare or bootstrap a prepared real-sensor dataset for:
 - `wisdm`
 - `pamap2`
 - `opportunity`
+- `uci_har`
+- `hhar`
+- `mhealth`
+- `selfback`
+- `geomagnetic_wlan`
 
 ```bash
 python3 scripts/prepare_real_sensor_dataset.py \
@@ -27,9 +32,8 @@ python3 scripts/prepare_real_sensor_dataset.py \
 ```
 
 Behavior:
-- `wisdm`: parses raw phone/watch inertial files and writes prepared canonical `train.pt` / `val.pt`
-- `pamap2`: scaffold only
-- `opportunity`: scaffold only
+- integrated real-sensor datasets parse raw files and write prepared canonical `train.pt` / `val.pt`
+- `ubiqlog` remains blocked because a canonical supervised task definition does not exist yet
 
 Prepared outputs:
 - `data/real-sensor/<dataset>/manifest.json`
@@ -68,14 +72,21 @@ PYTHON_BIN=/ai/envs/perception/bin/python \
 bash scripts/run_real_sensor_sequence_autonomous.sh real-seq-001
 ```
 
+### `chain_real_sensor_sequence.sh`
+Wait for one bounded real-sensor sequence to finish, then launch the next one automatically.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/chain_real_sensor_sequence.sh real-seq-001 real-seq-002
+```
+
 ### `real_sensor_ai_supervisor.py`
 Real-data supervisor for prepared datasets.
 
 Current policy:
-- auto-prepares `wisdm` if raw files exist
+- auto-prepares integrated sensor datasets if raw files exist
 - runs canonical vs merged once a dataset is prepared
-- marks `pamap2` and `opportunity` as blocked until real parsers or prepared splits exist
-- records the broader candidate queue (`uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`) without pretending they are runnable
+- leaves `ubiqlog` explicitly blocked until a canonical supervised task is defined
 
 ### `real_sensor_sequence_status.sh`
 Print the live/final status of a real-data supervision sequence.
@@ -99,7 +110,9 @@ python3 scripts/prepare_real_audio_dataset.py \
 
 Behavior:
 - `speech_commands`: parses the saved Hugging Face dataset and writes prepared canonical `train.pt` / `val.pt`
-- `esc50`, `urbansound8k`, `audioset`: scaffold only
+- `esc50`: prepares canonical `train.pt` / `val.pt` from the extracted ESC-50 archive
+- `urbansound8k`: prepares canonical `train.pt` / `val.pt` from the extracted UrbanSound8K archive, using `ffmpeg` fallback for non-PCM WAVs
+- `audioset`: remains blocked because only metadata is staged locally
 
 Prepared outputs:
 - `data/real-audio/<dataset>/manifest.json`
@@ -136,13 +149,21 @@ PYTHON_BIN=/ai/envs/perception/bin/python \
 bash scripts/run_real_audio_sequence_autonomous.sh real-audio-seq-001
 ```
 
+### `chain_real_audio_sequence.sh`
+Wait for one bounded real-audio sequence to finish, then launch the next one automatically.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/chain_real_audio_sequence.sh real-audio-seq-001 real-audio-seq-002
+```
+
 ### `real_audio_ai_supervisor.py`
 Real-audio supervisor for prepared datasets.
 
 Current policy:
-- auto-prepares `speech_commands` if raw files exist
+- auto-prepares `speech_commands`, `esc50`, and `urbansound8k` if raw files exist
 - runs the prepared `multimodal` audio benchmark once a dataset is prepared
-- records `esc50`, `urbansound8k`, and `audioset` as blocked/candidate until their prepared parsers exist
+- leaves `audioset` explicitly blocked until local audio media exists
 
 ### `real_audio_sequence_status.sh`
 Print the live/final status of a real-audio supervision sequence.

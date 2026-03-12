@@ -19,13 +19,22 @@ if str(ROOT_DIR) not in sys.path:
 from src.data.real_audio import REAL_AUDIO_DATASET_SPECS, real_audio_dataset_is_prepared
 
 
+CANDIDATE_DATASETS = {
+    "audioset": {
+        "source_name": "AudioSet",
+        "status": "blocked-audio-media-missing",
+        "notes": "Only metadata CSVs are present locally; audio clips have not been acquired into the prepared-audio path.",
+    },
+}
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("sequence_id")
     parser.add_argument("--root", default=ROOT_DIR)
     parser.add_argument("--python-bin", default=os.environ.get("PYTHON_BIN", "python3"))
-    parser.add_argument("--datasets", default="speech_commands")
-    parser.add_argument("--candidate-datasets", default="esc50,urbansound8k,audioset")
+    parser.add_argument("--datasets", default="speech_commands,esc50,urbansound8k")
+    parser.add_argument("--candidate-datasets", default="audioset")
     parser.add_argument("--results-root", default="results")
     parser.add_argument("--prepared-root", default="data/real-audio")
     parser.add_argument("--raw-root", default="data/raw/audio")
@@ -102,7 +111,7 @@ class Supervisor:
         raw_dir = self.resolve_raw_dir(dataset)
         if prepared:
             return {"dataset": dataset, "status": "prepared"}
-        if dataset == "speech_commands" and raw_dir.exists():
+        if dataset in {"speech_commands", "esc50", "urbansound8k"} and raw_dir.exists():
             self.log("prepare-dataset", dataset=dataset, raw_dir=str(raw_dir))
             self.run(
                 self.python_bin,
@@ -129,6 +138,16 @@ class Supervisor:
                 self.raw_root / "speech_commands_enriched",
                 self.raw_root / "speech_commands",
             ]
+            for candidate in candidates:
+                if candidate.exists():
+                    return candidate
+        if dataset == "esc50":
+            candidates = [self.raw_root / "esc50", self.raw_root / "ESC-50-master"]
+            for candidate in candidates:
+                if candidate.exists():
+                    return candidate
+        if dataset == "urbansound8k":
+            candidates = [self.raw_root / "urbansound8k", self.raw_root / "UrbanSound8K"]
             for candidate in candidates:
                 if candidate.exists():
                     return candidate
@@ -211,14 +230,15 @@ class Supervisor:
         candidate_queue = []
         for dataset in self.candidate_datasets:
             spec = REAL_AUDIO_DATASET_SPECS.get(dataset)
-            candidate_queue.append(
+            info = CANDIDATE_DATASETS.get(
+                dataset,
                 {
-                    "dataset": dataset,
                     "source_name": spec.source_name if spec else dataset,
                     "status": "candidate-not-integrated",
                     "notes": "Tracked audio candidate; parser or prepared-data integration still pending.",
-                }
+                },
             )
+            candidate_queue.append({"dataset": dataset, **info})
 
         final_status = "completed" if completed else "blocked"
         self.write_report(

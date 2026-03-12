@@ -318,24 +318,43 @@ python scripts/validate_setup.py --verbose
   - `capacity-confounded`
   - `competitive`
   - `merged-favored`
-- Real-data progression uses the same `sensor_streaming` experiment family, but support is explicitly staged:
-  - `wisdm`: runnable once raw files exist under `data/raw/wisdm`
-  - `pamap2`, `opportunity`: scaffold only
-  - sensor/body candidate queue only: `uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`
-  - audio candidate queue only: `speech_commands`, `esc50`, `urbansound8k`, `audioset`
-- Prepare WISDM with:
+- Real-data progression uses the same `sensor_streaming` experiment family, but support is now split cleanly:
+  - integrated real-sensor datasets:
+    - `wisdm`
+    - `pamap2`
+    - `opportunity`
+    - `uci_har`
+    - `hhar`
+    - `mhealth`
+    - `selfback`
+    - `geomagnetic_wlan`
+  - blocked sensor dataset:
+    - `ubiqlog` until a canonical supervised task is defined
+  - integrated real-audio datasets:
+    - `speech_commands`
+    - `esc50`
+    - `urbansound8k`
+  - blocked audio dataset:
+    - `audioset` until local audio media is acquired
+- Prepare an integrated real-sensor dataset with:
   - `python3 scripts/prepare_real_sensor_dataset.py --dataset wisdm --raw-dir data/raw/wisdm`
 - Launch one real-data routing comparison with:
   - `PYTHON_BIN=/ai/envs/perception/bin/python DATASET=wisdm bash scripts/launch_real_sensor_routing_titan.sh`
 - Run the bounded real-data supervisor with:
   - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/run_real_sensor_sequence_autonomous.sh real-seq-001`
+- To continue automatically into the next bounded real-sensor sequence after one finishes:
+  - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/chain_real_sensor_sequence.sh real-seq-001 real-seq-002`
 - Check the real-data supervisor with:
   - `bash scripts/real_sensor_sequence_status.sh real-seq-001`
-- The real-data supervisor only launches datasets that are actually prepared. It auto-prepares `wisdm` if raw files are present and reports scaffold-only / candidate datasets explicitly instead of pretending they are runnable.
-- Audio now has its first runnable Titan path:
-  - `speech_commands`: integrated into the `multimodal` runtime family and bounded Titan supervisor
-  - `esc50`, `urbansound8k`, `audioset`: still blocked/candidate until prepared parsers land
+- The real-data supervisor only launches datasets that are actually prepared. It auto-prepares integrated datasets whose raw roots exist locally and reports blocked datasets explicitly instead of pretending they are runnable.
+- Audio now has three runnable Titan paths:
+  - `speech_commands`
+  - `esc50`
+  - `urbansound8k`
+- `urbansound8k` requires the local `ffmpeg` fallback for non-PCM WAV files; the prepared-audio path now handles that automatically.
 - Run the bounded real-audio supervisor with:
   - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/run_real_audio_sequence_autonomous.sh real-audio-seq-001`
+- To continue automatically into the next bounded real-audio sequence after one finishes:
+  - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/chain_real_audio_sequence.sh real-audio-seq-001 real-audio-seq-002`
 - Check the real-audio supervisor with:
   - `bash scripts/real_audio_sequence_status.sh real-audio-seq-001`

@@ -336,24 +336,36 @@ The practical reason for this ladder is straightforward: if typed routing only w
 
 In parallel with the hardened synthetic ladder, the repository now has an explicit real-data progression path through the same `sensor_streaming` runtime:
 
-- `wisdm`: first working raw-to-canonical preparation path
-- `pamap2`, `opportunity`: prepared-data scaffold exists, parser pending
-- sensor/body candidates: `uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`
-- audio candidates: `speech_commands`, `esc50`, `urbansound8k`, `audioset`
+- integrated real-sensor datasets:
+  - `wisdm`
+  - `pamap2`
+  - `opportunity`
+  - `uci_har`
+  - `hhar`
+  - `mhealth`
+  - `selfback`
+  - `geomagnetic_wlan`
+- integrated real-audio datasets:
+  - `speech_commands`
+  - `esc50`
+  - `urbansound8k`
+- explicitly blocked:
+  - `ubiqlog`, because the repository does not yet define a canonical supervised task target for those raw logs
+  - `audioset`, because only metadata CSVs are staged locally and no audio media has been acquired into the prepared-audio path
 
 This path is intentionally conservative. Real-data routing experiments are only launched once prepared manifests and canonical `train.pt` / `val.pt` splits exist. A bounded Titan-local real-data supervisor is now available to:
 
-- auto-prepare `wisdm` if raw files are present,
+- auto-prepare integrated datasets if raw files are present,
 - launch canonical-vs-merged routing comparisons for prepared datasets,
-- and record blocked or candidate datasets explicitly rather than silently treating them as runnable evidence.
+- and record blocked datasets explicitly rather than silently treating them as runnable evidence.
 
 Audio is now part of the runnable real-data path, but only in a narrow first form. The repository now defines:
 
 - one prepared audio contract under `data/real-audio/`,
-- one first working parser for `speech_commands`,
+- working parsers for `speech_commands`, `esc50`, and `urbansound8k`,
 - and one bounded Titan-local audio supervisor for launching prepared audio runs.
 
-`esc50`, `urbansound8k`, and `audioset` remain staged rather than promoted into current evidence.
+These real-data integrations are not yet part of the main paper-primary results. They exist to extend the empirical coverage beyond synthetic routing and to make the next evidence steps executable on Titan without inventing a second runtime or supervision stack.
 
 ## 5.4 Evaluation Metrics
 

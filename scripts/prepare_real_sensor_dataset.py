@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bootstrap or prepare real-sensor datasets for WISDM/PAMAP2/OPPORTUNITY."""
+"""Prepare or bootstrap real-sensor datasets for the sensor-streaming family."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from src.data.real_sensor import (
     REAL_SENSOR_DATASET_SPECS,
     get_real_sensor_dataset_dir,
 )
-from src.data.real_sensor_prepare import prepare_wisdm_dataset
+from src.data.real_sensor_prepare import prepare_real_sensor_dataset
 
 
 def parse_args() -> argparse.Namespace:
@@ -46,8 +46,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     raw_dir = Path(args.raw_dir).resolve()
-    if args.dataset == "wisdm" and not args.bootstrap_only:
-        result = prepare_wisdm_dataset(raw_dir, Path(args.output_root), args.sequence_length)
+    if args.dataset in REAL_SENSOR_DATASET_SPECS and args.dataset != "ubiqlog" and not args.bootstrap_only:
+        result = prepare_real_sensor_dataset(args.dataset, raw_dir, Path(args.output_root), args.sequence_length)
         print(json.dumps(result, indent=2))
         return 0
 
@@ -77,7 +77,7 @@ def main() -> int:
             "Prepared split files must be torch.save payloads with keys: labels, smartwatch, room_env, robot_arm.",
             "Each modality tensor must have shape [N, T, C] with canonical feature dims 7/4/9.",
             "If the source dataset lacks a canonical modality, encode the chosen missing-modality strategy explicitly in this dataset card before use.",
-            "Use --bootstrap-only to preserve scaffold-only behavior after WISDM parser support landed.",
+            "Use --bootstrap-only to preserve scaffold-only behavior when raw parsing support is intentionally bypassed.",
         ],
     }
 
@@ -99,7 +99,7 @@ Expected `torch.save()` payload for each split:
 
 Scaffold status:
 - bootstrap created
-- raw parsing implementation still TODO for this dataset
+- raw parsing implementation not executed in this bootstrap run
 - this directory is ready for canonical prepared tensors
 """
 

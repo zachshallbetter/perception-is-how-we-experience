@@ -20,55 +20,10 @@ from src.data.real_sensor import REAL_SENSOR_DATASET_SPECS, real_sensor_dataset_
 
 
 CANDIDATE_DATASETS = {
-    "uci_har": {
-        "source_name": "UCI HAR",
-        "status": "candidate-not-integrated",
-        "notes": "Single-device smartphone inertial benchmark; not yet mapped into the canonical tri-modal contract.",
-    },
-    "hhar": {
-        "source_name": "HHAR",
-        "status": "candidate-not-integrated",
-        "notes": "Promising heterogeneity benchmark; parser and canonical projection not implemented.",
-    },
-    "mhealth": {
-        "source_name": "MHEALTH",
-        "status": "candidate-not-integrated",
-        "notes": "Body-sensing candidate; parser and canonical projection not implemented.",
-    },
     "ubiqlog": {
         "source_name": "UbiqLog",
-        "status": "candidate-not-integrated",
-        "notes": "Context logging dataset; canonical sequence projection not implemented.",
-    },
-    "selfback": {
-        "source_name": "SELFBACK",
-        "status": "candidate-not-integrated",
-        "notes": "Activity dataset candidate; parser and canonical projection not implemented.",
-    },
-    "geomagnetic_wlan": {
-        "source_name": "Geo-magnetic + WLAN",
-        "status": "candidate-not-integrated",
-        "notes": "Indoor localization candidate; canonical projection not implemented.",
-    },
-    "speech_commands": {
-        "source_name": "Speech Commands",
-        "status": "candidate-not-integrated",
-        "notes": "First audio candidate; requires canonical audio modality contract and prepared split schema.",
-    },
-    "esc50": {
-        "source_name": "ESC-50",
-        "status": "candidate-not-integrated",
-        "notes": "Environmental audio candidate; blocked until audio prepared-data path exists.",
-    },
-    "urbansound8k": {
-        "source_name": "UrbanSound8K",
-        "status": "candidate-not-integrated",
-        "notes": "Ambient audio candidate; blocked until audio launcher and prepared contract exist.",
-    },
-    "audioset": {
-        "source_name": "AudioSet",
-        "status": "candidate-not-integrated",
-        "notes": "Large-scale audio target; too heavy for first integration pass and no prepared audio path yet.",
+        "status": "blocked-task-definition-missing",
+        "notes": "Raw logs are present, but there is no canonical supervised target task defined for the current sensor-streaming contract.",
     },
 }
 
@@ -78,8 +33,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("sequence_id")
     parser.add_argument("--root", default=ROOT_DIR)
     parser.add_argument("--python-bin", default=os.environ.get("PYTHON_BIN", "python3"))
-    parser.add_argument("--datasets", default="wisdm,pamap2,opportunity")
-    parser.add_argument("--candidate-datasets", default="uci_har,hhar,mhealth,ubiqlog,selfback,geomagnetic_wlan,speech_commands,esc50,urbansound8k,audioset")
+    parser.add_argument("--datasets", default="wisdm,pamap2,opportunity,uci_har,hhar,mhealth,selfback,geomagnetic_wlan")
+    parser.add_argument("--candidate-datasets", default="ubiqlog")
     parser.add_argument("--results-root", default="results")
     parser.add_argument("--prepared-root", default="data/real-sensor")
     parser.add_argument("--raw-root", default="data/raw")
@@ -168,7 +123,7 @@ class Supervisor:
         raw_dir = self.raw_root / dataset
         if prepared:
             return {"dataset": dataset, "status": "prepared"}
-        if dataset == "wisdm" and raw_dir.exists():
+        if raw_dir.exists():
             self.log("prepare-dataset", dataset=dataset, raw_dir=str(raw_dir))
             self.run(
                 self.python_bin,

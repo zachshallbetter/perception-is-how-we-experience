@@ -410,6 +410,7 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
             runtime_config.experiment,
             runtime_config.dataset,
             runtime_config.continual_task_count,
+            runtime_config.modality_routing_mode,
         )
         model = SensoryPerceiver(
             modality_configs=modality_configs,
@@ -457,6 +458,8 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
             "seed": runtime_config.seed,
             "device": str(runtime_config.device),
             "output_dir": str(runtime_config.output_dir),
+            "modality_routing_mode": runtime_config.modality_routing_mode,
+            "sensor_variant": runtime_config.sensor_variant,
             "modality_configs": modality_configs,
             "n_classes": n_classes,
         }
@@ -484,6 +487,8 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
             seed=runtime_config.seed,
             task_id=0,
             n_tasks=max(n_continual_tasks, 1),
+            modality_routing_mode=runtime_config.modality_routing_mode,
+            sensor_variant=runtime_config.sensor_variant,
         )
 
         trainer = Trainer(
@@ -512,6 +517,8 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
                     seed=runtime_config.seed + task_id,
                     task_id=task_id,
                     n_tasks=n_continual_tasks,
+                    modality_routing_mode=runtime_config.modality_routing_mode,
+                    sensor_variant=runtime_config.sensor_variant,
                 )
                 trainer.train_loader = train_loader
                 trainer.val_loader = val_loader

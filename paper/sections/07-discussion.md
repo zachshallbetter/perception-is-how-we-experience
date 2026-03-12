@@ -53,3 +53,4 @@ This second point is important. The paper should not imply that adding regulariz
 2. Run multiseed evaluation and confidence intervals for the tuned-core continual benchmark.
 3. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
 4. Add real multimodal ingestion/evaluation paths and report them separately from proxy datasets.
+5. Prioritize the `sensor_streaming` canonical-vs-merged routing ablation, because it is the fastest experiment that can either justify or sharply narrow the broader perception/MIME claim.

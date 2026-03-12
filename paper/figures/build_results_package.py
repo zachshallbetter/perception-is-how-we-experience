@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import shutil
 import statistics
 from dataclasses import dataclass
@@ -33,12 +34,8 @@ LEGACY_PHASE_1 = {
 }
 
 PHASE_2_PATH = RESULTS_DIR / "cl_baseline_reservoir_sampling" / "results.json"
-TUNED_PATHS = [
-    RESULTS_DIR / "paper_runlocal_tuned_20t_seed42_20260310_091001_recover" / "results.json",
-    RESULTS_DIR / "paper_runlocal_tuned_20t_seed43_20260310_091001_recover" / "results.json",
-    RESULTS_DIR / "paper_runlocal_tuned_20t_seed44_20260310_091001_recover" / "results.json",
-]
 BWT_SWEEP_GLOB = "bwt_*/results.json"
+TUNED_RUN_RE = re.compile(r"^paper_runlocal_tuned_20t_seed(?P<seed>\d+)_(?P<family>.+)$")
 
 
 @dataclass(frozen=True)
@@ -55,6 +52,31 @@ class ResultRow:
     ewc_lambda: float | None = None
     si_lambda: float | None = None
     seed: int | None = None
+
+
+def discover_tuned_paths() -> tuple[str, list[Path]]:
+    families: dict[str, list[Path]] = {}
+    for path in RESULTS_DIR.glob("paper_runlocal_tuned_20t_seed*/results.json"):
+        match = TUNED_RUN_RE.match(path.parent.name)
+        if match is None:
+            continue
+        family = match.group("family")
+        families.setdefault(family, []).append(path)
+
+    if not families:
+        raise FileNotFoundError(
+            "No tuned-core results found via glob: paper_runlocal_tuned_20t_seed*/results.json"
+        )
+
+    best_family = max(
+        families.items(),
+        key=lambda item: (len(item[1]), item[0]),
+    )[0]
+    tuned_paths = sorted(
+        families[best_family],
+        key=lambda path: int(TUNED_RUN_RE.match(path.parent.name).group("seed")),
+    )
+    return best_family, tuned_paths
 
 
 def load_result(path: Path) -> dict:
@@ -282,7 +304,8 @@ def main() -> int:
     SOURCE_MATRIX_DIR.mkdir(parents=True, exist_ok=True)
 
     phase_2 = row_from_result(PHASE_2_PATH)
-    tuned_rows = [row_from_result(path) for path in TUNED_PATHS]
+    tuned_family, tuned_paths = discover_tuned_paths()
+    tuned_rows = [row_from_result(path) for path in tuned_paths]
     bwt_rows = [row_from_result(path) for path in sorted(RESULTS_DIR.glob(BWT_SWEEP_GLOB))]
     if not bwt_rows:
         raise FileNotFoundError(f"No BWT sweep results found via glob: {BWT_SWEEP_GLOB}")
@@ -324,9 +347,9 @@ def main() -> int:
         {
             "phase": "3",
             "phase_label": "Phase 3",
-            "configuration": "Tuned core continual path (3-seed mean)",
+            "configuration": f"Tuned core continual path ({len(tuned_rows)}-seed mean)",
             "source_kind": "artifact_results_json_mean",
-            "source_path": "; ".join(str(path.relative_to(ROOT)) for path in TUNED_PATHS),
+            "source_path": "; ".join(str(path.relative_to(ROOT)) for path in tuned_paths),
             "CIL": tuned_mean["CIL"],
             "BWT": tuned_mean["BWT"],
             "FWT": tuned_mean["FWT"],
@@ -372,7 +395,7 @@ def main() -> int:
     phase_matrix = copy_source_matrix(PHASE_2_PATH, "phase2_raw_input_replay_accuracy_matrix")
     tuned_matrices = [
         copy_source_matrix(path, f"tuned_core_seed{row.seed}_accuracy_matrix")
-        for row, path in zip(tuned_rows, TUNED_PATHS)
+        for row, path in zip(tuned_rows, tuned_paths)
     ]
 
     build_phase_progression_figure(phase_rows)
@@ -392,7 +415,7 @@ def main() -> int:
                 "",
                 "- Phase 1 uses the canonical legacy metrics from `paper/sections/06-results.md` because the original feature-only run directory is not currently tracked as a local results artifact.",
                 "- Phase 2 uses `results/cl_baseline_reservoir_sampling/results.json`.",
-                "- Phase 3 uses the 3 tuned-core Titan runs under `results/paper_runlocal_tuned_20t_seed*_20260310_091001_recover/`.",
+                f"- Phase 3 uses the discovered tuned-core family `{tuned_family}` with {len(tuned_rows)} synchronized Titan runs.",
                 "- The BWT sweep uses the completed `results/bwt_*/results.json` runs synchronized from Titan.",
                 "",
                 "## Included artifacts",
@@ -424,7 +447,7 @@ def main() -> int:
                 "# Figure And Table Captions",
                 "",
                 "## Table 1",
-                "Split-CIFAR-100 continual-learning progression. Phase 1 is a legacy feature-only replay result sourced from the canonical paper section because the original run directory is not currently tracked as a local artifact. Phase 2 and Phase 3 are artifact-backed, with Phase 3 reporting the mean over three tuned-core Titan runs.",
+                f"Split-CIFAR-100 continual-learning progression. Phase 1 is a legacy feature-only replay result sourced from the canonical paper section because the original run directory is not currently tracked as a local artifact. Phase 2 and Phase 3 are artifact-backed, with Phase 3 reporting the mean over {len(tuned_rows)} tuned-core Titan runs from family `{tuned_family}`.",
                 "",
                 "## Figure 1",
                 "CIL and BWT progression from feature-only replay to raw-input replay with reservoir sampling and then the tuned-core continual configuration. The figure emphasizes that replay-path design, not just stronger regularization, drove the major retention gains.",
@@ -452,7 +475,7 @@ def main() -> int:
                 "\\begin{table}[t]",
                 "  \\centering",
                 f"  \\includegraphics[width=\\linewidth]{{../figures/generated/results_package/table_results_overview.pdf}}",
-                "  \\caption{Split-CIFAR-100 continual-learning progression. Phase 1 is a legacy feature-only replay result sourced from the canonical paper section because the original run directory is not currently tracked as a local artifact. Phase 2 and Phase 3 are artifact-backed, with Phase 3 reporting the mean over three tuned-core Titan runs.}",
+                f"  \\caption{{Split-CIFAR-100 continual-learning progression. Phase 1 is a legacy feature-only replay result sourced from the canonical paper section because the original run directory is not currently tracked as a local artifact. Phase 2 and Phase 3 are artifact-backed, with Phase 3 reporting the mean over {len(tuned_rows)} tuned-core Titan runs from family `{tuned_family}`.}}",
                 "  \\label{tab:split-cifar-results-overview}",
                 "\\end{table}",
                 "",
@@ -572,6 +595,7 @@ def main() -> int:
     manifest = {
         "package_version": 1,
         "output_dir": str(OUTPUT_DIR.relative_to(ROOT)),
+        "tuned_core_family": tuned_family,
         "phase_progression": phase_rows,
         "tuned_core_summary": tuned_mean,
         "tuned_seed_rows": tuned_seed_rows,

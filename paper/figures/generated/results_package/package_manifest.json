@@ -1,6 +1,7 @@
 {
   "package_version": 1,
   "output_dir": "paper/figures/generated/results_package",
+  "tuned_core_family": "20260311_140818",
   "phase_progression": [
     {
       "phase": "1",
@@ -27,50 +28,77 @@
     {
       "phase": "3",
       "phase_label": "Phase 3",
-      "configuration": "Tuned core continual path (3-seed mean)",
+      "configuration": "Tuned core continual path (6-seed mean)",
       "source_kind": "artifact_results_json_mean",
-      "source_path": "results/paper_runlocal_tuned_20t_seed42_20260310_091001_recover/results.json; results/paper_runlocal_tuned_20t_seed43_20260310_091001_recover/results.json; results/paper_runlocal_tuned_20t_seed44_20260310_091001_recover/results.json",
-      "CIL": 23.643333333333334,
-      "BWT": -30.94736842105263,
+      "source_path": "results/paper_runlocal_tuned_20t_seed47_20260311_140818/results.json; results/paper_runlocal_tuned_20t_seed48_20260311_140818/results.json; results/paper_runlocal_tuned_20t_seed49_20260311_140818/results.json; results/paper_runlocal_tuned_20t_seed50_20260311_140818/results.json; results/paper_runlocal_tuned_20t_seed51_20260311_140818/results.json; results/paper_runlocal_tuned_20t_seed52_20260311_140818/results.json",
+      "CIL": 23.958333333333332,
+      "BWT": -30.385964912280702,
       "FWT": 0.0,
-      "task0_retention": 23.0
+      "task0_retention": 25.066666666666666
     }
   ],
   "tuned_core_summary": {
-    "CIL": 23.643333333333334,
-    "BWT": -30.94736842105263,
+    "CIL": 23.958333333333332,
+    "BWT": -30.385964912280702,
     "FWT": 0.0,
-    "task0_retention": 23.0,
-    "CIL_std": 0.37862323694611555,
-    "BWT_std": 1.3575546969862067
+    "task0_retention": 25.066666666666666,
+    "CIL_std": 0.5579849659464159,
+    "BWT_std": 1.2308989975863802
   },
   "tuned_seed_rows": [
     {
-      "run": "paper_runlocal_tuned_20t_seed42_20260310_091001_recover",
-      "seed": 42,
-      "source_path": "results/paper_runlocal_tuned_20t_seed42_20260310_091001_recover/results.json",
-      "CIL": 24.15,
-      "BWT": -29.400000000000002,
+      "run": "paper_runlocal_tuned_20t_seed47_20260311_140818",
+      "seed": 47,
+      "source_path": "results/paper_runlocal_tuned_20t_seed47_20260311_140818/results.json",
+      "CIL": 23.599999999999998,
+      "BWT": -29.442105263157895,
       "FWT": 0.0,
-      "task0_retention": 23.4
+      "task0_retention": 23.2
     },
     {
-      "run": "paper_runlocal_tuned_20t_seed43_20260310_091001_recover",
-      "seed": 43,
-      "source_path": "results/paper_runlocal_tuned_20t_seed43_20260310_091001_recover/results.json",
-      "CIL": 23.540000000000003,
-      "BWT": -30.736842105263165,
+      "run": "paper_runlocal_tuned_20t_seed48_20260311_140818",
+      "seed": 48,
+      "source_path": "results/paper_runlocal_tuned_20t_seed48_20260311_140818/results.json",
+      "CIL": 22.98,
+      "BWT": -32.38947368421053,
       "FWT": 0.0,
-      "task0_retention": 20.0
+      "task0_retention": 23.0
     },
     {
-      "run": "paper_runlocal_tuned_20t_seed44_20260310_091001_recover",
-      "seed": 44,
-      "source_path": "results/paper_runlocal_tuned_20t_seed44_20260310_091001_recover/results.json",
-      "CIL": 23.240000000000002,
-      "BWT": -32.70526315789473,
+      "run": "paper_runlocal_tuned_20t_seed49_20260311_140818",
+      "seed": 49,
+      "source_path": "results/paper_runlocal_tuned_20t_seed49_20260311_140818/results.json",
+      "CIL": 23.95,
+      "BWT": -30.536842105263155,
       "FWT": 0.0,
-      "task0_retention": 25.6
+      "task0_retention": 28.6
+    },
+    {
+      "run": "paper_runlocal_tuned_20t_seed50_20260311_140818",
+      "seed": 50,
+      "source_path": "results/paper_runlocal_tuned_20t_seed50_20260311_140818/results.json",
+      "CIL": 24.16,
+      "BWT": -31.147368421052636,
+      "FWT": 0.0,
+      "task0_retention": 32.0
+    },
+    {
+      "run": "paper_runlocal_tuned_20t_seed51_20260311_140818",
+      "seed": 51,
+      "source_path": "results/paper_runlocal_tuned_20t_seed51_20260311_140818/results.json",
+      "CIL": 24.32,
+      "BWT": -30.305263157894736,
+      "FWT": 0.0,
+      "task0_retention": 20.6
+    },
+    {
+      "run": "paper_runlocal_tuned_20t_seed52_20260311_140818",
+      "seed": 52,
+      "source_path": "results/paper_runlocal_tuned_20t_seed52_20260311_140818/results.json",
+      "CIL": 24.740000000000002,
+      "BWT": -28.49473684210527,
+      "FWT": 0.0,
+      "task0_retention": 23.0
     }
   ],
   "bwt_sweep_top_ranked": [
@@ -204,9 +232,12 @@
   "source_matrices": {
     "phase_2": "paper/figures/generated/results_package/source_matrices/phase2_raw_input_replay_accuracy_matrix.png",
     "tuned_core": [
-      "paper/figures/generated/results_package/source_matrices/tuned_core_seed42_accuracy_matrix.png",
-      "paper/figures/generated/results_package/source_matrices/tuned_core_seed43_accuracy_matrix.png",
-      "paper/figures/generated/results_package/source_matrices/tuned_core_seed44_accuracy_matrix.png"
+      "paper/figures/generated/results_package/source_matrices/tuned_core_seed47_accuracy_matrix.png",
+      "paper/figures/generated/results_package/source_matrices/tuned_core_seed48_accuracy_matrix.png",
+      "paper/figures/generated/results_package/source_matrices/tuned_core_seed49_accuracy_matrix.png",
+      "paper/figures/generated/results_package/source_matrices/tuned_core_seed50_accuracy_matrix.png",
+      "paper/figures/generated/results_package/source_matrices/tuned_core_seed51_accuracy_matrix.png",
+      "paper/figures/generated/results_package/source_matrices/tuned_core_seed52_accuracy_matrix.png"
     ]
   },
   "generated_files": [
@@ -230,6 +261,12 @@
     "paper/figures/generated/results_package/source_matrices/tuned_core_seed42_accuracy_matrix.png",
     "paper/figures/generated/results_package/source_matrices/tuned_core_seed43_accuracy_matrix.png",
     "paper/figures/generated/results_package/source_matrices/tuned_core_seed44_accuracy_matrix.png",
+    "paper/figures/generated/results_package/source_matrices/tuned_core_seed47_accuracy_matrix.png",
+    "paper/figures/generated/results_package/source_matrices/tuned_core_seed48_accuracy_matrix.png",
+    "paper/figures/generated/results_package/source_matrices/tuned_core_seed49_accuracy_matrix.png",
+    "paper/figures/generated/results_package/source_matrices/tuned_core_seed50_accuracy_matrix.png",
+    "paper/figures/generated/results_package/source_matrices/tuned_core_seed51_accuracy_matrix.png",
+    "paper/figures/generated/results_package/source_matrices/tuned_core_seed52_accuracy_matrix.png",
     "paper/figures/generated/results_package/table_results_overview.pdf",
     "paper/figures/generated/results_package/table_results_overview.png",
     "paper/figures/generated/results_package/table_results_overview.svg",

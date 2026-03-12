@@ -156,6 +156,78 @@ bash scripts/launch_tuned_core_expansion_campaign.sh
 
 This expands the tuned-core multiseed evidence instead of introducing yet another mechanism class immediately.
 
+### `launch_sensor_mime_ablation_titan.sh`
+Launch the perception-side sensor/MIME ablation on Titan.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/launch_sensor_mime_ablation_titan.sh
+```
+
+Titan X note:
+- the launcher defaults to `BATCH_SIZE=2` and `EPOCHS=20` because the canonical 3-tower route OOMs at larger batch sizes on 12 GB cards
+
+This compares:
+
+- `canonical`: three typed sensor modalities derived from the MIME registry
+- `merged`: one generic 20-feature stream without typed modality separation
+- each seed evaluates on the matching deterministic validation split used for that training run
+
+This is the highest-value next experiment for supporting the broader perception claim beyond Split-CIFAR continual learning.
+
+Variant control:
+- `SENSOR_VARIANT=baseline` compares canonical vs merged routing on the standard sensor benchmark
+- `SENSOR_VARIANT=drop_smartwatch|drop_room_env|drop_robot_arm` runs leave-one-modality-out stress tests
+- `SENSOR_VARIANT=corrupt_bindings` keeps tensors shaped the same but scrambles modality/class semantic alignment
+- `SENSOR_VARIANT=noise_smartwatch|noise_room_env|noise_robot_arm` injects heavy drift/noise into one modality
+- `CANONICAL_D_MODEL`, `MERGED_D_MODEL`, `CANONICAL_MLP_DIM`, and `MERGED_MLP_DIM` allow capacity-matched controls
+
+### `summarize_sensor_routing_results.py`
+Aggregate completed sensor-streaming eval runs by variant and routing mode.
+
+```bash
+python3 scripts/summarize_sensor_routing_results.py --results-root results
+```
+
+### `launch_sensor_leave_one_out_titan.sh`
+Launch the three leave-one-modality-out routing comparisons.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/launch_sensor_leave_one_out_titan.sh
+```
+
+### `launch_sensor_mime_corruption_titan.sh`
+Launch the MIME-binding corruption comparison.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/launch_sensor_mime_corruption_titan.sh
+```
+
+### `launch_sensor_noise_robustness_titan.sh`
+Launch the three single-modality noise robustness comparisons.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/launch_sensor_noise_robustness_titan.sh
+```
+
+### `find_sensor_capacity_match.py`
+Estimate a merged-route `d_model` that roughly matches the canonical route parameter count.
+
+```bash
+python3 scripts/find_sensor_capacity_match.py
+```
+
+### `launch_sensor_capacity_matched_control_titan.sh`
+Launch a capacity-matched canonical vs merged comparison using the helper above.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/launch_sensor_capacity_matched_control_titan.sh
+```
+
 ### `decide_distill_followup.sh`
 Choose the next launcher automatically once the current distillation replay comparison has enough completed runs.
 

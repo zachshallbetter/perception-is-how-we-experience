@@ -34,6 +34,16 @@ The important distinction is:
 
 So this is not just a CIFAR experiment repo, and it is not yet a finished large-scale multimodal foundation model. It is a perception research platform whose current best-proven result is replay-centric continual learning.
 
+## What This Project Is Not
+
+To keep the claims honest:
+
+- it is not yet a comprehensively validated large-scale multimodal perception benchmark suite
+- it is not yet a paper where the broadest sensor/MIME claims have more evidence than the continual-learning core
+- it is not a claim that MIME strings are parsed directly inside model `forward()`
+
+The strongest current evidence is still replay-centric continual learning. The next most important evidence path is the sensor/MIME canonical-vs-merged ablation now exposed through `scripts/launch_sensor_mime_ablation_titan.sh`, which now uses class-conditioned synthetic sensor patterns instead of random labels. The follow-on sequence is also wired: leave-one-out, MIME-binding corruption, single-modality noise robustness, and capacity-matched controls.
+
 ## Repository Layout
 
 - `src/models/` — canonical model package (`core.py` + exports)

@@ -67,6 +67,7 @@ The same bounded pattern now exists for audio through `scripts/run_real_audio_se
 If you want one bounded sequence to hand off directly to the next without manual intervention, use the chain helpers:
 - `scripts/chain_real_sensor_sequence.sh`
 - `scripts/chain_real_audio_sequence.sh`
+- `scripts/chain_audio_to_sensor_sequence.sh`
 
 ## Who This Is For
 
@@ -111,6 +112,45 @@ If the current claims continue to hold, the practical use of this repository is 
 
 The strongest present user-facing takeaway is therefore architectural and operational: how to structure a perception system so it can ingest typed sensory inputs and adapt over time without immediately collapsing old competence.
 
+## What Users Actually Get
+
+If the current evidence continues to hold, the user-facing result is not "a paper benchmark" or "better MIME strings." The user-facing result is a perception system that can:
+
+- combine multiple live signals instead of relying on one brittle input,
+- keep modality structure explicit instead of flattening everything into one generic blob,
+- adapt to new users, rooms, devices, or tasks over time,
+- and keep doing that without immediately forgetting prior competence.
+
+In practical terms, that means a future user could get:
+
+1. **Better environment awareness**
+   - systems that combine audio, movement, body state, and room context to infer what is happening instead of guessing from one sensor alone
+
+2. **More robust assistive or health monitoring**
+   - activity tracking, fall detection, rehab progression, and routine-change alerts that are less fragile when one modality is noisy or missing
+
+3. **Richer human-computer interaction**
+   - interfaces that respond to speech, pose, gesture, attention, or environmental cues together rather than as isolated channels
+
+4. **More adaptive embodied systems**
+   - robots or ambient agents that can update to new environments without full retraining and without erasing prior competence
+
+The mechanisms in this repository exist to support that user outcome:
+
+- typed modality contracts keep input identity explicit,
+- modality-specific towers preserve local structure,
+- shared integration lets the model combine signals coherently,
+- replay-centric continual learning helps the system keep adapting over time.
+
+The current repository should still be read as a design reference and research platform, not a drop-in finished product. But the intended user result is clear: a system that can perceive the world through multiple channels and keep improving without constantly starting over.
+
+## Example User Stories
+
+- A home monitoring user wants a system that can distinguish normal movement, distress, and inactivity by combining room audio, pose, and wearable signals.
+- A rehab or sports user wants long-term movement tracking that learns their evolving baseline without forgetting earlier sessions.
+- A robotics user wants a system that can fuse audio, vision, and body-state cues, then adapt to a new room or operator without retraining from scratch.
+- A platform team wants to add a new modality cleanly and predictably, without rewriting the whole model or silently breaking data assumptions.
+
 ## Repository Layout
 
 - `src/models/` — canonical model package (`core.py` + exports)
@@ -132,9 +172,10 @@ If you are orienting yourself to the project, read in this order:
 1. `README.md` for project scope and operating model.
 2. `docs/README.md` for the documentation map.
 3. `docs/productization-roadmap.md` for the path from research result to usable system.
-4. `docs/training-guide.md` for the canonical Titan workflow.
-5. `docs/sensor-mime-experiment-plan.md` for the current perception-side evidence ladder.
-6. `paper/sections/README.md` plus `paper/sections/06-results.md` and `paper/sections/07-discussion.md` for the current paper-aligned claim surface.
+4. `docs/live-deployment-architecture.md` for the concrete live-system interpretation of the current architecture.
+5. `docs/training-guide.md` for the canonical Titan workflow.
+6. `docs/sensor-mime-experiment-plan.md` for the current perception-side evidence ladder.
+7. `paper/sections/README.md` plus `paper/sections/06-results.md` and `paper/sections/07-discussion.md` for the current paper-aligned claim surface.
 
 ## Quick Start
 

@@ -1,70 +1,6 @@
-# Implementation Status Matrix (Code-Aligned)
-
-This matrix maps paper claims to current implementation status in the codebase.
-
-## Status Legend
-- **Implemented**: Present in production path and testable from current code.
-- **Partial**: Present as scaffolding/proxy, but not complete for paper-level claim.
-- **Planned**: Not yet implemented in active runtime/training path.
-
-## Architecture and Runtime
-
-| Claim | Status | Evidence | Notes |
-|---|---|---|---|
-| Package refactor (`models`, `runtime`, `services`, `observability`) | Implemented | `src/models/core.py`, `src/runtime/`, `src/services/`, `src/observability/` | Replaces monolithic structure. |
-| Typed runtime contracts + error codes + schema validation | Implemented | `src/runtime/contracts.py`, `src/runtime/errors.py`, `src/runtime/schema.py` | Includes config/dataclass validation and typed error classification. |
-| Service-layer training/evaluation/orchestration | Implemented | `src/services/training_service.py`, `src/services/evaluation_service.py`, `src/services/orchestration_service.py` | Active entrypoints call services. |
-| Structured observability and metrics snapshots | Implemented | `src/observability/structured.py`, `src/observability/metrics.py` | JSON events + metric snapshots. |
-
-## Continual Learning Mechanics
-
-| Claim | Status | Evidence | Notes |
-|---|---|---|---|
-| TaskAdapter module exists | Implemented | `src/models/core.py` (`class TaskAdapter`) | Includes `freeze()` method. |
-| Adapter rollover per task (`freeze_task`) | Implemented (model API) | `src/models/core.py` (`freeze_task`) | Freezes current adapter and allocates next adapter. |
-| Parameter-isolation telemetry (`get_trainable_parameters`, `get_task_coverage`) | Implemented | `src/models/core.py` | Available for reporting/analysis. |
-| Parameter isolation active in service pipeline (opt-in) | Implemented | `src/services/training_service.py`, `src/train.py` | Enable with `--adapter_rollover --continual_task_count <N>`. |
-| Reservoir sampling replay buffer | Implemented | `src/models/core.py` (`_update_replay_buffer`) | Integrated in model buffer updates. |
-| Replay mode suite (`feature`, `er`, `contrastive`) | Implemented | `src/services/training_service.py`, `src/train.py`, `src/runtime/contracts.py` | Includes feature-only replay baseline and raw-input replay modes. |
-| External classifier head (separate from backbone) | Implemented | `src/services/training_service.py` | Head is `nn.Linear` outside `SensoryPerceiver`. |
-
-## MIME and Modality Routing
-
-| Claim | Status | Evidence | Notes |
-|---|---|---|---|
-| Canonical `sensor_streaming` experiment ID | Implemented | `src/runtime/mime_cases.py` (`SENSOR_STREAMING_EXPERIMENT_ID`) | Canonical ID is `sensor_streaming`. |
-| Canonical `sensor_streaming` MIME input cases | Implemented | `src/runtime/mime_cases.py` (`SENSOR_STREAMING_INPUT_CASES`) | Cases for `smartwatch`, `room_env`, `robot_arm`. |
-| Runtime modality setup derived from MIME registry | Implemented | `src/runtime/contracts.py` + `get_sensor_streaming_modality_setup()` | Single source of truth for dims/config. |
-| MIME validation function for `sensor_streaming` bindings | Implemented | `validate_sensor_streaming_mime_bindings()` | Validates modality↔MIME pairs. |
-| Runtime forward pass dispatches towers by MIME strings directly | **Partial** | `src/models/core.py` (`forward`) | Routing is by modality keys in input dict; MIME metadata is validated at runtime boundary, not parsed inside model forward. |
-
-## Dataset/Benchmark Coverage
-
-| Claim | Status | Evidence | Notes |
-|---|---|---|---|
-| Sensor streaming dataset in dataloader factory | Implemented | `src/data/loaders.py` (`SensorStreamingDataset`, `create_dataloaders`) | Uses generated streams. |
-| Audio-visual multimodal support in dataloader factory | Implemented (proxy) | `src/data/loaders.py` (`AudioVisualProxyDataset`) | Proxy dataset, not production ingestion. |
-| Real AudioSet/Ego4D training pipeline integration | Planned | N/A in active runtime code | Not present in current loaders/services. |
-| Additional IMU/text towers in active model config | Planned | N/A in `resolve_modality_setup` | Current multimodal setup includes vision + audio only. |
-
-## Paper Alignment Notes
-
-1. **Accurate to claim now**:
-   - Phase-structured replay narrative and reservoir mechanism are reflected in model/service code.
-   - Runtime modernization and typed contract system are present.
-
-2. **Must be phrased carefully in paper**:
-   - Parameter isolation is integrated as an **opt-in service path** (not always-on by default), and current exploratory Titan results do not yet show it outperforming the tuned replay-centric baseline.
-   - MIME routing is currently a **canonical registry + boundary validation** plus modality-key dispatch, not raw MIME parsing inside `forward()`.
-   - Multimodal real-benchmark ingestion (AudioSet/Ego4D) remains future/ongoing work.
-
-3. **Canonical naming**:
-   - Use `sensor_streaming` consistently (experiment ID, dataset ID, docs, scripts).
-
-
 # Abstract
 
-We present **Sensory Perceiver**, a multimodal architecture that combines modality-specific towers with shared cross-modal attention for continual learning settings. The system uses explicit modality identity and canonical MIME-style input case definitions for routing semantics, with a runtime registry for `sensor_streaming` modalities.
+We present **Sensory Perceiver**, a multimodal architecture that combines modality-specific towers with shared cross-modal attention for continual learning settings. The system uses explicit modality identity and canonical MIME-style input case definitions for routing semantics, with a runtime registry for `sensor_streaming` modalities. The motivating user-level goal is a perception system that can combine heterogeneous sensory channels, remain useful when one stream is degraded, and keep adapting over time without repeated full retraining.
 
 We evaluate continual learning behavior on Split-CIFAR-100 using a code-aligned progression of replay-centric experiments. In **Phase 1** (feature-only replay), the model exhibits severe forgetting (CIL 4.86%, BWT −53.80%). In **Phase 2** (raw-input replay with Reservoir Sampling), retention improves substantially (CIL 19.54%, BWT −34.91%), including Task 0 retention recovery from 0.6% to 33.0%. In the current tuned-core configuration, a 6-seed Titan Node run improves the mean result further to CIL 23.96% and BWT −30.39%. Together, these results indicate that replay signals must reach shared feature extractors, not only task heads, and that replay-path design dominates the current retention story.
 
@@ -74,11 +10,9 @@ Parameter-isolation primitives (task adapters with freeze/rollover APIs) are imp
 
 Current multimodal support includes proxy audiovisual and `sensor_streaming` datasets. The active perception-side evidence ladder now evaluates canonical typed sensor routing against a merged generic stream, followed by leave-one-out, corruption, noise, and capacity-matched controls. Real benchmark ingestion (for example AudioSet/Ego4D) and additional modality towers remain future-stage work.
 
-Practically, the present contribution is therefore best understood as a blueprint for domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone rather than only late task heads.
+Practically, the present contribution is therefore best understood as a blueprint for domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone rather than only late task heads. If the broader concept continues to validate, the user-facing result is a structured multimodal perception engine that can watch, listen, track, and adapt without constantly starting over.
 
 **Keywords:** multimodal perception, continual learning, catastrophic forgetting, reservoir sampling, MIME-type routing, parameter isolation
-
-
 # Introduction
 
 In the field of artificial intelligence (AI), interpreting complex, high-dimensional data has traditionally been done using recurrent neural networks (RNNs) and convolutional neural networks (CNNs). These architectures have been successful in applications like speech recognition and image classification. However, they have limitations in capturing the global, integrative nature of human perceptual experience due to their sequential data processing nature (in the case of RNNs) and localized receptive fields (in the case of CNNs).
@@ -122,8 +56,6 @@ The remainder of this paper is organized as follows: §3 provides related work. 
 **Scope Note**: We acknowledge that the name "Perceiver" was independently used by Jaegle et al. (2021) for a different architecture. While both architectures share the goal of general-purpose multimodal perception, our current implementation focuses on continual-learning behavior, MIME-style modality semantics, and service-oriented runtime architecture. A detailed comparison is provided in §3 (Related Work).
 
 For readers coming from applied ML rather than continual-learning research, the practical reading of this introduction is simple: Sensory Perceiver is attempting to answer how a system should be structured if it must ingest typed sensory streams, keep those interfaces explicit, and continue updating without full retraining each time new data arrives.
-
-
 # Related Work
 
 The Sensory Perceiver builds on and extends several lines of research. We organize the relevant literature around four themes: the Perceiver family, efficient convolution, temporal and multimodal perception, and continual learning.
@@ -199,8 +131,6 @@ While replay and gradient constraints address forgetting through training mechan
 ## 3.7 Positioning
 
 The Sensory Perceiver occupies a distinct position in this landscape. In this implementation, content-type (MIME-Type) metadata is treated as a first-class runtime primitive for modality-case validation and setup, alongside replay mechanisms that include an NT-Xent contrastive mode for continual learning across heterogeneous sensory streams. The closest work — Perceiver IO [3] — uses modality embeddings for a different goal (arbitrary input-output routing) without addressing continual-learning replay behavior in this manner. The architectural opportunities identified by this literature — query-based output decoding [3], Fourier position encodings [2, 3], KernelWarehouse efficiency [kernelwarehouse2023], and hierarchical scaling [hip2022] — are well-characterized future extensions, discussed in §7.9.
-
-
 # Methods (Code-Aligned)
 
 ## 4.1 System Architecture
@@ -279,8 +209,6 @@ Implemented in dataloader factory:
 - `multimodal` (audio-visual proxy dataset)
 
 Real benchmark ingestion pipelines (e.g., AudioSet/Ego4D) remain future-stage work and are not yet in the active runtime path.
-
-
 # Experiments
 
 ## 5.1 Experimental Scope
@@ -389,8 +317,6 @@ To avoid over-claiming:
 5. The sensor/MIME lane is bounded by explicit decision states (`canonical-dominant`, `capacity-confounded`, `competitive`, `merged-favored`) and should not be described as an unconstrained autonomous search for perfect results.
 
 These constraints are intentional and reflected in the Results/Discussion interpretation.
-
-
 # Results
 
 We report a code-aligned continual-learning result progression on Split-CIFAR-100.
@@ -532,8 +458,6 @@ Interpretation:
 - `noise_robot_arm` is the only completed branch where merged routing wins (**-0.0933**), so the full ladder should be described as strongly favorable to canonical routing overall, but not uniformly dominant under every stress condition.
 
 Overall supervisor state for this ladder was **`canonical-dominant`**. This should still be treated as **completed synthetic evidence** rather than a final broad perception claim. However, it is now the strongest direct support so far that typed routing matters for more than runtime hygiene on the current controlled sensor task.
-
-
 # Discussion
 
 ## 7.1 Core Mechanistic Insight
@@ -636,7 +560,29 @@ If the present claims continue to hold, the practical lesson is not that Sensory
 
 For applied users, this means the repository is best understood as a design reference for domain-specific perception systems in robotics, wearables, ambient sensing, or monitoring applications. The current value lies in the architecture and update discipline, not in claiming a fully general perception product.
 
+## 7.9 What A User Actually Gets
 
+If the broader concept continues to validate, the user-facing result is not "MIME semantics" or "a better benchmark score." The user-facing result is a perception system that can:
+
+- combine multiple sensory channels instead of depending on one brittle input,
+- preserve modality structure instead of flattening all evidence into a generic stream at the boundary,
+- keep operating when one modality is noisy, missing, or partially corrupted,
+- and continue adapting to new users, rooms, devices, or tasks without full retraining.
+
+That matters because most practical perception systems fail in one of three ways:
+
+1. they depend too heavily on one modality,
+2. they lose important structure by collapsing heterogeneous streams too early,
+3. they forget prior competence when updated.
+
+The design principles supported by this repository point toward a different user outcome:
+
+- more reliable room or activity awareness from multiple signals,
+- better assistive or monitoring systems that tolerate degraded sensors,
+- more natural multimodal interfaces,
+- and more adaptive embodied or ambient systems that improve without repeatedly starting over.
+
+The present implementation still has to earn that result across more real datasets before the broadest claims are fully justified. But this is the correct user-level interpretation of the work: a structured, adaptive perception engine, not just a narrower benchmark win.
 # Conclusion
 
 This work establishes a code-aligned continual-learning result progression for Sensory Perceiver:
@@ -656,261 +602,69 @@ At the same time, two boundaries remain explicit:
 
 The immediate path forward is therefore clear: complete the sensor routing ladder and use it to either justify or narrow the broader perception claim, strengthen the tuned-core result with fuller statistical treatment, test whether structural isolation can beat that baseline rather than merely exist in code, and extend from proxy multimodal data to real large-scale multimodal datasets. If those steps succeed, the practical output is a disciplined blueprint for building domain-specific perception systems that can ingest typed sensory inputs and keep learning over time without fully retraining from scratch.
 
-
-# Examples and Applications
-
-This section presents concrete applications of Sensory Perceiver, ranging from extensions of the evaluated domains to novel use cases in generative AI—demonstrating the architecture's broad applicability.
-
-## 9.1 Common Applications (2 Examples)
-
-### Example 1: Autonomous Vehicle Perception
-
-**Problem**: Modern autonomous vehicles integrate 10+ sensor modalities—camera arrays (front/rear/side), LiDAR, radar, ultrasonic sensors, IMU, GPS, and high-definition maps. Traditional approaches process each modality separately (camera pipeline, LiDAR pipeline) then fuse results at decision time. This late fusion loses correlations between modalities.
-
-**Sensory Perceiver Application**:
-```
-Modality-Specific Towers:
-├── Vision Tower: Front/rear/side cameras → Conv2d (3D object detection)
-├── LiDAR Tower: Point clouds → PointNet-style feature extraction
-├── Radar Tower: Doppler signals → Linear layers (velocity + distance)
-├── Ultrasonic Tower: Range measurements → Linear layers
-├── IMU Tower: Accelerometer/gyro → LSTM for temporal smoothing
-└── GPS Tower: Position/heading → Embedding layer
-
-Cross-Modal Attention: Learns which modalities matter for each driving task
-├── Lane-keeping: Vision + GPS > LiDAR + Radar (visual lane markers + global position)
-├── Obstacle avoidance: LiDAR + Radar > Vision (works in rain/fog/night)
-└── Speed estimation: Radar + Vision > IMU (true ground speed vs relative motion)
-
-Experience Replay: Continually learns new road types/weather conditions without forgetting
-```
-
-**Expected Improvements**:
-- **Robustness**: Maintaining >95% accuracy in rain/fog/snow (modalities with best signal-to-noise ratio take precedence)
-- **Latency**: <100ms end-to-end processing (meets autonomous vehicle real-time constraint)
-- **Scalability**: Adding new sensors (thermal cameras, audio) requires only new PerceiverTower
-- **Continual Learning**: Adapts to new cities/road types without catastrophic forgetting
-
-**Validation**: Deploy on open-source platforms (e.g., Apollo or Autoware) and compare against baseline fusion approaches on KITTI/nuScenes benchmarks.
-
----
-
-### Example 2: Healthcare Patient Monitoring System
-
-**Problem**: Intensive Care Units generate massive multimodal streams—vital signs (continuous), lab tests (intermittent), imaging (sparse), text notes (irregular), medication records (event-based). Current systems either (1) treat modalities independently (separate alarms for heart rate, oxygen saturation) or (2) use hand-crafted fusion rules (if HR > 120 AND O2 < 90, trigger alert).
-
-**Sensory Perceiver Application**:
-```
-Modality-Specific Towers:
-├── Vital Signs Tower: HR, BP, O2, temp → LSTM (temporal dynamics)
-├── ECG/EEG Tower: Continuous waveforms → Conv1d (signal features)
-├── Lab Results Tower: Creatinine, lactate, troponin → Linear (sparse interpolation)
-├── Imaging Tower: X-ray, CT, ultrasound → Conv2d (visual patterns)
-├── Text Notes Tower: Physician observations → BERT embedding
-└── Medication Tower: Drug list + timing → Embedding layer
-
-Cross-Modal Attention: Learns task-specific modality importance
-├── Sepsis detection: Fever + tachycardia + elevated lactate + clinical notes
-├── Heart failure: Elevated BNP + imaging findings + vital sign trends
-└── Acute kidney injury: Rising creatinine + oliguria + medication history
-
-Experience Replay: Adapts to new patient populations without forgetting prior knowledge
-```
-
-**Expected Improvements**:
-- **Early Detection**: Flag sepsis 6-12 hours earlier than current thresholds by learning multimodal patterns
-- **Reduced False Alarms**: Current systems trigger ~30% false positives; multimodal fusion reduces to <10%
-- **Clinical Interpretability**: Attention weights show which modalities influenced the alert, supporting clinician decisions
-- **Continual Learning**: Adapts to new equipment, lab assays, and clinical protocols without retraining from scratch
-
-**Validation**: Deploy on historical ICU data (MIMIC-III/IV) and compare alert accuracy/timing against current clinical workflows. Requires prospective validation with clinical oversight.
-
----
-
-## 9.2 Innovative Applications (3 Unique Examples)
-
-### Example 3: Multimodal Creative Content Generation (Novel)
-
-**Problem**: Creating coherent stories, music, and visuals across modalities is challenging. Text-to-image models generate unrelated images; video + audio synthesis often has timing mismatches. The fundamental challenge: generating one modality while conditioning on others requires understanding modality dependencies.
-
-**Sensory Perceiver Application** (Generative Extension):
-
-Instead of discriminative towers, use generative towers with experience replay for continual generation:
-
-```
-Architecture for Multimodal Story Generation:
-Input: ["The cat sat quietly", audio: ambient_forest.wav, video: keyframes]
-
-Discriminative Processing (Perceiver):
-├── Text Tower (LSTM): Encode narrative context
-├── Audio Tower (Mel-spectrogram): Extract ambient mood
-├── Visual Tower (ResNet): Extract scene aesthetic
-└── Cross-modal Attention: Learn that calm audio + quiet visuals should match calm text
-
-Generative Processing (Perceiver Decoder):
-├── Token Prediction: Generate next story beat conditioned on multimodal context
-├── Audio Generation: Synthesize music that matches narrative (quieter during tense scenes)
-├── Visual Generation: Create frames that align with story pacing
-└── Experience Replay: Remember prior generation patterns to maintain consistency
-
-Example Generation Flow:
-- Input: "The hero entered the castle..." (text)
-- Context: Suspenseful orchestral music (audio), Gothic architecture (visuals)
-- Output: Generate next sentence + orchestration + scene design that cohere
-  - Text: "...and found the throne room empty."
-  - Audio: Music swells, then resolves in minor key (matching narrative tension)
-  - Visuals: Generate haunting, empty castle room (matching audio mood)
-```
-
-**Why This Requires Sensory Perceiver**:
-- **Modality Importance**: The architecture learns that audio and visual consistency is more important than literal image-text alignment
-- **Experience Replay**: Prevents "mood whiplash"—keeps generated content thematically consistent
-- **Scalability**: Easy to add new modalities (haptic feedback for VR stories, olfactory cues for immersive experiences)
-
-**Applications**:
-- **Interactive Storytelling**: Videogames where narrative, music, and visuals adapt based on player choices
-- **Accessibility**: Auto-generate audio descriptions that match visual emotion and pacing
-- **Entertainment**: Personalized movie/game generation with consistent multimodal coherence
-
----
-
-### Example 4: Scientific Discovery Assistant (Novel)
-
-**Problem**: Modern science is increasingly multimodal. Researchers must integrate lab data (microscopy, spectrometry, protein sequences), literature (papers, abstracts), computational results (simulations), and experimental metadata. Current tools treat these modalities independently—literature databases don't connect to lab instruments; instruments don't know recent papers.
-
-**Sensory Perceiver Application** (Knowledge Integration):
-
-```
-Modality-Specific Towers:
-├── Microscopy Tower: Time-lapse images → CNN for cell morphology
-├── Spectrometry Tower: Mass spectra, NMR → 1D CNN for chemical composition
-├── Sequence Tower: Protein/DNA sequences → Transformer embedding
-├── Literature Tower: Paper abstracts + citations → BERT embedding
-├── Simulation Tower: Molecular dynamics results → MLP (tabular features)
-└── Metadata Tower: Experiment conditions, researcher notes → Embedding
-
-Cross-Modal Attention: Learns unexpected connections
-Example: "Cell morphology X often appears with chemical composition Y and sequence Z"
-→ Suggests a functional relationship worth investigating
-→ Recommends papers studying that relationship
-→ Predicts simulation behavior to test hypothesis
-
-Experience Replay: Continual learning as new papers/data arrive
-- New CRISPR discovery → Update understanding of sequence effects on morphology
-- New imaging technique → Adapt to different microscopy modality without forgetting prior knowledge
-```
-
-**Expected Discovery Cycle**:
-1. Researcher uploads new microscopy data
-2. System flags interesting cell morphology changes
-3. Cross-modal attention suggests correlation with historical spectrometry data
-4. System searches literature for papers mentioning both phenomena
-5. System predicts simulation outcomes to test hypothesis
-6. Researcher runs new experiments informed by multimodal insights
-7. Results incorporated via experience replay for next discoveries
-
-**Why This Requires Sensory Perceiver**:
-- **Unexpected Connections**: Standard feature matching wouldn't find the morphology-composition-sequence relationship because they're measured in different units/spaces
-- **Continual Learning**: New modalities arrive constantly (new instruments, new sequence databases)—can't retrain from scratch
-- **Modality Trust**: Some modalities are noisier than others; attention learns which are reliable for each discovery task
-
-**Impact**: Could accelerate drug discovery, materials science, and biological engineering by surfacing non-obvious multimodal patterns humans might miss.
-
----
-
-### Example 5: Real-Time Translation with Cultural Context (Novel)
-
-**Problem**: Current machine translation ignores context beyond the immediate sentence. Translating a joke requires understanding cultural references that a text-only model cannot capture. Translating dialogue requires understanding speaker intent from tone, not just words.
-
-**Sensory Perceiver Application** (Cultural Context Integration):
-
-```
-Modality-Specific Towers:
-├── Source Text Tower: Input language text → Transformer
-├── Audio Tower: Speaker voice, intonation, accent → Mel-spectrogram CNN
-├── Visual Context Tower: Speaker expression, gesture → 3D CNN on video frames
-├── Cultural Context Tower: Historical/cultural references → Knowledge graph embeddings
-└── Translation History Tower: Prior translations in conversation → LSTM
-
-Cross-Modal Attention: Learns what context matters for translation
-├── Joke: Visual + audio + cultural context >> word meaning
-  - "Why did the scarecrow win an award?" (English: intelligence)
-  - Translated with cultural analogs in target language, not literal meaning
-├── Sarcasm: Audio (tone) >> text (words)
-  - "Oh great, another meeting!" (negative with positive words—audio tone essential)
-├── Respect levels: Cultural context >> grammar
-  - Japanese honorifics depend on social relationship visible in video/context
-
-Experience Replay: Learns translation patterns in dialogue
-- First mention of character → high uncertainty
-- Repeated references → progressively confident translation maintains consistency
-```
-
-**Applications**:
-- **International Video Calls**: Real-time dubbing/subtitling with cultural appropriateness
-- **Literature Translation**: Poems and novels where cultural context is critical
-- **Diplomatic Communication**: High-stakes translation where tone and cultural nuance matter
-
-**Why This Requires Sensory Perceiver**:
-- **Modality Dominance**: Different contexts require different modalities (audio for sarcasm, visuals for gesture, knowledge for humor)
-- **Modality Disagreement**: Text says one thing, tone says another—model must learn which to trust
-- **Continual Adaptation**: Learns translator's style preferences via experience replay
-
----
-
-### Example 6: Embodied AI Robot Learning (Novel)
-
-**Problem**: Robots learning manipulation tasks face a fundamental challenge: how to learn from multiple data sources (human demonstration videos, robot experiments, simulation) that operate at different speeds and have different modalities. A human video shows smooth manipulation; robot experiments show discrete actuator commands; simulation runs at 1000 Hz.
-
-**Sensory Perceiver Application** (Cross-Embodiment Learning):
-
-```
-Modality-Specific Towers:
-├── Human Demo Tower: Video + audio (narration) → Conv3d (action recognition)
-├── Robot Experiment Tower: Joint angles + forces + gripper state → LSTM
-├── Simulation Tower: Physics outputs (position, velocity, acceleration) → MLP
-├── Object Tracker Tower: Tracked object position across all sources → Linear
-├── Language Tower: Human narration / task description → BERT
-
-Cross-Modal Attention: Learns correspondence across embodiments
-- Same action has different appearance in human vs robot but same physics
-- Attention learns: "Human hand motion ↔ robot gripper motion ↔ object trajectory"
-- Model extracts task-invariant features: "reach-to-grasp" works for all embodiments
-
-Experience Replay: Prevents catastrophic forgetting when learning new objects/tasks
-- Learns grasping for cylinders
-- Learn grasping for boxes → doesn't forget cylinder knowledge
-- Learn complex task (stack blocks) → retain basic grasp patterns
-```
-
-**Learning Pipeline**:
-1. Watch human manipulation video → extract task structure
-2. Translate to robot kinematics via cross-embodiment attention
-3. Run on robot → get success/failure feedback
-4. Simulate variations → learn generalizations
-5. Multimodal replay → consolidate learning across embodiments
-
-**Impact**: Could dramatically accelerate robot learning by allowing knowledge transfer from human demonstration, simulation, and real robot experiments simultaneously.
-
-**Why This Requires Sensory Perceiver**:
-- **Temporal Alignment**: Different modalities run at different frequencies; attention learns synchronization
-- **Modality Translation**: Humans ≠ robots physically, but task structure is shared
-- **Continual Learning**: New objects/tasks without forgetting prior manipulation skills
-
----
-
-## 9.3 Summary: Application Principles
-
-Across these examples, Sensory Perceiver succeeds because it addresses three universal challenges in multimodal AI:
-
-1. **Selective Integration**: Not all modalities matter equally; cross-modal attention learns what to integrate and what to ignore per task.
-
-2. **Temporal Asynchrony**: Real-world sensors operate at different frequencies; MIME-Type encoding + attention handles alignment automatically.
-
-3. **Continual Knowledge**: New modalities arrive, new tasks emerge; experience replay prevents catastrophic forgetting while enabling adaptation.
-
-These principles apply beyond the examples presented—to any system combining multiple information sources (sensors, data streams, knowledge bases) that must adapt over time.
-
+In a live environment, that user-facing result would not be "a better benchmark." It would be a system that can combine multiple sensory channels, tolerate degraded or missing modalities, and continue adapting to new users, rooms, or tasks without repeatedly rebuilding the model from zero. The present repository is not that full live product yet, but it now makes the path toward it concrete enough to reason about, build toward, and test honestly.
+# Implementation Status Matrix (Code-Aligned)
+
+This matrix maps paper claims to current implementation status in the codebase.
+
+## Status Legend
+- **Implemented**: Present in production path and testable from current code.
+- **Partial**: Present as scaffolding/proxy, but not complete for paper-level claim.
+- **Planned**: Not yet implemented in active runtime/training path.
+
+## Architecture and Runtime
+
+| Claim | Status | Evidence | Notes |
+|---|---|---|---|
+| Package refactor (`models`, `runtime`, `services`, `observability`) | Implemented | `src/models/core.py`, `src/runtime/`, `src/services/`, `src/observability/` | Replaces monolithic structure. |
+| Typed runtime contracts + error codes + schema validation | Implemented | `src/runtime/contracts.py`, `src/runtime/errors.py`, `src/runtime/schema.py` | Includes config/dataclass validation and typed error classification. |
+| Service-layer training/evaluation/orchestration | Implemented | `src/services/training_service.py`, `src/services/evaluation_service.py`, `src/services/orchestration_service.py` | Active entrypoints call services. |
+| Structured observability and metrics snapshots | Implemented | `src/observability/structured.py`, `src/observability/metrics.py` | JSON events + metric snapshots. |
+
+## Continual Learning Mechanics
+
+| Claim | Status | Evidence | Notes |
+|---|---|---|---|
+| TaskAdapter module exists | Implemented | `src/models/core.py` (`class TaskAdapter`) | Includes `freeze()` method. |
+| Adapter rollover per task (`freeze_task`) | Implemented (model API) | `src/models/core.py` (`freeze_task`) | Freezes current adapter and allocates next adapter. |
+| Parameter-isolation telemetry (`get_trainable_parameters`, `get_task_coverage`) | Implemented | `src/models/core.py` | Available for reporting/analysis. |
+| Parameter isolation active in service pipeline (opt-in) | Implemented | `src/services/training_service.py`, `src/train.py` | Enable with `--adapter_rollover --continual_task_count <N>`. |
+| Reservoir sampling replay buffer | Implemented | `src/models/core.py` (`_update_replay_buffer`) | Integrated in model buffer updates. |
+| Replay mode suite (`feature`, `er`, `contrastive`) | Implemented | `src/services/training_service.py`, `src/train.py`, `src/runtime/contracts.py` | Includes feature-only replay baseline and raw-input replay modes. |
+| External classifier head (separate from backbone) | Implemented | `src/services/training_service.py` | Head is `nn.Linear` outside `SensoryPerceiver`. |
+
+## MIME and Modality Routing
+
+| Claim | Status | Evidence | Notes |
+|---|---|---|---|
+| Canonical `sensor_streaming` experiment ID | Implemented | `src/runtime/mime_cases.py` (`SENSOR_STREAMING_EXPERIMENT_ID`) | Canonical ID is `sensor_streaming`. |
+| Canonical `sensor_streaming` MIME input cases | Implemented | `src/runtime/mime_cases.py` (`SENSOR_STREAMING_INPUT_CASES`) | Cases for `smartwatch`, `room_env`, `robot_arm`. |
+| Runtime modality setup derived from MIME registry | Implemented | `src/runtime/contracts.py` + `get_sensor_streaming_modality_setup()` | Single source of truth for dims/config. |
+| MIME validation function for `sensor_streaming` bindings | Implemented | `validate_sensor_streaming_mime_bindings()` | Validates modality↔MIME pairs. |
+| Runtime forward pass dispatches towers by MIME strings directly | **Partial** | `src/models/core.py` (`forward`) | Routing is by modality keys in input dict; MIME metadata is validated at runtime boundary, not parsed inside model forward. |
+
+## Dataset/Benchmark Coverage
+
+| Claim | Status | Evidence | Notes |
+|---|---|---|---|
+| Sensor streaming dataset in dataloader factory | Implemented | `src/data/loaders.py` (`SensorStreamingDataset`, `create_dataloaders`) | Uses generated streams. |
+| Audio-visual multimodal support in dataloader factory | Implemented (proxy) | `src/data/loaders.py` (`AudioVisualProxyDataset`) | Proxy dataset, not production ingestion. |
+| Real AudioSet/Ego4D training pipeline integration | Planned | N/A in active runtime code | Not present in current loaders/services. |
+| Additional IMU/text towers in active model config | Planned | N/A in `resolve_modality_setup` | Current multimodal setup includes vision + audio only. |
+
+## Paper Alignment Notes
+
+1. **Accurate to claim now**:
+   - Phase-structured replay narrative and reservoir mechanism are reflected in model/service code.
+   - Runtime modernization and typed contract system are present.
+
+2. **Must be phrased carefully in paper**:
+   - Parameter isolation is integrated as an **opt-in service path** (not always-on by default), and current exploratory Titan results do not yet show it outperforming the tuned replay-centric baseline.
+   - MIME routing is currently a **canonical registry + boundary validation** plus modality-key dispatch, not raw MIME parsing inside `forward()`.
+   - Multimodal real-benchmark ingestion (AudioSet/Ego4D) remains future/ongoing work.
+
+3. **Canonical naming**:
+   - Use `sensor_streaming` consistently (experiment ID, dataset ID, docs, scripts).
 # 10. Concept-Implementation Audit
 
 This section compares core paper concepts against current implementation behavior and evidentiary strength.

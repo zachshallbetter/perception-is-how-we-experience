@@ -99,3 +99,27 @@ If the present claims continue to hold, the practical lesson is not that Sensory
    - The architectural and continual-learning results are most useful together: explicit sensor structure helps define the model, while replay-centric retention determines whether that structure survives incremental updates.
 
 For applied users, this means the repository is best understood as a design reference for domain-specific perception systems in robotics, wearables, ambient sensing, or monitoring applications. The current value lies in the architecture and update discipline, not in claiming a fully general perception product.
+
+## 7.9 What A User Actually Gets
+
+If the broader concept continues to validate, the user-facing result is not "MIME semantics" or "a better benchmark score." The user-facing result is a perception system that can:
+
+- combine multiple sensory channels instead of depending on one brittle input,
+- preserve modality structure instead of flattening all evidence into a generic stream at the boundary,
+- keep operating when one modality is noisy, missing, or partially corrupted,
+- and continue adapting to new users, rooms, devices, or tasks without full retraining.
+
+That matters because most practical perception systems fail in one of three ways:
+
+1. they depend too heavily on one modality,
+2. they lose important structure by collapsing heterogeneous streams too early,
+3. they forget prior competence when updated.
+
+The design principles supported by this repository point toward a different user outcome:
+
+- more reliable room or activity awareness from multiple signals,
+- better assistive or monitoring systems that tolerate degraded sensors,
+- more natural multimodal interfaces,
+- and more adaptive embodied or ambient systems that improve without repeatedly starting over.
+
+The present implementation still has to earn that result across more real datasets before the broadest claims are fully justified. But this is the correct user-level interpretation of the work: a structured, adaptive perception engine, not just a narrower benchmark win.

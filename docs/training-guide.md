@@ -371,10 +371,12 @@ python scripts/validate_setup.py --verbose
 - To sync Titan-generated real-data evidence back into the local package workflow:
   - `bash scripts/sync_titan_real_results.sh`
 - Treat `real-audio-seq-001` as bootstrap `speech_commands` evidence.
-- Treat `real-audio-seq-002` as the canonical integrated audio sequence because it runs:
+- Treat `real-audio-seq-002` as the canonical integrated audio **candidate** sequence because it is the first bounded run intended to cover:
   - `speech_commands`
   - `esc50`
   - `urbansound8k`
   - `fsd50k`
+- Promote it only if the sequence completes with all expected datasets present and no blocked entries.
 - Treat `real-seq-004` as bootstrap WISDM evidence.
-- Treat `real-sensor-seq-001` as the canonical integrated real-sensor sequence, including `realworld_har`.
+- Treat `real-sensor-seq-001` as the canonical integrated real-sensor **candidate** sequence, including `realworld_har`.
+- If a sequence ends `completed` with blocked datasets or `failed` with missing eval artifacts, keep it out of the canonical paper package.

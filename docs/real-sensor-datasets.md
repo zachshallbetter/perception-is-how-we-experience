@@ -2,6 +2,32 @@
 
 This document defines the bounded real-data lineup that is currently integrated into the repository and Titan supervisors.
 
+Canonical file links:
+- [README.md](/Users/zachshallbetter/Projects/Perception/README.md)
+- [training-guide.md](/Users/zachshallbetter/Projects/Perception/docs/training-guide.md)
+- [paper/sections/05-experiments.md](/Users/zachshallbetter/Projects/Perception/paper/sections/05-experiments.md)
+- [paper/sections/06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md)
+
+## External Dataset Sources
+
+| Dataset | Source URL |
+| --- | --- |
+| `wisdm` | [UCI WISDM](https://archive.ics.uci.edu/dataset/507/wisdm%2Bsmartphone%2Band%2Bsmartwatch%2Bactivity%2Band%2Bbiometrics%2Bdataset) |
+| `pamap2` | [UCI PAMAP2](https://archive.ics.uci.edu/ml/datasets/PAMAP2%2BPhysical%2BActivity%2BMonitoring) |
+| `opportunity` | [UCI OPPORTUNITY](https://archive.ics.uci.edu/ml/datasets/opportunity%2Bactivity%2Brecognition) |
+| `uci_har` | [UCI HAR](https://archive.ics.uci.edu/dataset/240/human+activity+recognition+using+smartphones) |
+| `hhar` | [UCI HHAR](https://archive.ics.uci.edu/ml/datasets/Heterogeneity+Activity+Recognition) |
+| `mhealth` | [UCI MHEALTH](https://archive.ics.uci.edu/dataset/319/mhealth%2Bdataset) |
+| `selfback` | [UCI SELFBACK](https://archive.ics.uci.edu/dataset/521/selfback) |
+| `geomagnetic_wlan` | [UCI Geo-magnetic + WLAN](https://archive.ics.uci.edu/dataset/377/geo%2Bmagnetic%2Bfield%2Band%2Bwlan%2Bdataset%2Bfor%2Bindoor%2Blocalisation) |
+| `realworld_har` | [Hugging Face sha-ce/SensorData](https://huggingface.co/datasets/sha-ce/SensorData) |
+| `speech_commands` | [Hugging Face google/speech_commands](https://huggingface.co/datasets/google/speech_commands) |
+| `esc50` | [ESC-50 official repository](https://github.com/karolpiczak/ESC-50) |
+| `urbansound8k` | [UrbanSound8K official site](https://urbansounddataset.weebly.com/urbansound8k.html) |
+| `fsd50k` | [FSD50K official site](https://zenodo.org/records/4060432) |
+| deferred `audioset` | [AudioSet official site](https://research.google.com/audioset/) |
+| deferred `ubiqlog` | [UCI UbiqLog](https://archive.ics.uci.edu/dataset/369/ubiqlog+smartphone+lifelogging) |
+
 ## Active Integrated Sensor Lineup
 
 - `wisdm`

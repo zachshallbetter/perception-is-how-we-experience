@@ -11,6 +11,25 @@ The implemented architecture consists of:
 
 Core model implementation: `src/models/core.py`.
 
+Source files:
+- [core.py](/Users/zachshallbetter/Projects/Perception/src/models/core.py)
+- [mime_cases.py](/Users/zachshallbetter/Projects/Perception/src/runtime/mime_cases.py)
+- [contracts.py](/Users/zachshallbetter/Projects/Perception/src/runtime/contracts.py)
+- [training_service.py](/Users/zachshallbetter/Projects/Perception/src/services/training_service.py)
+
+```mermaid
+flowchart LR
+    A["Typed modality input"] --> B["PerceiverTower: smartwatch"]
+    A --> C["PerceiverTower: room_env"]
+    A --> D["PerceiverTower: robot_arm / audio / proxy"]
+    B --> E["Shared cross-modal attention"]
+    C --> E
+    D --> E
+    E --> F["Task adapters (optional)"]
+    F --> G["Classifier / output head"]
+    H["Replay buffer"] --> E
+```
+
 ## 4.2 MIME-Style Input Cases and Routing Semantics
 
 The runtime formalizes `sensor_streaming` modality cases as a canonical registry:
@@ -76,3 +95,9 @@ Implemented in dataloader factory:
 - `multimodal` (audio-visual proxy dataset)
 
 Real benchmark ingestion is now bounded explicitly. Bootstrap real-data paths exist for WISDM and Speech Commands, while integrated canonical sequences remain pending. The active bounded lineups now extend beyond those bootstrap runs to include HF-backed replacements `fsd50k` and `realworld_har`, while the older `audioset` and `ubiqlog` options remain deferred outside the active chain.
+
+External benchmark sources are tracked in [real-sensor-datasets.md](/Users/zachshallbetter/Projects/Perception/docs/real-sensor-datasets.md), including:
+- [WISDM](https://archive.ics.uci.edu/dataset/507/wisdm%2Bsmartphone%2Band%2Bsmartwatch%2Bactivity%2Band%2Bbiometrics%2Bdataset)
+- [Speech Commands](https://huggingface.co/datasets/google/speech_commands)
+- [FSD50K](https://zenodo.org/records/4060432)
+- [RealWorld HAR via sha-ce/SensorData](https://huggingface.co/datasets/sha-ce/SensorData)

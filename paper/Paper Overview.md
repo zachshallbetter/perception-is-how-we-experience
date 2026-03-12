@@ -1,20 +1,20 @@
 # Paper
 
-This overview tracks the authoritative paper corpus under `paper/sections/` and the generated results package under `paper/figures/generated/results_package/`.
+This overview tracks the authoritative paper corpus under [paper/sections](/Users/zachshallbetter/Projects/Perception/paper/sections) and the generated results package under [paper/figures/generated/results_package](/Users/zachshallbetter/Projects/Perception/paper/figures/generated/results_package).
 
 ## Canonical Authority Model
 
 Authoritative claim files:
-- `paper/sections/00-implementation-status-matrix.md`
-- `paper/sections/01-abstract.md`
-- `paper/sections/02-introduction.md`
-- `paper/sections/03-related-work.md`
-- `paper/sections/04-methods.md`
-- `paper/sections/05-experiments.md`
-- `paper/sections/06-results.md`
-- `paper/sections/07-discussion.md`
-- `paper/sections/08-conclusion.md`
-- `paper/sections/10-concept-implementation-audit.md`
+- [00-implementation-status-matrix.md](/Users/zachshallbetter/Projects/Perception/paper/sections/00-implementation-status-matrix.md)
+- [01-abstract.md](/Users/zachshallbetter/Projects/Perception/paper/sections/01-abstract.md)
+- [02-introduction.md](/Users/zachshallbetter/Projects/Perception/paper/sections/02-introduction.md)
+- [03-related-work.md](/Users/zachshallbetter/Projects/Perception/paper/sections/03-related-work.md)
+- [04-methods.md](/Users/zachshallbetter/Projects/Perception/paper/sections/04-methods.md)
+- [05-experiments.md](/Users/zachshallbetter/Projects/Perception/paper/sections/05-experiments.md)
+- [06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md)
+- [07-discussion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md)
+- [08-conclusion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/08-conclusion.md)
+- [10-concept-implementation-audit.md](/Users/zachshallbetter/Projects/Perception/paper/sections/10-concept-implementation-audit.md)
 
 `paper/sections/09-examples.md` is illustrative and non-empirical.
 
@@ -31,15 +31,29 @@ Authoritative claim files:
 
 If you want to understand the paper quickly, read:
 
-1. `paper/sections/01-abstract.md`
-2. `paper/sections/02-introduction.md`
-3. `paper/sections/06-results.md`
-4. `paper/sections/07-discussion.md`
+1. [01-abstract.md](/Users/zachshallbetter/Projects/Perception/paper/sections/01-abstract.md)
+2. [02-introduction.md](/Users/zachshallbetter/Projects/Perception/paper/sections/02-introduction.md)
+3. [06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md)
+4. [07-discussion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md)
 
 If you want to understand what a user or product team can actually do with the results, pair the paper with:
 
-- `README.md`
-- `docs/productization-roadmap.md`
+- [README.md](/Users/zachshallbetter/Projects/Perception/README.md)
+- [productization-roadmap.md](/Users/zachshallbetter/Projects/Perception/docs/productization-roadmap.md)
+
+## Story Map
+
+```mermaid
+flowchart TD
+    A["Replay-centric continual learning"] --> B["Strongest validated quantitative result"]
+    C["Synthetic sensor routing ladder"] --> D["Strongest completed perception-side evidence"]
+    E["Bootstrap real-data runs"] --> F["Executable real-data proof"]
+    G["Canonical integrated sequences"] --> H["Next promotable evidence gate"]
+    B --> I["Current paper core"]
+    D --> I
+    F --> I
+    H --> J["Future paper update"]
+```
 
 This is important because the current strongest evidence remains replay-centric continual learning, while the broader perception-side sensor/MIME claim is now supported by a completed synthetic routing ladder and only partially supported by bootstrap real-data evidence.
 
@@ -73,10 +87,10 @@ Current completed perception-side evidence:
 - leave-one-out, corruption, and noise stress tests
 - capacity-matched routing control
 
-Current active but not yet promotable evidence:
+Current bounded but not yet promotable evidence:
 
-- `real-audio-seq-002`
-- `real-sensor-seq-001`
+- `real-audio-seq-002` completed, but blocked datasets remained
+- `real-sensor-seq-001` failed at `pamap2`
 
 ## Monolith Policy
 

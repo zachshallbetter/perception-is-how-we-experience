@@ -2,12 +2,34 @@
 
 This document describes what Sensory Perceiver would need in a live environment, beyond offline training and evaluation.
 
+Related files:
+- [README.md](/Users/zachshallbetter/Projects/Perception/README.md)
+- [productization-roadmap.md](/Users/zachshallbetter/Projects/Perception/docs/productization-roadmap.md)
+- [live-system-contract.md](/Users/zachshallbetter/Projects/Perception/docs/live-system-contract.md)
+- [core.py](/Users/zachshallbetter/Projects/Perception/src/models/core.py)
+- [inference.py](/Users/zachshallbetter/Projects/Perception/src/services/inference.py)
+- [live_schema.py](/Users/zachshallbetter/Projects/Perception/src/runtime/live_schema.py)
+
 The goal is not "run the paper continuously." The goal is to turn the current architecture and evidence into a bounded, auditable perception service that can:
 
 - ingest multiple live modalities,
 - produce rolling interpretations of what is happening,
 - tolerate missing or degraded sensors,
 - and adapt over time without uncontrolled online learning.
+
+## Live System Overview
+
+```mermaid
+flowchart LR
+    A["Typed capture envelopes"] --> B["Synchronization buffer"]
+    B --> C["Structured live window<br/>tensor + valid_mask + status"]
+    C --> D["Mask-aware inference service"]
+    D --> E["Predictions + confidence + modality health"]
+    E --> F["User-facing product surface"]
+    E --> G["Bounded adaptation queue"]
+    G --> H["Replay / evaluation gates"]
+    H --> I["Promoted model version"]
+```
 
 ## What A Live User Actually Gets
 

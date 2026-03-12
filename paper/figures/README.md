@@ -22,9 +22,17 @@ This emits:
 - publication-ready PNG/PDF/SVG figures
 - copied source accuracy matrices for the reported Phase 2 and tuned-core runs
 - `package_manifest.json` describing provenance
+- `real_data/real_data_status.json` describing bootstrap vs canonical real-data evidence
 - `captions.md` with paper-ready captions
 - `latex_results_package.tex` with drop-in `table` / `figure` environments
 - `distillation_campaign_status.json` so completed `distill_*` and `tuned_er_*` runs can be folded in automatically when available
+
+If Titan is the canonical execution node, sync the real-data sequence summaries first:
+
+```bash
+bash scripts/sync_titan_real_results.sh
+python3 paper/figures/build_results_package.py
+```
 
 ## Templates Overview
 

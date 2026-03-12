@@ -10,6 +10,7 @@ import shutil
 import statistics
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import matplotlib
 
@@ -21,6 +22,9 @@ ROOT = Path(__file__).resolve().parents[2]
 RESULTS_DIR = ROOT / "results"
 OUTPUT_DIR = ROOT / "paper" / "figures" / "generated" / "results_package"
 SOURCE_MATRIX_DIR = OUTPUT_DIR / "source_matrices"
+REAL_DATA_DIR = OUTPUT_DIR / "real_data"
+REAL_AUDIO_SUMMARY_DIR = RESULTS_DIR / "real_audio_sequence_summaries"
+REAL_SENSOR_SUMMARY_DIR = RESULTS_DIR / "real_sensor_sequence_summaries"
 
 LEGACY_PHASE_1 = {
     "phase": "1",
@@ -299,9 +303,124 @@ def copy_source_matrix(result_path: Path, label: str) -> str:
     return str(destination.relative_to(ROOT))
 
 
+def load_json_if_exists(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def extract_completed_audio_entry(report: dict[str, Any] | None, dataset: str) -> dict[str, Any] | None:
+    if not report:
+        return None
+    for entry in report.get("completed", []):
+        if entry.get("dataset") == dataset:
+            return entry
+    return None
+
+
+def extract_completed_sensor_entry(report: dict[str, Any] | None, dataset: str) -> dict[str, Any] | None:
+    if not report:
+        return None
+    for entry in report.get("completed", []):
+        if entry.get("dataset") == dataset:
+            return entry
+    return None
+
+
+def real_audio_rows(report: dict[str, Any] | None, *, stage: str, canonical: bool) -> list[dict[str, Any]]:
+    if not report:
+        return []
+    rows: list[dict[str, Any]] = []
+    for entry in report.get("completed", []):
+        summary = entry.get("summary") or {}
+        rows.append(
+            {
+                "stage": stage,
+                "canonical": canonical,
+                "dataset": entry.get("dataset"),
+                "family": entry.get("family"),
+                "runs": summary.get("runs"),
+                "mean_accuracy": summary.get("mean_accuracy"),
+                "std_accuracy": summary.get("std_accuracy"),
+                "min_accuracy": summary.get("min_accuracy"),
+                "max_accuracy": summary.get("max_accuracy"),
+                "status": report.get("status"),
+            }
+        )
+    return rows
+
+
+def real_sensor_rows(report: dict[str, Any] | None, *, stage: str, canonical: bool) -> list[dict[str, Any]]:
+    if not report:
+        return []
+    rows: list[dict[str, Any]] = []
+    for entry in report.get("completed", []):
+        paired = entry.get("paired_comparison") or {}
+        rows.append(
+            {
+                "stage": stage,
+                "canonical": canonical,
+                "dataset": entry.get("dataset"),
+                "family": entry.get("family"),
+                "canonical_mean_accuracy": paired.get("canonical_mean_accuracy"),
+                "merged_mean_accuracy": paired.get("merged_mean_accuracy"),
+                "canonical_minus_merged": paired.get("canonical_minus_merged"),
+                "status": report.get("status"),
+            }
+        )
+    return rows
+
+
+def build_real_data_overview_figure(audio_rows: list[dict[str, Any]], sensor_rows: list[dict[str, Any]]) -> None:
+    completed_audio = [row for row in audio_rows if row.get("mean_accuracy") is not None]
+    completed_sensor = [row for row in sensor_rows if row.get("canonical_minus_merged") is not None]
+    if not completed_audio and not completed_sensor:
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.8))
+
+    if completed_audio:
+        labels = [f"{row['dataset']}\n({row['stage']})" for row in completed_audio]
+        values = [row["mean_accuracy"] * 100.0 for row in completed_audio]
+        colors = ["#2E86AB" if row["canonical"] else "#A23B72" for row in completed_audio]
+        axes[0].bar(labels, values, color=colors)
+        axes[0].set_title("Real Audio Accuracy")
+        axes[0].set_ylabel("Accuracy (%)")
+        axes[0].set_ylim(0, 100)
+        for idx, value in enumerate(values):
+            axes[0].text(idx, value + 1.0, f"{value:.1f}", ha="center", va="bottom", fontsize=9)
+    else:
+        axes[0].text(0.5, 0.5, "No completed real-audio runs yet", ha="center", va="center")
+        axes[0].set_axis_off()
+
+    if completed_sensor:
+        labels = [f"{row['dataset']}\n({row['stage']})" for row in completed_sensor]
+        values = [row["canonical_minus_merged"] * 100.0 for row in completed_sensor]
+        colors = ["#6A994E" if value >= 0 else "#C73E1D" for value in values]
+        axes[1].bar(labels, values, color=colors)
+        axes[1].axhline(0, color="#444444", linewidth=1, linestyle="--")
+        axes[1].set_title("Real Sensor Routing Gap")
+        axes[1].set_ylabel("Canonical - Merged (pp)")
+        for idx, value in enumerate(values):
+            offset = 1.0 if value >= 0 else -1.0
+            axes[1].text(idx, value + offset, f"{value:.1f}", ha="center", va="bottom" if value >= 0 else "top", fontsize=9)
+    else:
+        axes[1].text(0.5, 0.5, "No completed real-sensor runs yet", ha="center", va="center")
+        axes[1].set_axis_off()
+
+    for ax in axes:
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+    fig.suptitle("Real-Data Evidence Overview", fontsize=14, fontweight="bold")
+    fig.tight_layout()
+    save_figure(fig, OUTPUT_DIR / "figure_real_data_evidence")
+
+
 def main() -> int:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     SOURCE_MATRIX_DIR.mkdir(parents=True, exist_ok=True)
+    REAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     phase_2 = row_from_result(PHASE_2_PATH)
     tuned_family, tuned_paths = discover_tuned_paths()
@@ -370,6 +489,23 @@ def main() -> int:
         for row in tuned_rows
     ]
 
+    real_audio_seq001_report = load_json_if_exists(REAL_AUDIO_SUMMARY_DIR / "real-audio-seq-001-report.json")
+    real_audio_seq002_report = load_json_if_exists(REAL_AUDIO_SUMMARY_DIR / "real-audio-seq-002-report.json")
+    real_sensor_seq004_report = load_json_if_exists(REAL_SENSOR_SUMMARY_DIR / "real-seq-004-report.json")
+    real_sensor_seq001_report = load_json_if_exists(REAL_SENSOR_SUMMARY_DIR / "real-sensor-seq-001-report.json")
+
+    real_audio_table_rows = (
+        real_audio_rows(real_audio_seq001_report, stage="bootstrap", canonical=False)
+        + real_audio_rows(real_audio_seq002_report, stage="canonical", canonical=True)
+    )
+    real_sensor_table_rows = (
+        real_sensor_rows(real_sensor_seq004_report, stage="bootstrap", canonical=False)
+        + real_sensor_rows(real_sensor_seq001_report, stage="canonical", canonical=True)
+    )
+
+    bootstrap_audio_entry = extract_completed_audio_entry(real_audio_seq001_report, "speech_commands")
+    bootstrap_sensor_entry = extract_completed_sensor_entry(real_sensor_seq004_report, "wisdm")
+
     bwt_table_rows = [
         {
             "run": row.run,
@@ -391,6 +527,54 @@ def main() -> int:
     save_csv(OUTPUT_DIR / "phase_progression.csv", phase_rows)
     save_csv(OUTPUT_DIR / "tuned_core_multiseed.csv", tuned_seed_rows)
     save_csv(OUTPUT_DIR / "bwt_sweep_ranked.csv", bwt_table_rows)
+    if real_audio_table_rows:
+        save_csv(REAL_DATA_DIR / "real_audio_evidence.csv", real_audio_table_rows)
+    if real_sensor_table_rows:
+        save_csv(REAL_DATA_DIR / "real_sensor_evidence.csv", real_sensor_table_rows)
+    save_json(
+        REAL_DATA_DIR / "real_data_status.json",
+        {
+            "bootstrap_audio_sequence": {
+                "sequence_id": "real-audio-seq-001",
+                "status": None if real_audio_seq001_report is None else real_audio_seq001_report.get("status"),
+                "speech_commands": None if bootstrap_audio_entry is None else bootstrap_audio_entry.get("summary"),
+                "notes": "Bootstrap audio evidence; historical report may still list esc50 and urbansound8k as candidates.",
+            },
+            "canonical_audio_sequence": {
+                "sequence_id": "real-audio-seq-002",
+                "status": None if real_audio_seq002_report is None else real_audio_seq002_report.get("status"),
+                "completed": [] if real_audio_seq002_report is None else real_audio_seq002_report.get("completed", []),
+                "blocked": [] if real_audio_seq002_report is None else real_audio_seq002_report.get("blocked", []),
+                "expected_integrated_datasets": ["speech_commands", "esc50", "urbansound8k"],
+            },
+            "bootstrap_sensor_sequence": {
+                "sequence_id": "real-seq-004",
+                "status": None if real_sensor_seq004_report is None else real_sensor_seq004_report.get("status"),
+                "wisdm": None if bootstrap_sensor_entry is None else bootstrap_sensor_entry.get("paired_comparison"),
+                "notes": "Bootstrap sensor evidence from the first real WISDM routing sequence.",
+            },
+            "canonical_sensor_sequence": {
+                "sequence_id": "real-sensor-seq-001",
+                "status": None if real_sensor_seq001_report is None else real_sensor_seq001_report.get("status"),
+                "completed": [] if real_sensor_seq001_report is None else real_sensor_seq001_report.get("completed", []),
+                "blocked": [] if real_sensor_seq001_report is None else real_sensor_seq001_report.get("blocked", []),
+                "expected_integrated_datasets": [
+                    "wisdm",
+                    "pamap2",
+                    "opportunity",
+                    "uci_har",
+                    "hhar",
+                    "mhealth",
+                    "selfback",
+                    "geomagnetic_wlan",
+                ],
+            },
+            "blocked_datasets": {
+                "audio": {"audioset": "blocked-audio-media-missing"},
+                "sensor": {"ubiqlog": "blocked-task-definition-missing"},
+            },
+        },
+    )
 
     phase_matrix = copy_source_matrix(PHASE_2_PATH, "phase2_raw_input_replay_accuracy_matrix")
     tuned_matrices = [
@@ -402,6 +586,7 @@ def main() -> int:
     build_tuned_multiseed_figure(tuned_rows, tuned_mean)
     build_bwt_sweep_figure(bwt_rows, tuned_mean["BWT"])
     build_results_table_figure(phase_rows)
+    build_real_data_overview_figure(real_audio_table_rows, real_sensor_table_rows)
 
     save_markdown(
         OUTPUT_DIR / "README.md",
@@ -427,7 +612,11 @@ def main() -> int:
                 "- `figure_phase_progression.{png,pdf,svg}`",
                 "- `figure_tuned_core_multiseed.{png,pdf,svg}`",
                 "- `figure_bwt_sweep_ranked.{png,pdf,svg}`",
+                "- `figure_real_data_evidence.{png,pdf,svg}`",
                 "- `package_manifest.json`",
+                "- `real_data/real_data_status.json`",
+                "- `real_data/real_audio_evidence.csv` (when local reports exist)",
+                "- `real_data/real_sensor_evidence.csv` (when local reports exist)",
                 "- `source_matrices/*.png`",
                 "",
                 "## Build",
@@ -457,6 +646,9 @@ def main() -> int:
                 "",
                 "## Figure 3",
                 "Exploratory BWT sweep ranked by final BWT. The dashed reference line marks the tuned-core multiseed mean. None of the completed EWC, SI, larger-buffer ER, or contrastive replay runs surpass the tuned-core baseline.",
+                "",
+                "## Figure 4",
+                "Real-data evidence overview. Bootstrap evidence comes from `real-audio-seq-001` on Speech Commands and `real-seq-004` on WISDM. Canonical evidence is promoted from `real-audio-seq-002` and `real-sensor-seq-001` as those bounded integrated sequences complete. Historical bootstrap reports may still list newly integrated datasets as candidates, so the package treats sequence stage and current supervisor defaults as the canonical source of truth.",
                 "",
                 "## Source Matrices",
                 "The copied accuracy-matrix images provide the underlying per-task retention structure for the reported Phase 2 raw-input replay run and the three tuned-core Titan runs.",
@@ -498,6 +690,13 @@ def main() -> int:
                 "  \\includegraphics[width=\\linewidth]{../figures/generated/results_package/figure_bwt_sweep_ranked.pdf}",
                 "  \\caption{Exploratory BWT sweep ranked by final BWT. The dashed reference line marks the tuned-core multiseed mean. None of the completed EWC, SI, larger-buffer ER, or contrastive replay runs surpass the tuned-core baseline.}",
                 "  \\label{fig:bwt-sweep-ranked}",
+                "\\end{figure}",
+                "",
+                "\\begin{figure}[t]",
+                "  \\centering",
+                "  \\includegraphics[width=\\linewidth]{../figures/generated/results_package/figure_real_data_evidence.pdf}",
+                "  \\caption{Real-data evidence overview. Bootstrap evidence comes from `real-audio-seq-001` on Speech Commands and `real-seq-004` on WISDM. Canonical evidence is promoted from `real-audio-seq-002` and `real-sensor-seq-001` as those bounded integrated sequences complete. Historical bootstrap reports may still list newly integrated datasets as candidates, so the package treats sequence stage and current supervisor defaults as the canonical source of truth.}",
+                "  \\label{fig:real-data-evidence-overview}",
                 "\\end{figure}",
                 "",
             ]
@@ -600,6 +799,9 @@ def main() -> int:
         "tuned_core_summary": tuned_mean,
         "tuned_seed_rows": tuned_seed_rows,
         "bwt_sweep_top_ranked": bwt_table_rows,
+        "real_data_status_json": str((REAL_DATA_DIR / "real_data_status.json").relative_to(ROOT)),
+        "real_audio_rows": real_audio_table_rows,
+        "real_sensor_rows": real_sensor_table_rows,
         "source_matrices": {
             "phase_2": phase_matrix,
             "tuned_core": tuned_matrices,

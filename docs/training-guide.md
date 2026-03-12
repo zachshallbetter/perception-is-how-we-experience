@@ -116,7 +116,7 @@ This renders a live dashboard from Titan with:
 - BWT leaderboard from completed runs
 - paper-core aggregate metrics
 
-To rebuild the paper package automatically whenever completed `distill_*` or `tuned_er_*` results land:
+To rebuild the paper package automatically whenever completed continual-learning or real-data evidence lands:
 
 ```bash
 PYTHON_BIN=/ai/envs/perception/bin/python \
@@ -137,6 +137,15 @@ The campaign launchers now ensure this watcher session exists automatically, so 
 - `launch_distill_bwt_campaign.sh`
 - `launch_distill_confirmation_campaign.sh`
 - `launch_tuned_core_expansion_campaign.sh`
+
+The watcher now fingerprints:
+
+- `results/distill_t*_seed*/results.json`
+- `results/tuned_er_seed*/results.json`
+- `results/real_audio_sequence_summaries/*.json`
+- `results/real_sensor_sequence_summaries/*.json`
+- `results/real_audio_*/*eval_results.json`
+- `results/real_sensor_*/*eval_results.json`
 
 Distillation campaign status:
 
@@ -360,3 +369,12 @@ python scripts/validate_setup.py --verbose
   - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/chain_audio_to_sensor_sequence.sh real-audio-seq-002 real-sensor-seq-001`
 - Check the real-audio supervisor with:
   - `bash scripts/real_audio_sequence_status.sh real-audio-seq-001`
+- To sync Titan-generated real-data evidence back into the local package workflow:
+  - `bash scripts/sync_titan_real_results.sh`
+- Treat `real-audio-seq-001` as bootstrap `speech_commands` evidence.
+- Treat `real-audio-seq-002` as the canonical integrated audio sequence because it runs:
+  - `speech_commands`
+  - `esc50`
+  - `urbansound8k`
+- Treat `real-seq-004` as bootstrap WISDM evidence.
+- Treat `real-sensor-seq-001` as the canonical integrated real-sensor sequence.

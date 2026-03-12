@@ -1,0 +1,2 @@
+stage,canonical,dataset,family,canonical_mean_accuracy,merged_mean_accuracy,canonical_minus_merged,status
+bootstrap,False,wisdm,real-seq-004-wisdm,0.6780952380952381,0.6361904761904762,0.04190476190476189,completed

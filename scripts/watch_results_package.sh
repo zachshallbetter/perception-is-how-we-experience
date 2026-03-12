@@ -20,7 +20,12 @@ fingerprint_results() {
   (
     cd "${ROOT_DIR}"
     find results -maxdepth 2 -type f \
-      \( -path "results/distill_t*_seed*/results.json" -o -path "results/tuned_er_seed*/results.json" \) \
+      \( -path "results/distill_t*_seed*/results.json" \
+      -o -path "results/tuned_er_seed*/results.json" \
+      -o -path "results/real_audio_*/*eval_results.json" \
+      -o -path "results/real_sensor_*/*eval_results.json" \
+      -o -path "results/real_audio_sequence_summaries/*.json" \
+      -o -path "results/real_sensor_sequence_summaries/*.json" \) \
       -print0 \
       | sort -z \
       | xargs -0 stat -f "%N %z %m" 2>/dev/null || true

@@ -18,7 +18,11 @@ This package is generated from validated Split-CIFAR-100 results used by the can
 - `figure_phase_progression.{png,pdf,svg}`
 - `figure_tuned_core_multiseed.{png,pdf,svg}`
 - `figure_bwt_sweep_ranked.{png,pdf,svg}`
+- `figure_real_data_evidence.{png,pdf,svg}`
 - `package_manifest.json`
+- `real_data/real_data_status.json`
+- `real_data/real_audio_evidence.csv` (when local reports exist)
+- `real_data/real_sensor_evidence.csv` (when local reports exist)
 - `source_matrices/*.png`
 
 ## Build

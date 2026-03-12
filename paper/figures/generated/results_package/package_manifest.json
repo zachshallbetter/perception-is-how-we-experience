@@ -229,6 +229,33 @@
       "task0_retention": 0.0
     }
   ],
+  "real_data_status_json": "paper/figures/generated/results_package/real_data/real_data_status.json",
+  "real_audio_rows": [
+    {
+      "stage": "bootstrap",
+      "canonical": false,
+      "dataset": "speech_commands",
+      "family": "real-audio-seq-001-speech_commands",
+      "runs": 3,
+      "mean_accuracy": 0.8832231349762907,
+      "std_accuracy": 0.0018223153208631712,
+      "min_accuracy": 0.881787216990583,
+      "max_accuracy": 0.8857944299739531,
+      "status": "completed"
+    }
+  ],
+  "real_sensor_rows": [
+    {
+      "stage": "bootstrap",
+      "canonical": false,
+      "dataset": "wisdm",
+      "family": "real-seq-004-wisdm",
+      "canonical_mean_accuracy": 0.6780952380952381,
+      "merged_mean_accuracy": 0.6361904761904762,
+      "canonical_minus_merged": 0.04190476190476189,
+      "status": "completed"
+    }
+  ],
   "source_matrices": {
     "phase_2": "paper/figures/generated/results_package/source_matrices/phase2_raw_input_replay_accuracy_matrix.png",
     "tuned_core": [
@@ -251,12 +278,18 @@
     "paper/figures/generated/results_package/figure_phase_progression.pdf",
     "paper/figures/generated/results_package/figure_phase_progression.png",
     "paper/figures/generated/results_package/figure_phase_progression.svg",
+    "paper/figures/generated/results_package/figure_real_data_evidence.pdf",
+    "paper/figures/generated/results_package/figure_real_data_evidence.png",
+    "paper/figures/generated/results_package/figure_real_data_evidence.svg",
     "paper/figures/generated/results_package/figure_tuned_core_multiseed.pdf",
     "paper/figures/generated/results_package/figure_tuned_core_multiseed.png",
     "paper/figures/generated/results_package/figure_tuned_core_multiseed.svg",
     "paper/figures/generated/results_package/latex_results_package.tex",
     "paper/figures/generated/results_package/package_manifest.json",
     "paper/figures/generated/results_package/phase_progression.csv",
+    "paper/figures/generated/results_package/real_data/real_audio_evidence.csv",
+    "paper/figures/generated/results_package/real_data/real_data_status.json",
+    "paper/figures/generated/results_package/real_data/real_sensor_evidence.csv",
     "paper/figures/generated/results_package/source_matrices/phase2_raw_input_replay_accuracy_matrix.png",
     "paper/figures/generated/results_package/source_matrices/tuned_core_seed42_accuracy_matrix.png",
     "paper/figures/generated/results_package/source_matrices/tuned_core_seed43_accuracy_matrix.png",

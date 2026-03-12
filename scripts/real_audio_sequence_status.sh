@@ -29,6 +29,7 @@ if not report_path.exists():
 payload = json.loads(report_path.read_text(encoding="utf-8"))
 print(f"status={payload.get('status')}")
 print(f"sequence_id={payload.get('sequence_id')}")
+print(f"planned_datasets={','.join(payload.get('planned_datasets') or [])}")
 print(f"active_family={payload.get('active_family')}")
 print(f"active_results={payload.get('active_results')}")
 print(f"active_sessions={payload.get('active_sessions')}")

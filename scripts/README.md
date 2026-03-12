@@ -173,12 +173,20 @@ Current policy:
 - runs the prepared `multimodal` audio benchmark once a dataset is prepared
 - leaves `audioset` explicitly blocked until local audio media exists
 - can be chained into a sensor sequence with `chain_audio_to_sensor_sequence.sh` once the bounded audio sequence completes
+- treats `real-audio-seq-001` as bootstrap evidence and `real-audio-seq-002` onward as the canonical integrated audio lane
 
 ### `real_audio_sequence_status.sh`
 Print the live/final status of a real-audio supervision sequence.
 
 ```bash
 bash scripts/real_audio_sequence_status.sh real-audio-seq-001
+```
+
+### `sync_titan_real_results.sh`
+Sync Titan-generated real-data evidence into the local `results/` tree so package generation and paper updates use the same canonical sequence reports.
+
+```bash
+bash scripts/sync_titan_real_results.sh
 ```
 
 ### `download_audioset.py` (user implementation)
@@ -479,7 +487,7 @@ Arguments:
 - idle alert threshold in consecutive polls (default `3`)
 
 ### `watch_results_package.sh`
-Poll for newly completed `distill_*` and `tuned_er_*` `results.json` files and rebuild the paper package only when the completed artifact set changes.
+Poll for new continual-learning and real-data evidence artifacts and rebuild the paper package only when the completed artifact set changes.
 
 ```bash
 PYTHON_BIN=/ai/envs/perception/bin/python \
@@ -499,6 +507,13 @@ tmux new-session -d -s results-package-watcher \
 ```
 
 The main Titan launchers now auto-start this watcher if it is missing, so manual startup is only needed for ad hoc experiments or recovery.
+It now fingerprints:
+- `results/distill_t*_seed*/results.json`
+- `results/tuned_er_seed*/results.json`
+- `results/real_audio_sequence_summaries/*.json`
+- `results/real_sensor_sequence_summaries/*.json`
+- `results/real_audio_*/*eval_results.json`
+- `results/real_sensor_*/*eval_results.json`
 
 ### `render_titan_dashboard.py`
 Render the current Titan state as Markdown and JSON using:

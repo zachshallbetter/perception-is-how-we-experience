@@ -14,6 +14,8 @@ Generated paper assets for this section are packaged under `paper/figures/genera
 
 At present, the packaged quantitative story is still centered on the continual-learning lane. The active `sensor_streaming` routing ladder is the next perception-side evidence path, but those results are not claimed here until the baseline aggregation and stress-test sequence complete.
 
+For an applied reader, the present Results section should be read as establishing one validated operational rule: if a perception system must keep learning over time, replay design at the shared backbone matters more than simply adding lightweight regularizers around the edges.
+
 ## 6.1 Phase 1: Feature-Only Replay (Failure Mode)
 
 Observed metrics:

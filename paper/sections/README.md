@@ -25,6 +25,14 @@ Authoritative files for current paper claims:
 
 `09-examples.md` is non-empirical and illustrative only.
 
+## Recommended Reading Paths
+
+If you want:
+
+- the shortest current claim surface: read `01-abstract.md`, `06-results.md`, and `07-discussion.md`
+- the implementation boundary and honesty constraints: read `00-implementation-status-matrix.md` and `10-concept-implementation-audit.md`
+- the broader user/product interpretation: pair the paper with `../Paper Overview.md`, `../../README.md`, and `../../docs/productization-roadmap.md`
+
 ## Monolith Generation Policy
 
 `../Perception Is How We Experience.md` is a generated artifact assembled from canonical sections.

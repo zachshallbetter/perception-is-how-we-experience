@@ -92,6 +92,8 @@ This supervisor waits for the baseline family to finish, summarizes the canonica
 - single-modality noise robustness
 
 It is intentionally bounded. It does not run forever or recursively chase "perfect" scores, and it treats the capacity-matched comparison as a required gate before promoting a positive routing claim.
+Each launched family now uses a canonical family id for tmux sessions, result directories, and eval artifact discovery, so the supervisor can resume cleanly without drifting onto timestamp-only output names.
+Sensor branch workers are also balanced per GPU now: each GPU carries one canonical seed and one merged seed, which keeps utilization steadier than isolating the lighter merged queue on a single card.
 
 ## 4. Monitoring
 
@@ -191,6 +193,12 @@ Autonomy report output:
 ```bash
 cat results/sensor_sequence_summaries/<family>-autonomy-report.json
 ```
+
+The autonomy report now updates while the ladder is running, not only at the end. That means you can see:
+
+- the currently active branch family
+- artifact progress for that branch
+- final failure state and error message if the supervisor stops early
 
 Low-level commands remain useful during debugging:
 

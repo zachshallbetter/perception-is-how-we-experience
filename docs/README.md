@@ -8,13 +8,22 @@ This directory is the operator and research bridge between the codebase and the 
    - canonical Titan workflow
    - primary launchers
    - monitoring and packaging flow
-2. `baselines.md`
+2. `productization-roadmap.md`
+   - how the current research result translates into a usable system roadmap
+   - what still has to be true before strong product claims
+3. `baselines.md`
    - baseline environments and Titan-safe defaults
-3. `sensor-mime-experiment-plan.md`
+4. `sensor-mime-experiment-plan.md`
    - perception-side evidence ladder
    - canonical vs merged routing rationale
-4. `sensor-streaming-mime-cases.md`
+5. `sensor-streaming-mime-cases.md`
    - authoritative sensor modality cases
+
+## How To Read These Docs
+
+- If you are operating Titan today, start with `training-guide.md`.
+- If you are trying to understand what the paper currently proves, read `sensor-mime-experiment-plan.md` together with `paper/sections/06-results.md` and `paper/sections/07-discussion.md`.
+- If you are trying to decide whether this work is usable beyond the paper, read `productization-roadmap.md`.
 
 ## Experiment and Review Docs
 

@@ -174,6 +174,8 @@ This compares:
 - each seed evaluates on the matching deterministic validation split used for that training run
 
 This is the highest-value next experiment for supporting the broader perception claim beyond Split-CIFAR continual learning.
+The launcher now uses a canonical family id for tmux sessions, log files, and result directories so the autonomous supervisor and summarizer resolve the same artifacts.
+It also balances sensor branch work per GPU by pairing one canonical seed with one merged seed on each card, which reduces long idle periods caused by the lighter merged route finishing early.
 
 Variant control:
 - `SENSOR_VARIANT=baseline` compares canonical vs merged routing on the standard sensor benchmark
@@ -257,6 +259,8 @@ Stop conditions:
 Outputs:
 - progress log: `results/titan_logs/sensor-sequence-supervisor.log`
 - autonomy report: `results/sensor_sequence_summaries/<family>-autonomy-report.json`
+- resume-safe behavior: completed branch families are skipped if their expected eval artifacts already exist under the canonical family id
+- live report updates while branches are running, including active family, progress counts, and explicit failure state if the supervisor stops early
 
 ### `sensor_sequence_status.sh`
 One-command status view for the live sensor ladder.

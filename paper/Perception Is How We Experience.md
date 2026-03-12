@@ -10,6 +10,8 @@ Parameter-isolation primitives (task adapters with freeze/rollover APIs) are imp
 
 Current multimodal support includes proxy audiovisual and `sensor_streaming` datasets. The active perception-side evidence ladder now evaluates canonical typed sensor routing against a merged generic stream, followed by leave-one-out, corruption, noise, and capacity-matched controls. Real benchmark ingestion (for example AudioSet/Ego4D) and additional modality towers remain future-stage work.
 
+Practically, the present contribution is therefore best understood as a blueprint for domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone rather than only late task heads.
+
 **Keywords:** multimodal perception, continual learning, catastrophic forgetting, reservoir sampling, MIME-type routing, parameter isolation
 # Introduction
 
@@ -52,6 +54,8 @@ Our contributions in this paper are fourfold:
 The remainder of this paper is organized as follows: §3 provides related work. §4 details architecture and implementation-aligned methods. §5 describes experimental setup and implementation status. §6 presents the empirical progression from failure mode to current best result. §7 discusses implications, gaps, and next-stage roadmap. §8 concludes.
 
 **Scope Note**: We acknowledge that the name "Perceiver" was independently used by Jaegle et al. (2021) for a different architecture. While both architectures share the goal of general-purpose multimodal perception, our current implementation focuses on continual-learning behavior, MIME-style modality semantics, and service-oriented runtime architecture. A detailed comparison is provided in §3 (Related Work).
+
+For readers coming from applied ML rather than continual-learning research, the practical reading of this introduction is simple: Sensory Perceiver is attempting to answer how a system should be structured if it must ingest typed sensory streams, keep those interfaces explicit, and continue updating without full retraining each time new data arrives.
 # Related Work
 
 The Sensory Perceiver builds on and extends several lines of research. We organize the relevant literature around four themes: the Perceiver family, efficient convolution, temporal and multimodal perception, and continual learning.
@@ -254,6 +258,8 @@ Primary reproducibility controls:
 
 This is the most direct experiment for testing whether the typed modality semantics materially matter beyond runtime correctness. The follow-on sequence can now be driven by a bounded Titan-local supervisor, which waits for the baseline family to finish, aggregates the comparison, and then launches stress tests in a fixed order rather than an open-ended search.
 
+The practical reason for this ladder is straightforward: if typed routing only wins on an easy baseline and collapses under capacity matching or stress, it should not be used as the basis for stronger product or paper claims. The bounded supervisor is therefore part of the evidence discipline, not just an automation convenience.
+
 ## 5.4 Evaluation Metrics
 
 Primary continual-learning metrics:
@@ -291,6 +297,8 @@ Generated paper assets for this section are packaged under `paper/figures/genera
 - `package_manifest.json`
 
 At present, the packaged quantitative story is still centered on the continual-learning lane. The active `sensor_streaming` routing ladder is the next perception-side evidence path, but those results are not claimed here until the baseline aggregation and stress-test sequence complete.
+
+For an applied reader, the present Results section should be read as establishing one validated operational rule: if a perception system must keep learning over time, replay design at the shared backbone matters more than simply adding lightweight regularizers around the edges.
 
 ## 6.1 Phase 1: Feature-Only Replay (Failure Mode)
 
@@ -450,6 +458,24 @@ This matters because it is the shortest path from architectural argument to meas
 4. Add confidence intervals and fuller statistical treatment to the tuned-core continual benchmark.
 5. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
 6. Add real multimodal ingestion/evaluation paths and report them separately from proxy datasets.
+
+## 7.8 Practical Implications
+
+If the present claims continue to hold, the practical lesson is not that Sensory Perceiver is already a universal product-ready perception model. The practical lesson is narrower and more useful:
+
+1. **Keep modality identity explicit.**
+   - Systems that ingest heterogeneous sensory streams should preserve modality structure instead of flattening all inputs into one undifferentiated channel at the boundary.
+
+2. **Use canonical modality contracts.**
+   - MIME-style modality registries and validated runtime bindings reduce hidden interface drift and make sensor extension safer.
+
+3. **Make continual-learning safeguards act on the shared backbone.**
+   - If a deployed system must adapt over time, replay should reach the shared perceptual feature stack rather than only late task heads.
+
+4. **Treat perception and adaptation as one systems problem.**
+   - The architectural and continual-learning results are most useful together: explicit sensor structure helps define the model, while replay-centric retention determines whether that structure survives incremental updates.
+
+For applied users, this means the repository is best understood as a design reference for domain-specific perception systems in robotics, wearables, ambient sensing, or monitoring applications. The current value lies in the architecture and update discipline, not in claiming a fully general perception product.
 # Conclusion
 
 This work establishes a code-aligned continual-learning result progression for Sensory Perceiver:
@@ -467,7 +493,7 @@ At the same time, two boundaries remain explicit:
 1. Parameter-isolation APIs and opt-in service-path activation are implemented, but current exploratory EWC/SI-style follow-on sweeps have not yet surpassed the tuned-core replay baseline.
 2. Real multimodal benchmark ingestion (beyond proxy datasets) remains future-stage work.
 
-The immediate path forward is therefore clear: complete the sensor routing ladder and use it to either justify or narrow the broader perception claim, strengthen the tuned-core result with fuller statistical treatment, test whether structural isolation can beat that baseline rather than merely exist in code, and extend from proxy multimodal data to real large-scale multimodal datasets.
+The immediate path forward is therefore clear: complete the sensor routing ladder and use it to either justify or narrow the broader perception claim, strengthen the tuned-core result with fuller statistical treatment, test whether structural isolation can beat that baseline rather than merely exist in code, and extend from proxy multimodal data to real large-scale multimodal datasets. If those steps succeed, the practical output is a disciplined blueprint for building domain-specific perception systems that can ingest typed sensory inputs and keep learning over time without fully retraining from scratch.
 # Implementation Status Matrix (Code-Aligned)
 
 This matrix maps paper claims to current implementation status in the codebase.

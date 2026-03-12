@@ -5,7 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN="${PYTHON_BIN:-python}"
 BATCH_SIZE="${BATCH_SIZE:-2}"
 EPOCHS="${EPOCHS:-20}"
-CAPACITY_JSON="$(${PYTHON_BIN} "${ROOT_DIR}/scripts/find_sensor_capacity_match.py")"
+cd "${ROOT_DIR}"
+CAPACITY_JSON="$(PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" ${PYTHON_BIN} "${ROOT_DIR}/scripts/find_sensor_capacity_match.py")"
 MERGED_D_MODEL="$(printf '%s' "${CAPACITY_JSON}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["merged_d_model"])')"
 MERGED_MLP_DIM="$(( MERGED_D_MODEL * 2 ))"
 
@@ -17,7 +18,6 @@ Capacity-matched control setup
   epochs: ${EPOCHS}
 EOF
 
-cd "${ROOT_DIR}"
 SENSOR_VARIANT="${SENSOR_VARIANT:-baseline}" \
 BATCH_SIZE="${BATCH_SIZE}" \
 EPOCHS="${EPOCHS}" \

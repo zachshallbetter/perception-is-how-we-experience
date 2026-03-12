@@ -39,3 +39,5 @@ Our contributions in this paper are fourfold:
 The remainder of this paper is organized as follows: §3 provides related work. §4 details architecture and implementation-aligned methods. §5 describes experimental setup and implementation status. §6 presents the empirical progression from failure mode to current best result. §7 discusses implications, gaps, and next-stage roadmap. §8 concludes.
 
 **Scope Note**: We acknowledge that the name "Perceiver" was independently used by Jaegle et al. (2021) for a different architecture. While both architectures share the goal of general-purpose multimodal perception, our current implementation focuses on continual-learning behavior, MIME-style modality semantics, and service-oriented runtime architecture. A detailed comparison is provided in §3 (Related Work).
+
+For readers coming from applied ML rather than continual-learning research, the practical reading of this introduction is simple: Sensory Perceiver is attempting to answer how a system should be structured if it must ingest typed sensory streams, keep those interfaces explicit, and continue updating without full retraining each time new data arrives.

@@ -64,3 +64,21 @@ This matters because it is the shortest path from architectural argument to meas
 4. Add confidence intervals and fuller statistical treatment to the tuned-core continual benchmark.
 5. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
 6. Add real multimodal ingestion/evaluation paths and report them separately from proxy datasets.
+
+## 7.8 Practical Implications
+
+If the present claims continue to hold, the practical lesson is not that Sensory Perceiver is already a universal product-ready perception model. The practical lesson is narrower and more useful:
+
+1. **Keep modality identity explicit.**
+   - Systems that ingest heterogeneous sensory streams should preserve modality structure instead of flattening all inputs into one undifferentiated channel at the boundary.
+
+2. **Use canonical modality contracts.**
+   - MIME-style modality registries and validated runtime bindings reduce hidden interface drift and make sensor extension safer.
+
+3. **Make continual-learning safeguards act on the shared backbone.**
+   - If a deployed system must adapt over time, replay should reach the shared perceptual feature stack rather than only late task heads.
+
+4. **Treat perception and adaptation as one systems problem.**
+   - The architectural and continual-learning results are most useful together: explicit sensor structure helps define the model, while replay-centric retention determines whether that structure survives incremental updates.
+
+For applied users, this means the repository is best understood as a design reference for domain-specific perception systems in robotics, wearables, ambient sensing, or monitoring applications. The current value lies in the architecture and update discipline, not in claiming a fully general perception product.

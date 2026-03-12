@@ -74,10 +74,19 @@ for row in gpu.stdout.strip().splitlines():
 
 if summary is not None:
     print(f"autonomy_status={summary.get('status')}")
+    active_family = summary.get("active_family")
+    if active_family:
+        active_results = summary.get("active_results")
+        active_sessions = summary.get("active_sessions")
+        print(f"active_family={active_family}")
+        if active_results is not None and active_sessions is not None:
+            print(f"active_family_progress={active_results}/6 sessions={active_sessions}")
     variant_gaps = summary.get("variant_gaps", {})
     if variant_gaps:
         for key in sorted(variant_gaps):
             print(f"  gap[{key}]={variant_gaps[key]:.4f}")
+    if summary.get("error"):
+        print(f"autonomy_error={summary['error']}")
 else:
     print("autonomy_status=pending")
 

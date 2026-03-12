@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 RUN_RE = re.compile(
-    r"^sensor_streaming_(?:(?P<variant>.+)_)?(?P<routing>canonical|merged)_seed(?P<seed>\d+)_(?P<family>\d{8}_\d{6})$"
+    r"^sensor_streaming_(?:(?P<variant>.+)_)?(?P<routing>canonical|merged)_seed(?P<seed>\d+)_(?P<family>.+)$"
 )
 
 

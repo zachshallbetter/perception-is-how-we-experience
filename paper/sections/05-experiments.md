@@ -47,6 +47,8 @@ Primary reproducibility controls:
 
 This is the most direct experiment for testing whether the typed modality semantics materially matter beyond runtime correctness. The follow-on sequence can now be driven by a bounded Titan-local supervisor, which waits for the baseline family to finish, aggregates the comparison, and then launches stress tests in a fixed order rather than an open-ended search.
 
+The practical reason for this ladder is straightforward: if typed routing only wins on an easy baseline and collapses under capacity matching or stress, it should not be used as the basis for stronger product or paper claims. The bounded supervisor is therefore part of the evidence discipline, not just an automation convenience.
+
 ## 5.4 Evaluation Metrics
 
 Primary continual-learning metrics:

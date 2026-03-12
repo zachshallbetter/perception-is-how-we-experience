@@ -39,6 +39,42 @@ class Supervisor:
         self.dominance_gap_threshold = args.dominance_gap_threshold
         self.require_capacity_gate = args.require_capacity_gate
         self.history: list[dict] = []
+        self.active_family: str | None = None
+
+    def write_report_payload(self, payload: dict) -> None:
+        self.report_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    def write_progress_report(
+        self,
+        *,
+        status: str,
+        completed: list[FamilyResult],
+        baseline_family: FamilyResult | None = None,
+        active_family: str | None = None,
+        active_results: int | None = None,
+        active_sessions: int | None = None,
+        error: str | None = None,
+    ) -> None:
+        variant_gaps = self.summarize_completed(completed)
+        payload = {
+            "status": status,
+            "current_family": self.current_family,
+            "active_family": active_family,
+            "active_results": active_results,
+            "active_sessions": active_sessions,
+            "baseline_gap": variant_gaps.get("baseline"),
+            "variant_gaps": variant_gaps,
+            "competitive_gap_threshold": self.competitive_gap_threshold,
+            "dominance_gap_threshold": self.dominance_gap_threshold,
+            "require_capacity_gate": self.require_capacity_gate,
+            "completed_families": [asdict(item) for item in completed],
+            "history_tail": self.history[-50:],
+        }
+        if baseline_family is not None:
+            payload["baseline_family"] = asdict(baseline_family)
+        if error is not None:
+            payload["error"] = error
+        self.write_report_payload(payload)
 
     def log(self, message: str, **fields: object) -> None:
         payload = {
@@ -81,18 +117,40 @@ class Supervisor:
             return 0
         return sum(1 for line in result.stdout.splitlines() if f"sensor-mime-{family}-gpu" in line)
 
-    def wait_for_family(self, family: str) -> None:
+    def wait_for_family(
+        self,
+        family: str,
+        *,
+        completed: list[FamilyResult],
+        baseline_family: FamilyResult | None = None,
+    ) -> None:
+        self.active_family = family
         while True:
             sessions = self.count_sessions(family)
             results = self.count_results(family)
             self.log("wait-family", family=family, sessions=sessions, results=results, expected=self.expected_results)
+            self.write_progress_report(
+                status="running",
+                completed=completed,
+                baseline_family=baseline_family,
+                active_family=family,
+                active_results=results,
+                active_sessions=sessions,
+            )
             if sessions == 0:
                 if results < self.expected_results:
                     raise RuntimeError(
                         f"Family {family} ended with only {results}/{self.expected_results} eval_results.json artifacts"
                     )
+                self.active_family = None
                 return
             time.sleep(self.poll_seconds)
+
+    def family_complete(self, family: str) -> bool:
+        return self.count_results(family) >= self.expected_results and self.count_sessions(family) == 0
+
+    def family_has_activity(self, family: str) -> bool:
+        return self.count_results(family) > 0 or self.count_sessions(family) > 0
 
     def summarize_family(self, family: str) -> FamilyResult:
         output_file = self.summary_dir / f"{family}.json"
@@ -125,6 +183,7 @@ class Supervisor:
         env = {
             "PYTHON_BIN": self.python_bin,
             "CAMPAIGN_ID": f"sensor-mime-{family}",
+            "RUN_FAMILY": family,
         }
         if extra_env:
             env.update(extra_env)
@@ -142,19 +201,14 @@ class Supervisor:
         return summary
 
     def write_report(self, status: str, baseline_family: FamilyResult, completed: list[FamilyResult]) -> None:
-        variant_gaps = self.summarize_completed(completed)
-        report = {
-            "status": status,
-            "current_family": self.current_family,
-            "baseline_gap": variant_gaps.get("baseline"),
-            "variant_gaps": variant_gaps,
-            "competitive_gap_threshold": self.competitive_gap_threshold,
-            "dominance_gap_threshold": self.dominance_gap_threshold,
-            "require_capacity_gate": self.require_capacity_gate,
-            "completed_families": [asdict(item) for item in completed],
-            "history_tail": self.history[-50:],
-        }
-        self.report_file.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        self.write_progress_report(
+            status=status,
+            completed=completed,
+            baseline_family=baseline_family,
+            active_family=None,
+            active_results=None,
+            active_sessions=None,
+        )
         self.log("report-written", status=status, report=str(self.report_file))
 
     def determine_stop_state(self, baseline_family: FamilyResult, completed: list[FamilyResult]) -> str:
@@ -194,7 +248,7 @@ class Supervisor:
         self.log("supervisor-start", family=self.current_family)
 
         completed: list[FamilyResult] = []
-        self.wait_for_family(self.current_family)
+        self.wait_for_family(self.current_family, completed=completed)
         baseline_family = self.summarize_family(self.current_family)
         completed.append(baseline_family)
         baseline_gap = self.baseline_gap(baseline_family)
@@ -206,25 +260,47 @@ class Supervisor:
             self.log("supervisor-complete", status=status)
             return 0
 
+        sequence = []
         if self.require_capacity_gate or baseline_gap >= 0:
-            capacity_family = f"{self.current_family}-capacity-match"
-            self.launch(capacity_family, "scripts/launch_sensor_capacity_matched_control_titan.sh")
-            self.wait_for_family(capacity_family)
-            completed.append(self.summarize_family(capacity_family))
+            sequence.append(
+                (
+                    f"{self.current_family}-capacity-match",
+                    "scripts/launch_sensor_capacity_matched_control_titan.sh",
+                    None,
+                )
+            )
 
-        ordered_launches = [
-            (f"{self.current_family}-drop-smartwatch", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "drop_smartwatch"}),
-            (f"{self.current_family}-drop-room-env", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "drop_room_env"}),
-            (f"{self.current_family}-drop-robot-arm", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "drop_robot_arm"}),
-            (f"{self.current_family}-corrupt-bindings", "scripts/launch_sensor_mime_corruption_titan.sh", {"SENSOR_VARIANT": "corrupt_bindings"}),
-            (f"{self.current_family}-noise-smartwatch", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "noise_smartwatch"}),
-            (f"{self.current_family}-noise-room-env", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "noise_room_env"}),
-            (f"{self.current_family}-noise-robot-arm", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "noise_robot_arm"}),
-        ]
+        sequence.extend(
+            [
+                (f"{self.current_family}-drop-smartwatch", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "drop_smartwatch"}),
+                (f"{self.current_family}-drop-room-env", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "drop_room_env"}),
+                (f"{self.current_family}-drop-robot-arm", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "drop_robot_arm"}),
+                (f"{self.current_family}-corrupt-bindings", "scripts/launch_sensor_mime_corruption_titan.sh", {"SENSOR_VARIANT": "corrupt_bindings"}),
+                (f"{self.current_family}-noise-smartwatch", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "noise_smartwatch"}),
+                (f"{self.current_family}-noise-room-env", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "noise_room_env"}),
+                (f"{self.current_family}-noise-robot-arm", "scripts/launch_sensor_mime_ablation_titan.sh", {"SENSOR_VARIANT": "noise_robot_arm"}),
+            ]
+        )
+
+        active_sequence = [item for item in sequence if self.count_sessions(item[0]) > 0 and not self.family_complete(item[0])]
+        pending_sequence = [item for item in sequence if item not in active_sequence]
+        ordered_launches = active_sequence + pending_sequence
+        if active_sequence:
+            self.log(
+                "resume-active-families",
+                families=[item[0] for item in active_sequence],
+            )
 
         for family, launcher, env in ordered_launches:
-            self.launch(family, launcher, extra_env=env)
-            self.wait_for_family(family)
+            if self.family_complete(family):
+                completed.append(self.summarize_family(family))
+                continue
+            if not self.family_has_activity(family):
+                if env is None:
+                    self.launch(family, launcher)
+                else:
+                    self.launch(family, launcher, extra_env=env)
+            self.wait_for_family(family, completed=completed, baseline_family=baseline_family)
             completed.append(self.summarize_family(family))
 
         status = self.determine_stop_state(baseline_family, completed)
@@ -256,7 +332,19 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     supervisor = Supervisor(parse_args())
-    return supervisor.execute()
+    try:
+        return supervisor.execute()
+    except Exception as exc:
+        supervisor.log("supervisor-failed", family=supervisor.active_family or supervisor.current_family, error=str(exc))
+        supervisor.write_progress_report(
+            status="failed",
+            completed=[],
+            active_family=supervisor.active_family,
+            active_results=supervisor.count_results(supervisor.active_family or supervisor.current_family),
+            active_sessions=supervisor.count_sessions(supervisor.active_family or supervisor.current_family),
+            error=str(exc),
+        )
+        return 1
 
 
 if __name__ == "__main__":

@@ -10,4 +10,6 @@ Parameter-isolation primitives (task adapters with freeze/rollover APIs) are imp
 
 Current multimodal support includes proxy audiovisual and `sensor_streaming` datasets. The active perception-side evidence ladder now evaluates canonical typed sensor routing against a merged generic stream, followed by leave-one-out, corruption, noise, and capacity-matched controls. Real benchmark ingestion (for example AudioSet/Ego4D) and additional modality towers remain future-stage work.
 
+Practically, the present contribution is therefore best understood as a blueprint for domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone rather than only late task heads.
+
 **Keywords:** multimodal perception, continual learning, catastrophic forgetting, reservoir sampling, MIME-type routing, parameter isolation

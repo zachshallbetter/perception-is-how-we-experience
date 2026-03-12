@@ -45,6 +45,49 @@ To keep the claims honest:
 
 The strongest current evidence is still replay-centric continual learning. The next most important evidence path is the sensor/MIME canonical-vs-merged ablation now exposed through `scripts/launch_sensor_mime_ablation_titan.sh`, which uses a harder synthetic sensor task with compositional class codes, shared nuisance structure, and a shifted validation regime instead of random labels. The follow-on sequence is also wired: leave-one-out, MIME-binding corruption, single-modality noise robustness, and capacity-matched controls, with a bounded Titan-local supervisor to drive the sequence autonomously.
 
+## Who This Is For
+
+This project is most useful for three groups:
+
+1. **Research engineers**
+   - people studying continual learning, multimodal routing, replay design, or modular perception architectures
+   - use the repository as a code-aligned experimental platform rather than a static reference implementation
+
+2. **Applied ML engineers**
+   - teams building systems around wearables, robotics, ambient sensing, or other heterogeneous sensor inputs
+   - use the architecture and runtime-contract patterns to structure multimodal inputs explicitly and reduce silent interface drift
+
+3. **Platform and product teams**
+   - organizations that need models to keep adapting without full retraining every time new data or new modalities appear
+   - use the findings as design guidance:
+     - keep modality identity explicit
+     - validate modality semantics at the boundary
+     - make replay act on the shared perceptual backbone, not only the classifier head
+
+If you want a general-purpose finished product, this repository is too research-heavy. If you want a disciplined basis for building or evaluating a perception system that learns over time, it is directly useful.
+
+## How To Use The Results
+
+If the current claims continue to hold, the practical use of this repository is not "deploy Sensory Perceiver unchanged." The practical use is to adopt the design rules that the experiments are currently supporting:
+
+1. **Use explicit modality structure**
+   - keep `smartwatch`, `room_env`, `robot_arm`, or domain-equivalent modalities separate at the system boundary
+   - avoid flattening heterogeneous sensors into one generic stream until there is evidence that doing so is harmless
+
+2. **Use canonical runtime contracts**
+   - drive modality setup from a single registry
+   - validate modality identity at the boundary instead of letting implicit assumptions leak into training and inference
+
+3. **Use replay as an update discipline**
+   - when the model must keep learning, make replay act on the shared perceptual backbone
+   - do not treat replay as a late-head patch if retention matters
+
+4. **Treat this repository as a design reference**
+   - use the code and paper as a blueprint for a domain-specific perception system
+   - then replace synthetic `sensor_streaming` with real domain data and re-run the same evidence ladder
+
+The strongest present user-facing takeaway is therefore architectural and operational: how to structure a perception system so it can ingest typed sensory inputs and adapt over time without immediately collapsing old competence.
+
 ## Repository Layout
 
 - `src/models/` — canonical model package (`core.py` + exports)
@@ -65,9 +108,10 @@ If you are orienting yourself to the project, read in this order:
 
 1. `README.md` for project scope and operating model.
 2. `docs/README.md` for the documentation map.
-3. `docs/training-guide.md` for the canonical Titan workflow.
-4. `docs/sensor-mime-experiment-plan.md` for the current perception-side evidence ladder.
-5. `paper/sections/README.md` plus `paper/sections/06-results.md` and `paper/sections/07-discussion.md` for the current paper-aligned claim surface.
+3. `docs/productization-roadmap.md` for the path from research result to usable system.
+4. `docs/training-guide.md` for the canonical Titan workflow.
+5. `docs/sensor-mime-experiment-plan.md` for the current perception-side evidence ladder.
+6. `paper/sections/README.md` plus `paper/sections/06-results.md` and `paper/sections/07-discussion.md` for the current paper-aligned claim surface.
 
 ## Quick Start
 

@@ -260,6 +260,20 @@ This is the most direct experiment for testing whether the typed modality semant
 
 The practical reason for this ladder is straightforward: if typed routing only wins on an easy baseline and collapses under capacity matching or stress, it should not be used as the basis for stronger product or paper claims. The bounded supervisor is therefore part of the evidence discipline, not just an automation convenience.
 
+### Real-data progression path
+
+In parallel with the hardened synthetic ladder, the repository now has an explicit real-data progression path through the same `sensor_streaming` runtime:
+
+- `wisdm`: first working raw-to-canonical preparation path
+- `pamap2`, `opportunity`: prepared-data scaffold exists, parser pending
+- `uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`: candidate queue only
+
+This path is intentionally conservative. Real-data routing experiments are only launched once prepared manifests and canonical `train.pt` / `val.pt` splits exist. A bounded Titan-local real-data supervisor is now available to:
+
+- auto-prepare `wisdm` if raw files are present,
+- launch canonical-vs-merged routing comparisons for prepared datasets,
+- and record blocked or candidate datasets explicitly rather than silently treating them as runnable evidence.
+
 ## 5.4 Evaluation Metrics
 
 Primary continual-learning metrics:
@@ -482,6 +496,8 @@ The next decisive question is no longer "can we tweak BWT a little more with nea
 - if so, does that advantage survive leave-one-out, binding-corruption, and noise stress tests?
 
 This matters because it is the shortest path from architectural argument to measured perception-side evidence. The bounded Titan-local supervisor is useful here not as an optimization oracle, but as a way to execute that evidence ladder in a fixed, interpretable order with explicit stop states.
+
+The same discipline now applies to the real-data path. The repository has begun a staged progression from hardened synthetic evidence toward prepared real datasets, with WISDM as the first executable target. Crucially, the real-data supervisor does not erase implementation boundaries: datasets without prepared canonical splits remain blocked, and broader candidates are tracked as queued rather than reported as if they were already empirical support. This keeps the paper aligned with actual executable evidence instead of with aspirational coverage.
 
 The completed branches already give a meaningful provisional answer. Canonical typed routing is ahead on:
 

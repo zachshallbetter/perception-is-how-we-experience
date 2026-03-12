@@ -312,3 +312,16 @@ python scripts/validate_setup.py --verbose
   - `capacity-confounded`
   - `competitive`
   - `merged-favored`
+- Real-data progression uses the same `sensor_streaming` experiment family, but support is explicitly staged:
+  - `wisdm`: runnable once raw files exist under `data/raw/wisdm`
+  - `pamap2`, `opportunity`: scaffold only
+  - `uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`: candidate queue only
+- Prepare WISDM with:
+  - `python3 scripts/prepare_real_sensor_dataset.py --dataset wisdm --raw-dir data/raw/wisdm`
+- Launch one real-data routing comparison with:
+  - `PYTHON_BIN=/ai/envs/perception/bin/python DATASET=wisdm bash scripts/launch_real_sensor_routing_titan.sh`
+- Run the bounded real-data supervisor with:
+  - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/run_real_sensor_sequence_autonomous.sh real-seq-001`
+- Check the real-data supervisor with:
+  - `bash scripts/real_sensor_sequence_status.sh real-seq-001`
+- The real-data supervisor only launches datasets that are actually prepared. It auto-prepares `wisdm` if raw files are present and reports scaffold-only / candidate datasets explicitly instead of pretending they are runnable.

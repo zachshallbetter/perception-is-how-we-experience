@@ -9,7 +9,8 @@ from unittest.mock import patch
 import torch
 
 from src.data.loaders import SensorStreamingDataset
-from src.data.real_sensor import PreparedRealSensorDataset
+from src.data.real_sensor import PreparedRealSensorDataset, real_sensor_dataset_is_prepared
+from src.data.real_sensor_prepare import prepare_wisdm_dataset
 from src.runtime import (
     AppError,
     ErrorCode,
@@ -389,6 +390,52 @@ class RuntimeContractsTest(unittest.TestCase):
             self.assertEqual(sample["room_env"].shape[-1], 4)
             self.assertEqual(sample["robot_arm"].shape[-1], 9)
             self.assertEqual(merged["sensor_stream"].shape[-1], 20)
+            self.assertTrue(real_sensor_dataset_is_prepared("wisdm", tmpdir))
+
+    def test_prepare_wisdm_dataset_builds_prepared_splits(self):
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            raw_root = root / "raw"
+            for device in ("phone", "watch"):
+                for sensor in ("accel", "gyro"):
+                    (raw_root / device / sensor).mkdir(parents=True, exist_ok=True)
+
+            def write_subject_file(device: str, sensor: str, subject_id: int, offset: float) -> None:
+                path = raw_root / device / sensor / f"data_{device}_{sensor}_{subject_id}.txt"
+                lines = []
+                timestamp = 0
+                for activity_code, activity_offset in (("A", 0.0), ("B", 1.0)):
+                    for step in range(12):
+                        base = offset + activity_offset + step * 0.1
+                        lines.append(
+                            f"{subject_id},{activity_code},{timestamp},{base:.3f},{base + 0.5:.3f},{base + 1.0:.3f};"
+                        )
+                        timestamp += 1
+                path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+            write_subject_file("phone", "accel", 1, 0.1)
+            write_subject_file("phone", "gyro", 1, 0.2)
+            write_subject_file("watch", "accel", 1, 0.3)
+            write_subject_file("watch", "gyro", 1, 0.4)
+            write_subject_file("phone", "accel", 2, 1.1)
+            write_subject_file("phone", "gyro", 2, 1.2)
+            write_subject_file("watch", "accel", 2, 1.3)
+            write_subject_file("watch", "gyro", 2, 1.4)
+            (root / "activity_key.txt").write_text("A=Walking\nB=Jogging\n", encoding="utf-8")
+
+            result = prepare_wisdm_dataset(root, root / "prepared", sequence_length=8)
+            self.assertEqual(result["n_classes"], 2)
+
+            prepared_root = root / "prepared" / "wisdm"
+            self.assertTrue((prepared_root / "manifest.json").exists())
+            self.assertTrue((prepared_root / "train.pt").exists())
+            self.assertTrue((prepared_root / "val.pt").exists())
+
+            dataset = PreparedRealSensorDataset("wisdm", "train", root=root / "prepared")
+            sample = dataset[0]
+            self.assertEqual(tuple(sample["smartwatch"].shape), (8, 7))
+            self.assertEqual(tuple(sample["room_env"].shape), (8, 4))
+            self.assertEqual(tuple(sample["robot_arm"].shape), (8, 9))
 
 
 if __name__ == "__main__":

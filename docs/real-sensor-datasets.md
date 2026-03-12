@@ -1,12 +1,47 @@
 # Real Sensor Dataset Scaffold
 
-This document defines the first real-data ingestion scaffold for:
+This document defines the real-data path for:
 
 - `wisdm`
 - `pamap2`
 - `opportunity`
 
+and the next queued candidate datasets:
+
+- `uci_har`
+- `hhar`
+- `mhealth`
+- `ubiqlog`
+- `selfback`
+- `geomagnetic_wlan`
+
 The goal is to plug real datasets into the existing `sensor_streaming` experiment family without inventing a second runtime or a parallel experiment contract.
+
+Current implementation status:
+
+- `wisdm`: prepared raw-to-canonical parser implemented
+- `pamap2`: scaffold only
+- `opportunity`: scaffold only
+- `uci_har`: candidate only
+- `hhar`: candidate only
+- `mhealth`: candidate only
+- `ubiqlog`: candidate only
+- `selfback`: candidate only
+- `geomagnetic_wlan`: candidate only
+
+## Dataset Matrix
+
+| Dataset | Domain | Current status | Notes |
+| --- | --- | --- | --- |
+| `wisdm` | phone + smartwatch activity sensing | runnable once raw files are present | first working raw-to-canonical real-data path |
+| `pamap2` | body-worn IMU + heart rate | scaffold only | canonical prepared contract exists, parser pending |
+| `opportunity` | wearable + ambient + object sensing | scaffold only | canonical prepared contract exists, parser pending |
+| `uci_har` | smartphone inertial activity sensing | candidate only | likely useful control dataset, but single-device and not yet mapped into the tri-modal contract |
+| `hhar` | heterogeneous phone/watch sensing | candidate only | strong next wearable candidate once WISDM path is stable |
+| `mhealth` | multimodal body sensing | candidate only | good body-sensing follow-on after PAMAP2 |
+| `ubiqlog` | smartphone context logging | candidate only | requires a different event/context projection strategy |
+| `selfback` | activity / coaching sensing | candidate only | parser and canonical projection not implemented |
+| `geomagnetic_wlan` | indoor localization | candidate only | useful localization benchmark, but not yet integrated into the current modality contract |
 
 ## Canonical Direction
 
@@ -51,7 +86,7 @@ Instead, the current contract says:
 
 If a source dataset lacks one of the canonical modalities, that missing-modality strategy must be explicit in the prepared dataset card before the data is used for paper claims.
 
-## Bootstrap Command
+## Bootstrap / Prepare Command
 
 Create the scaffold for one dataset:
 
@@ -61,14 +96,54 @@ python3 scripts/prepare_real_sensor_dataset.py \
   --raw-dir data/raw/wisdm
 ```
 
-Swap `wisdm` for `pamap2` or `opportunity` as needed.
+Behavior:
 
-This command creates:
+- `wisdm`: parses the raw inertial files and writes prepared `train.pt` / `val.pt`
+- `pamap2` and `opportunity`: create scaffold only
+
+To force scaffold-only behavior even for WISDM:
+
+```bash
+python3 scripts/prepare_real_sensor_dataset.py \
+  --dataset wisdm \
+  --raw-dir data/raw/wisdm \
+  --bootstrap-only
+```
+
+The scaffold path creates:
 
 - `data/real-sensor/<dataset>/manifest.json`
 - `data/real-sensor/<dataset>/README.md`
 
-It does **not** parse raw vendor files yet. That is the next implementation step.
+## WISDM Projection Strategy
+
+WISDM does not naturally provide `room_env` or `robot_arm` streams. The current prepared path therefore uses an explicit proxy projection:
+
+- `smartwatch`: watch accelerometer xyz + watch gyroscope xyz + watch accelerometer norm
+- `room_env`: phone accelerometer xyz + phone accelerometer norm
+- `robot_arm`: phone accelerometer xyz + phone gyroscope xyz + cross-device delta features
+
+This is a usable real-data routing benchmark, but it must be described honestly as a proxy projection into the canonical modality contract, not as literal ambient-room or robot-arm semantics.
+
+## Real-Data Autonomous Path
+
+The Titan-local real-data supervisor is:
+
+- `scripts/run_real_sensor_sequence_autonomous.sh`
+- backed by `scripts/real_sensor_ai_supervisor.py`
+
+It is bounded and honest:
+
+1. it only launches datasets that are actually prepared
+2. it will auto-prepare `wisdm` if `data/raw/wisdm` exists
+3. it marks `pamap2` and `opportunity` as blocked until real parsers or prepared splits exist
+4. it records candidate-only datasets as queued, not runnable
+
+Status command:
+
+```bash
+bash scripts/real_sensor_sequence_status.sh <sequence-id>
+```
 
 ## Runtime Integration
 

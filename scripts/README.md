@@ -15,7 +15,7 @@ python scripts/generate_sensor_streaming_data.py \
 **Output**: Multimodal sensor data (smartwatch, environmental, robot arm)
 
 ### `prepare_real_sensor_dataset.py`
-Bootstrap a prepared real-sensor dataset scaffold for:
+Prepare or bootstrap a prepared real-sensor dataset for:
 - `wisdm`
 - `pamap2`
 - `opportunity`
@@ -26,11 +26,63 @@ python3 scripts/prepare_real_sensor_dataset.py \
   --raw-dir data/raw/wisdm
 ```
 
-Creates:
+Behavior:
+- `wisdm`: parses raw phone/watch inertial files and writes prepared canonical `train.pt` / `val.pt`
+- `pamap2`: scaffold only
+- `opportunity`: scaffold only
+
+Prepared outputs:
 - `data/real-sensor/<dataset>/manifest.json`
 - `data/real-sensor/<dataset>/README.md`
+- `data/real-sensor/wisdm/train.pt`
+- `data/real-sensor/wisdm/val.pt`
 
 This is the canonical entrypoint for beginning real-data ingestion without introducing a parallel experiment family.
+
+### `launch_real_sensor_routing_titan.sh`
+Launch a prepared real-data canonical-vs-merged routing comparison.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+DATASET=wisdm \
+bash scripts/launch_real_sensor_routing_titan.sh
+```
+
+This currently assumes the dataset has already been prepared under `data/real-sensor/<dataset>/`.
+
+### `summarize_real_sensor_results.py`
+Aggregate completed real-data routing runs for one dataset/family.
+
+```bash
+python3 scripts/summarize_real_sensor_results.py \
+  --results-root results \
+  --dataset wisdm \
+  --family real-seq-001-wisdm
+```
+
+### `run_real_sensor_sequence_autonomous.sh`
+Run the bounded Titan-local real-data progression supervisor.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+bash scripts/run_real_sensor_sequence_autonomous.sh real-seq-001
+```
+
+### `real_sensor_ai_supervisor.py`
+Real-data supervisor for prepared datasets.
+
+Current policy:
+- auto-prepares `wisdm` if raw files exist
+- runs canonical vs merged once a dataset is prepared
+- marks `pamap2` and `opportunity` as blocked until real parsers or prepared splits exist
+- records the broader candidate queue (`uci_har`, `hhar`, `mhealth`, `ubiqlog`, `selfback`, `geomagnetic_wlan`) without pretending they are runnable
+
+### `real_sensor_sequence_status.sh`
+Print the live/final status of a real-data supervision sequence.
+
+```bash
+bash scripts/real_sensor_sequence_status.sh real-seq-001
+```
 
 ### `download_audioset.py` (user implementation)
 Download and preprocess AudioSet (22K balanced subset).

@@ -19,7 +19,7 @@ This directory is the operator and research bridge between the codebase and the 
 5. `sensor-streaming-mime-cases.md`
    - authoritative sensor modality cases
 6. `real-sensor-datasets.md`
-   - prepared-data scaffold for WISDM, PAMAP2, and OPPORTUNITY
+   - real-data support matrix, prepared-data contract, and autonomous progression rules
 
 ## How To Read These Docs
 

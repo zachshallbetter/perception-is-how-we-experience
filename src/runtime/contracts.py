@@ -2,9 +2,11 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import torch
+
+from src.data.real_sensor import get_real_sensor_dataset_ids, get_real_sensor_n_classes
 
 from .errors import AppError, ErrorCode
 from .mime_cases import (
@@ -19,6 +21,7 @@ EXPERIMENT_DATASETS = {
         "sensor_streaming",
         "sensor_streaming_smoke",
         "sensor_streaming_small",
+        *get_real_sensor_dataset_ids(),
     },
     "multimodal": {"audiovisual"},
 }
@@ -100,7 +103,7 @@ def resolve_device(device_value: str) -> torch.device:
 
 
 def resolve_modality_setup(
-    experiment: str, modality_routing_mode: str = "canonical"
+    experiment: str, dataset: Optional[str] = None, modality_routing_mode: str = "canonical"
 ) -> Tuple[Dict[str, Dict], int]:
     """Resolve modality config and class count for experiment."""
     if modality_routing_mode not in {"canonical", "merged"}:
@@ -122,9 +125,12 @@ def resolve_modality_setup(
             )
         return {"vision": {"input_dim": 3, "use_conv": True}}, 5
     if experiment == SENSOR_STREAMING_EXPERIMENT_ID:
+        n_classes = 5
+        if dataset is not None and dataset not in {"sensor_streaming", "sensor_streaming_smoke", "sensor_streaming_small"}:
+            n_classes = get_real_sensor_n_classes(dataset)
         if modality_routing_mode == "merged":
-            return ({"sensor_stream": {"input_dim": 20, "use_conv": False}}, 5)
-        return (get_sensor_streaming_modality_setup(), 5)
+            return ({"sensor_stream": {"input_dim": 20, "use_conv": False}}, n_classes)
+        return (get_sensor_streaming_modality_setup(), n_classes)
     if experiment == "multimodal":
         if modality_routing_mode != "canonical":
             raise AppError(
@@ -157,7 +163,7 @@ def resolve_training_setup(
 ) -> Tuple[Dict[str, Dict], int, int]:
     """Resolve modality config, class count, and effective task count for training."""
     modality_configs, default_n_classes = resolve_modality_setup(
-        experiment, modality_routing_mode=modality_routing_mode
+        experiment, dataset=dataset, modality_routing_mode=modality_routing_mode
     )
 
     if experiment != "continual":

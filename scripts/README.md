@@ -14,6 +14,24 @@ python scripts/generate_sensor_streaming_data.py \
 
 **Output**: Multimodal sensor data (smartwatch, environmental, robot arm)
 
+### `prepare_real_sensor_dataset.py`
+Bootstrap a prepared real-sensor dataset scaffold for:
+- `wisdm`
+- `pamap2`
+- `opportunity`
+
+```bash
+python3 scripts/prepare_real_sensor_dataset.py \
+  --dataset wisdm \
+  --raw-dir data/raw/wisdm
+```
+
+Creates:
+- `data/real-sensor/<dataset>/manifest.json`
+- `data/real-sensor/<dataset>/README.md`
+
+This is the canonical entrypoint for beginning real-data ingestion without introducing a parallel experiment family.
+
 ### `download_audioset.py` (user implementation)
 Download and preprocess AudioSet (22K balanced subset).
 - Requires: `yt-dlp`, `librosa`

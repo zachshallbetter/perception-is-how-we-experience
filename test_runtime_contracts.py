@@ -1,12 +1,15 @@
 """Unit tests for runtime contract validation."""
 
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import torch
 
 from src.data.loaders import SensorStreamingDataset
+from src.data.real_sensor import PreparedRealSensorDataset
 from src.runtime import (
     AppError,
     ErrorCode,
@@ -193,6 +196,21 @@ class RuntimeContractsTest(unittest.TestCase):
         self.assertEqual(n_classes, 5)
         self.assertEqual(n_tasks, 1)
 
+    def test_validate_experiment_dataset_accepts_real_sensor_dataset(self):
+        validate_experiment_dataset("sensor_streaming", "wisdm")
+
+    @patch("src.runtime.contracts.get_real_sensor_n_classes", return_value=6)
+    def test_resolve_training_setup_real_sensor_dataset_uses_manifest_class_count(self, _mock_n_classes):
+        modality_configs, n_classes, n_tasks = resolve_training_setup(
+            "sensor_streaming",
+            "wisdm",
+            continual_task_count=1,
+            modality_routing_mode="canonical",
+        )
+        self.assertIn("smartwatch", modality_configs)
+        self.assertEqual(n_classes, 6)
+        self.assertEqual(n_tasks, 1)
+
     def test_train_runtime_config_rejects_unknown_sensor_variant(self):
         args = SimpleNamespace(
             experiment="sensor_streaming",
@@ -334,6 +352,43 @@ class RuntimeContractsTest(unittest.TestCase):
         self.assertFalse(torch.allclose(train_ds.data["smartwatch"], val_ds.data["smartwatch"]))
         self.assertFalse(torch.allclose(train_ds.data["room_env"], val_ds.data["room_env"]))
         self.assertFalse(torch.allclose(train_ds.data["robot_arm"], val_ds.data["robot_arm"]))
+
+    def test_prepared_real_sensor_dataset_loads_canonical_split(self):
+        with TemporaryDirectory() as tmpdir:
+            dataset_dir = Path(tmpdir) / "wisdm"
+            dataset_dir.mkdir(parents=True, exist_ok=True)
+            (dataset_dir / "manifest.json").write_text(
+                """{
+  "schema_version": 1,
+  "dataset": "wisdm",
+  "source_name": "WISDM",
+  "description": "test",
+  "sequence_length": 16,
+  "n_classes": 6,
+  "class_names": ["a", "b", "c", "d", "e", "f"],
+  "splits": {"train": "train.pt", "val": "val.pt"}
+}
+""",
+                encoding="utf-8",
+            )
+            payload = {
+                "labels": torch.tensor([0, 1, 2], dtype=torch.long),
+                "smartwatch": torch.randn(3, 16, 7),
+                "room_env": torch.randn(3, 16, 4),
+                "robot_arm": torch.randn(3, 16, 9),
+            }
+            torch.save(payload, dataset_dir / "train.pt")
+            torch.save(payload, dataset_dir / "val.pt")
+
+            dataset = PreparedRealSensorDataset("wisdm", "train", root=tmpdir)
+            merged_dataset = PreparedRealSensorDataset("wisdm", "train", root=tmpdir, merge_modalities=True)
+
+            sample = dataset[0]
+            merged = merged_dataset[0]
+            self.assertEqual(sample["smartwatch"].shape[-1], 7)
+            self.assertEqual(sample["room_env"].shape[-1], 4)
+            self.assertEqual(sample["robot_arm"].shape[-1], 9)
+            self.assertEqual(merged["sensor_stream"].shape[-1], 20)
 
 
 if __name__ == "__main__":

@@ -205,6 +205,11 @@ Distillation replay artifacts:
 - `results/distill_t4_seed*`
 - `results/tuned_er_seed*`
 
+Sensor/MIME ablation artifacts:
+
+- `results/sensor_streaming_canonical_seed*`
+- `results/sensor_streaming_merged_seed*`
+
 ## 6. Result Reporting
 
 Generate a replay-depth markdown report:
@@ -235,3 +240,10 @@ python scripts/validate_setup.py --verbose
 - `src.train` remains valid for service-layer and ablation studies, and now defaults continual datasets to benchmark task counts unless overridden.
 - Paper-primary continual metrics should be generated from `scripts/run_local.py --tuned` and the two baseline scripts above.
 - If GPU memory pressure occurs on Titan X cards, reduce baseline batch size before reducing task count.
+- The canonical perception-side follow-up is `scripts/launch_sensor_mime_ablation_titan.sh`, which compares typed sensor modalities against a merged generic stream on the same `sensor_streaming` benchmark using class-conditioned synthetic sensor patterns and seed-matched evaluation. On 12 GB Titan X cards, keep the launcher at its conservative default `BATCH_SIZE=2` unless you have verified larger batches fit both canonical and merged lanes.
+- The next sensor experiment sequence is:
+  - aggregate canonical vs merged routing results with `python3 scripts/summarize_sensor_routing_results.py`
+  - leave-one-modality-out with `bash scripts/launch_sensor_leave_one_out_titan.sh`
+  - MIME-binding corruption with `bash scripts/launch_sensor_mime_corruption_titan.sh`
+  - single-modality noise robustness with `bash scripts/launch_sensor_noise_robustness_titan.sh`
+  - capacity-matched canonical vs merged control with `bash scripts/launch_sensor_capacity_matched_control_titan.sh`

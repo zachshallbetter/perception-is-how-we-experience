@@ -260,6 +260,12 @@ def run_evaluation(runtime_config: EvalRuntimeConfig) -> EvaluationRunResult:
             batch_size=runtime_config.batch_size,
             num_workers=runtime_config.num_workers,
             seed=runtime_config.seed,
+            modality_routing_mode=checkpoint_config.get(
+                "modality_routing_mode", runtime_config.modality_routing_mode
+            ),
+            sensor_variant=checkpoint_config.get(
+                "sensor_variant", runtime_config.sensor_variant
+            ),
         )
 
         evaluator = Evaluator(

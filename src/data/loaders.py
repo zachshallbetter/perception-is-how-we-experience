@@ -10,8 +10,6 @@ Supports:
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
-import torchvision.transforms as transforms
-from torchvision.datasets import CIFAR100, MNIST
 import numpy as np
 from pathlib import Path
 from typing import Dict, Tuple, List, Optional
@@ -42,6 +40,9 @@ class SplitCIFAR100(MultimodalDataset):
     """
 
     def __init__(self, n_tasks: int = 20, task_id: int = 0, split: str = "train"):
+        import torchvision.transforms as transforms
+        from torchvision.datasets import CIFAR100
+
         super().__init__(["vision"], split=split)
         self.n_tasks = n_tasks
         self.task_id = task_id
@@ -80,6 +81,9 @@ class PermutedMNIST(MultimodalDataset):
     """Continual learning: MNIST with random pixel permutations per task."""
 
     def __init__(self, n_tasks: int = 20, task_id: int = 0, split: str = "train"):
+        from torchvision.datasets import MNIST
+        import torchvision.transforms as transforms
+
         super().__init__(["vision"], split=split)
         self.n_tasks = n_tasks
         self.task_id = task_id
@@ -169,6 +173,8 @@ class SensorStreamingDataset(Dataset):
         sequence_length: int = 500,
         n_classes: int = 5,  # activity types
         seed: int = 42,
+        merge_modalities: bool = False,
+        sensor_variant: str = "baseline",
     ):
         super().__init__()
         np.random.seed(seed)
@@ -177,44 +183,147 @@ class SensorStreamingDataset(Dataset):
         self.n_sequences = n_sequences
         self.sequence_length = sequence_length
         self.n_classes = n_classes
+        self.merge_modalities = merge_modalities
+        self.sensor_variant = sensor_variant
 
-        # Generate benchmark input data
-        self.data = {
-            "smartwatch": torch.randn(
-                n_sequences, sequence_length, 7
-            ),  # HR + acc(3) + GSR(1) + dummy(2)
-            "room_env": torch.randn(
-                n_sequences, sequence_length, 4
-            ),  # temp, humidity, CO2, light
-            "robot_arm": torch.randn(
-                n_sequences, sequence_length, 9
-            ),  # 6 joints + 3 F/T
-        }
-
-        # Normalize to reasonable ranges
-        self.data["smartwatch"][:, :, 0] = (
-            self.data["smartwatch"][:, :, 0] * 30 + 70
-        )  # HR: 70±30
-        self.data["room_env"][:, :, 0] = (
-            self.data["room_env"][:, :, 0] * 5 + 22
-        )  # Temp: 22±5°C
-        self.data["room_env"][:, :, 1] = (
-            torch.sigmoid(self.data["room_env"][:, :, 1]) * 100
-        )  # Humidity: 0-100%
-
-        # Labels: activity classification
         self.labels = torch.randint(0, n_classes, (n_sequences,))
+        self.data = self._build_class_conditioned_streams()
+        self._apply_sensor_variant()
 
     def __len__(self):
         return self.n_sequences
 
+    def _build_class_conditioned_streams(self) -> Dict[str, torch.Tensor]:
+        smartwatch = torch.empty(self.n_sequences, self.sequence_length, 7)
+        room_env = torch.empty(self.n_sequences, self.sequence_length, 4)
+        robot_arm = torch.empty(self.n_sequences, self.sequence_length, 9)
+
+        t = torch.linspace(0.0, 1.0, self.sequence_length, dtype=torch.float32)
+        for index in range(self.n_sequences):
+            label = int(self.labels[index].item())
+
+            smartwatch[index] = self._make_smartwatch_stream(
+                t, *self._class_dynamics(self._binding_label(label, "smartwatch"))
+            )
+            room_env[index] = self._make_room_env_stream(
+                t, *self._class_dynamics(self._binding_label(label, "room_env"))
+            )
+            robot_arm[index] = self._make_robot_arm_stream(
+                t, *self._class_dynamics(self._binding_label(label, "robot_arm"))
+            )
+
+        return {
+            "smartwatch": smartwatch,
+            "room_env": room_env,
+            "robot_arm": robot_arm,
+        }
+
+    def _class_dynamics(self, label: int) -> Tuple[float, float, float]:
+        phase = 0.35 * label
+        freq = float(label + 1)
+        swing = 1.0 + 0.15 * label
+        return freq, phase, swing
+
+    def _binding_label(self, label: int, modality: str) -> int:
+        if self.sensor_variant != "corrupt_bindings":
+            return label
+        offsets = {"smartwatch": 1, "room_env": 2, "robot_arm": 3}
+        return int((label + offsets[modality]) % self.n_classes)
+
+    def _apply_sensor_variant(self) -> None:
+        if self.sensor_variant.startswith("drop_"):
+            dropped_modality = self.sensor_variant.replace("drop_", "", 1)
+            self.data[dropped_modality].zero_()
+            return
+
+        if self.sensor_variant.startswith("noise_"):
+            target = self.sensor_variant.replace("noise_", "", 1)
+            self.data[target] = self._inject_noise_and_drift(target, self.data[target])
+
+    def _inject_noise_and_drift(
+        self, modality: str, tensor: torch.Tensor
+    ) -> torch.Tensor:
+        drift_scale = {"smartwatch": 0.45, "room_env": 2.5, "robot_arm": 0.3}[modality]
+        noise_scale = {"smartwatch": 0.18, "room_env": 0.35, "robot_arm": 0.14}[modality]
+        drift = torch.linspace(0.0, 1.0, self.sequence_length).view(1, self.sequence_length, 1)
+        direction = torch.randn(1, 1, tensor.shape[-1])
+        return tensor + noise_scale * torch.randn_like(tensor) + drift_scale * drift * direction
+
+    def _make_smartwatch_stream(
+        self, t: torch.Tensor, freq: float, phase: float, swing: float
+    ) -> torch.Tensor:
+        noise = 0.02 * torch.randn(self.sequence_length, 7)
+        waveform = 2.0 * np.pi * freq * t + phase
+        stream = torch.stack(
+            [
+                68.0 + 7.0 * swing + 8.0 * torch.sin(waveform),
+                0.6 * swing * torch.sin(waveform),
+                0.4 * swing * torch.cos(waveform * 0.8),
+                0.3 * swing * torch.sin(waveform * 1.3 + 0.4),
+                0.35 + 0.08 * swing + 0.05 * torch.cos(waveform * 0.5),
+                0.2 * label_band(freq) + 0.1 * torch.sin(waveform * 0.25),
+                0.15 * label_band(freq + phase) + 0.1 * torch.cos(waveform * 0.35),
+            ],
+            dim=1,
+        )
+        return stream + noise
+
+    def _make_room_env_stream(
+        self, t: torch.Tensor, freq: float, phase: float, swing: float
+    ) -> torch.Tensor:
+        noise = 0.015 * torch.randn(self.sequence_length, 4)
+        waveform = 2.0 * np.pi * freq * t + phase
+        stream = torch.stack(
+            [
+                20.0 + 0.9 * swing + 1.8 * torch.sin(waveform * 0.2),
+                45.0 + 5.0 * swing + 6.5 * torch.cos(waveform * 0.17),
+                430.0 + 55.0 * swing + 35.0 * torch.sin(waveform * 0.12 + 0.3),
+                220.0 + 28.0 * swing + 42.0 * torch.relu(torch.sin(waveform * 0.4)),
+            ],
+            dim=1,
+        )
+        return stream + noise
+
+    def _make_robot_arm_stream(
+        self, t: torch.Tensor, freq: float, phase: float, swing: float
+    ) -> torch.Tensor:
+        noise = 0.02 * torch.randn(self.sequence_length, 9)
+        waveform = 2.0 * np.pi * freq * t + phase
+        joints = []
+        for joint in range(6):
+            joints.append(
+                0.2 * joint
+                + 0.4 * swing * torch.sin(waveform * (0.45 + 0.04 * joint) + joint * 0.3)
+            )
+        forces = [
+            0.8 * swing * torch.cos(waveform * 0.7),
+            0.6 * swing * torch.sin(waveform * 0.9 + 0.2),
+            0.5 * swing * torch.cos(waveform * 1.1 + 0.4),
+        ]
+        stream = torch.stack(joints + forces, dim=1)
+        return stream + noise
+
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        if self.merge_modalities:
+            merged = torch.cat(
+                [
+                    self.data["smartwatch"][idx],
+                    self.data["room_env"][idx],
+                    self.data["robot_arm"][idx],
+                ],
+                dim=-1,
+            )
+            return {"sensor_stream": merged, "label": self.labels[idx]}
         return {
             "smartwatch": self.data["smartwatch"][idx],
             "room_env": self.data["room_env"][idx],
             "robot_arm": self.data["robot_arm"][idx],
             "label": self.labels[idx],
         }
+
+
+def label_band(value: float) -> float:
+    return float(np.tanh(value / 3.0))
 
 
 def create_dataloaders(
@@ -225,6 +334,8 @@ def create_dataloaders(
     seed: int = 42,
     task_id: int = 0,
     n_tasks: int = 20,
+    modality_routing_mode: str = "canonical",
+    sensor_variant: str = "baseline",
 ) -> Tuple[DataLoader, DataLoader]:
     """Factory function to create train/val dataloaders.
 
@@ -270,12 +381,16 @@ def create_dataloaders(
             sequence_length=sequence_length,
             n_classes=5,
             seed=seed,
+            merge_modalities=(modality_routing_mode == "merged"),
+            sensor_variant=sensor_variant,
         )
         val_ds = SensorStreamingDataset(
             n_sequences=max(20, n_sequences // 4),
             sequence_length=sequence_length,
             n_classes=5,
             seed=seed + 1,
+            merge_modalities=(modality_routing_mode == "merged"),
+            sensor_variant=sensor_variant,
         )
 
     elif experiment == "multimodal":

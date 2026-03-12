@@ -238,6 +238,18 @@ Primary reproducibility controls:
 - `sensor_streaming` generated dataset (`experiment=sensor_streaming`, `dataset=sensor_streaming`)
 - Audio-visual proxy dataset (`experiment=multimodal`, `dataset=audiovisual`)
 
+### Immediate next perception-side benchmark
+- `sensor_streaming` canonical-vs-merged routing ablation
+  - `canonical`: typed sensor modalities (`smartwatch`, `room_env`, `robot_arm`) derived from the MIME registry
+  - `merged`: a single generic 20-feature sensor stream without typed modality separation
+- follow-on sensor stress tests:
+  - leave-one-modality-out (`drop_smartwatch`, `drop_room_env`, `drop_robot_arm`)
+  - MIME-binding corruption (`corrupt_bindings`)
+  - single-modality noise robustness (`noise_smartwatch`, `noise_room_env`, `noise_robot_arm`)
+  - capacity-matched canonical-vs-merged control
+
+This is the most direct experiment for testing whether the typed modality semantics materially matter beyond runtime correctness.
+
 ## 5.4 Evaluation Metrics
 
 Primary continual-learning metrics:
@@ -269,6 +281,8 @@ Generated paper assets for this section are packaged under `paper/figures/genera
 - `figure_phase_progression.png`
 - `figure_tuned_core_multiseed.png`
 - `figure_bwt_sweep_ranked.png`
+- `captions.md`
+- `latex_results_package.tex`
 - `package_manifest.json`
 
 ## 6.1 Phase 1: Feature-Only Replay (Failure Mode)
@@ -300,18 +314,21 @@ Interpretation:
 
 ## 6.3 Current Tuned-Core Continual Result
 
-We next evaluate the current paper-primary continual-learning path on Titan Node using `scripts/run_local.py --tuned` over 3 seeds.
+We next evaluate the current paper-primary continual-learning path on Titan Node using `scripts/run_local.py --tuned` over 6 seeds.
 
 Observed multiseed result:
-- CIL mean: **23.64%**
-- BWT mean: **−30.95%**
+- CIL mean: **23.96%**
+- BWT mean: **−30.39%**
 - FWT mean: **0.00%**
-- Task 0 retention mean: **23.0%**
+- Task 0 retention mean: **25.1%**
 
 Per-seed values:
-- seed 42: CIL **24.15%**, BWT **−29.40%**
-- seed 43: CIL **23.54%**, BWT **−30.74%**
-- seed 44: CIL **23.24%**, BWT **−32.71%**
+- seed 47: CIL **23.60%**, BWT **−29.44%**
+- seed 48: CIL **22.98%**, BWT **−32.39%**
+- seed 49: CIL **23.95%**, BWT **−30.54%**
+- seed 50: CIL **24.16%**, BWT **−31.15%**
+- seed 51: CIL **24.32%**, BWT **−30.31%**
+- seed 52: CIL **24.74%**, BWT **−28.49%**
 
 Interpretation:
 - The tuned-core path materially improves on the earlier raw-input replay phase result.
@@ -330,7 +347,7 @@ Completed exploratory runs include:
 - weaker replay ER baseline: CIL **21.17%**, BWT **−40.84%**
 
 Interpretation:
-- These exploratory settings do not yet surpass the tuned-core mean BWT (**−30.95%**).
+- These exploratory settings do not yet surpass the tuned-core mean BWT (**−30.39%**).
 - The current evidence therefore favors replay-path design and tuned core configuration over naive strengthening of EWC, SI, or buffer size.
 - This sweep is useful negative evidence: not every additional regularizer improves forgetting in the present architecture/runtime regime.
 
@@ -340,7 +357,7 @@ Interpretation:
 |---|---|---:|---:|---:|
 | 1 | Feature-only replay | 4.86% | −53.80% | 0.6% |
 | 2 | Raw-input + reservoir sampling | 19.54% | −34.91% | 33.0% |
-| 3 | Tuned core continual path (3-seed mean) | 23.64% | −30.95% | 23.0% |
+| 3 | Tuned core continual path (6-seed mean) | 23.96% | −30.39% | 25.1% |
 
 ## 6.6 Implementation-Alignment Notes
 
@@ -414,6 +431,7 @@ This second point is important. The paper should not imply that adding regulariz
 2. Run multiseed evaluation and confidence intervals for the tuned-core continual benchmark.
 3. Benchmark sequential adapter rollover against the tuned-core result, not just against older phase baselines.
 4. Add real multimodal ingestion/evaluation paths and report them separately from proxy datasets.
+5. Prioritize the `sensor_streaming` canonical-vs-merged routing ablation, because it is the fastest experiment that can either justify or sharply narrow the broader perception/MIME claim.
 # Conclusion
 
 This work establishes a code-aligned continual-learning result progression for Sensory Perceiver:

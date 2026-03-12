@@ -6,7 +6,7 @@ This package is generated from validated Split-CIFAR-100 results used by the can
 
 - Phase 1 uses the canonical legacy metrics from `paper/sections/06-results.md` because the original feature-only run directory is not currently tracked as a local results artifact.
 - Phase 2 uses `results/cl_baseline_reservoir_sampling/results.json`.
-- Phase 3 uses the 3 tuned-core Titan runs under `results/paper_runlocal_tuned_20t_seed*_20260310_091001_recover/`.
+- Phase 3 uses the discovered tuned-core family `20260311_140818` with 6 synchronized Titan runs.
 - The BWT sweep uses the completed `results/bwt_*/results.json` runs synchronized from Titan.
 
 ## Included artifacts

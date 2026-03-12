@@ -28,6 +28,17 @@ DEFAULT_CONTINUAL_TASKS = {
     "permuted_mnist": 20,
 }
 
+SENSOR_STREAMING_VARIANTS = {
+    "baseline",
+    "drop_smartwatch",
+    "drop_room_env",
+    "drop_robot_arm",
+    "corrupt_bindings",
+    "noise_smartwatch",
+    "noise_room_env",
+    "noise_robot_arm",
+}
+
 
 def validate_experiment_dataset(experiment: str, dataset: str) -> None:
     """Validate experiment and dataset combination."""
@@ -88,13 +99,42 @@ def resolve_device(device_value: str) -> torch.device:
     return device
 
 
-def resolve_modality_setup(experiment: str) -> Tuple[Dict[str, Dict], int]:
+def resolve_modality_setup(
+    experiment: str, modality_routing_mode: str = "canonical"
+) -> Tuple[Dict[str, Dict], int]:
     """Resolve modality config and class count for experiment."""
+    if modality_routing_mode not in {"canonical", "merged"}:
+        raise AppError(
+            ErrorCode.INVALID_ARGUMENT,
+            "modality_routing_mode must be 'canonical' or 'merged'",
+            context={"modality_routing_mode": modality_routing_mode},
+        )
+
     if experiment == "continual":
+        if modality_routing_mode != "canonical":
+            raise AppError(
+                ErrorCode.INVALID_ARGUMENT,
+                "modality_routing_mode=merged is only valid for sensor_streaming",
+                context={
+                    "experiment": experiment,
+                    "modality_routing_mode": modality_routing_mode,
+                },
+            )
         return {"vision": {"input_dim": 3, "use_conv": True}}, 5
     if experiment == SENSOR_STREAMING_EXPERIMENT_ID:
+        if modality_routing_mode == "merged":
+            return ({"sensor_stream": {"input_dim": 20, "use_conv": False}}, 5)
         return (get_sensor_streaming_modality_setup(), 5)
     if experiment == "multimodal":
+        if modality_routing_mode != "canonical":
+            raise AppError(
+                ErrorCode.INVALID_ARGUMENT,
+                "modality_routing_mode=merged is only valid for sensor_streaming",
+                context={
+                    "experiment": experiment,
+                    "modality_routing_mode": modality_routing_mode,
+                },
+            )
         return (
             {
                 "vision": {"input_dim": 3, "use_conv": True},
@@ -113,9 +153,12 @@ def resolve_training_setup(
     experiment: str,
     dataset: str,
     continual_task_count: int,
+    modality_routing_mode: str = "canonical",
 ) -> Tuple[Dict[str, Dict], int, int]:
     """Resolve modality config, class count, and effective task count for training."""
-    modality_configs, default_n_classes = resolve_modality_setup(experiment)
+    modality_configs, default_n_classes = resolve_modality_setup(
+        experiment, modality_routing_mode=modality_routing_mode
+    )
 
     if experiment != "continual":
         return modality_configs, default_n_classes, 1
@@ -167,6 +210,18 @@ def _validate_unit_interval(value: float, name: str) -> None:
         )
 
 
+def validate_sensor_variant(sensor_variant: str) -> None:
+    if sensor_variant not in SENSOR_STREAMING_VARIANTS:
+        raise AppError(
+            ErrorCode.INVALID_ARGUMENT,
+            f"Unknown sensor_variant: {sensor_variant}",
+            context={
+                "sensor_variant": sensor_variant,
+                "allowed_variants": sorted(SENSOR_STREAMING_VARIANTS),
+            },
+        )
+
+
 @dataclass(frozen=True)
 class TrainRuntimeConfig:
     experiment: str
@@ -190,6 +245,8 @@ class TrainRuntimeConfig:
     output_dir: Path
     adapter_rollover: bool = False
     continual_task_count: int = 1
+    modality_routing_mode: str = "canonical"
+    sensor_variant: str = "baseline"
 
     @classmethod
     def from_namespace(cls, args) -> "TrainRuntimeConfig":
@@ -223,6 +280,7 @@ class TrainRuntimeConfig:
         _validate_positive(
             getattr(args, "continual_task_count", 1), "continual_task_count"
         )
+        validate_sensor_variant(getattr(args, "sensor_variant", "baseline"))
 
         return cls(
             experiment=args.experiment,
@@ -246,6 +304,10 @@ class TrainRuntimeConfig:
             output_dir=Path(args.output_dir),
             adapter_rollover=bool(getattr(args, "adapter_rollover", False)),
             continual_task_count=int(getattr(args, "continual_task_count", 1)),
+            modality_routing_mode=str(
+                getattr(args, "modality_routing_mode", "canonical")
+            ),
+            sensor_variant=str(getattr(args, "sensor_variant", "baseline")),
         )
 
 
@@ -259,6 +321,8 @@ class EvalRuntimeConfig:
     device: torch.device
     output_file: Path
     seed: int
+    modality_routing_mode: str = "canonical"
+    sensor_variant: str = "baseline"
 
     @classmethod
     def from_namespace(cls, args) -> "EvalRuntimeConfig":
@@ -266,6 +330,7 @@ class EvalRuntimeConfig:
         _validate_positive(args.batch_size, "batch_size")
         _validate_non_negative(args.num_workers, "num_workers")
         _validate_non_negative(args.seed, "seed")
+        validate_sensor_variant(getattr(args, "sensor_variant", "baseline"))
 
         checkpoint = Path(args.checkpoint)
         if not checkpoint.exists():
@@ -284,6 +349,10 @@ class EvalRuntimeConfig:
             device=resolve_device(args.device),
             output_file=Path(args.output_file),
             seed=args.seed,
+            modality_routing_mode=str(
+                getattr(args, "modality_routing_mode", "canonical")
+            ),
+            sensor_variant=str(getattr(args, "sensor_variant", "baseline")),
         )
 
 

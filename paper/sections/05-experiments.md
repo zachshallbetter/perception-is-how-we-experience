@@ -31,6 +31,18 @@ Primary reproducibility controls:
 - `sensor_streaming` generated dataset (`experiment=sensor_streaming`, `dataset=sensor_streaming`)
 - Audio-visual proxy dataset (`experiment=multimodal`, `dataset=audiovisual`)
 
+### Immediate next perception-side benchmark
+- `sensor_streaming` canonical-vs-merged routing ablation
+  - `canonical`: typed sensor modalities (`smartwatch`, `room_env`, `robot_arm`) derived from the MIME registry
+  - `merged`: a single generic 20-feature sensor stream without typed modality separation
+- follow-on sensor stress tests:
+  - leave-one-modality-out (`drop_smartwatch`, `drop_room_env`, `drop_robot_arm`)
+  - MIME-binding corruption (`corrupt_bindings`)
+  - single-modality noise robustness (`noise_smartwatch`, `noise_room_env`, `noise_robot_arm`)
+  - capacity-matched canonical-vs-merged control
+
+This is the most direct experiment for testing whether the typed modality semantics materially matter beyond runtime correctness.
+
 ## 5.4 Evaluation Metrics
 
 Primary continual-learning metrics:

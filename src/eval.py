@@ -23,6 +23,29 @@ def build_parser() -> ArgumentParser:
         choices=["multimodal", "continual", "sensor_streaming"],
     )
     parser.add_argument("--dataset", type=str, default="split_cifar")
+    parser.add_argument(
+        "--modality_routing_mode",
+        type=str,
+        default="canonical",
+        choices=["canonical", "merged"],
+        help="Sensor-streaming routing mode: canonical typed modalities or one merged generic stream.",
+    )
+    parser.add_argument(
+        "--sensor_variant",
+        type=str,
+        default="baseline",
+        choices=[
+            "baseline",
+            "drop_smartwatch",
+            "drop_room_env",
+            "drop_robot_arm",
+            "corrupt_bindings",
+            "noise_smartwatch",
+            "noise_room_env",
+            "noise_robot_arm",
+        ],
+        help="Sensor-streaming ablation variant.",
+    )
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument(

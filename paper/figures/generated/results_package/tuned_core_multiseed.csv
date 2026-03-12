@@ -1,4 +1,7 @@
 run,seed,source_path,CIL,BWT,FWT,task0_retention
-paper_runlocal_tuned_20t_seed42_20260310_091001_recover,42,results/paper_runlocal_tuned_20t_seed42_20260310_091001_recover/results.json,24.15,-29.400000000000002,0.0,23.4
-paper_runlocal_tuned_20t_seed43_20260310_091001_recover,43,results/paper_runlocal_tuned_20t_seed43_20260310_091001_recover/results.json,23.540000000000003,-30.736842105263165,0.0,20.0
-paper_runlocal_tuned_20t_seed44_20260310_091001_recover,44,results/paper_runlocal_tuned_20t_seed44_20260310_091001_recover/results.json,23.240000000000002,-32.70526315789473,0.0,25.6
+paper_runlocal_tuned_20t_seed47_20260311_140818,47,results/paper_runlocal_tuned_20t_seed47_20260311_140818/results.json,23.599999999999998,-29.442105263157895,0.0,23.2
+paper_runlocal_tuned_20t_seed48_20260311_140818,48,results/paper_runlocal_tuned_20t_seed48_20260311_140818/results.json,22.98,-32.38947368421053,0.0,23.0
+paper_runlocal_tuned_20t_seed49_20260311_140818,49,results/paper_runlocal_tuned_20t_seed49_20260311_140818/results.json,23.95,-30.536842105263155,0.0,28.6
+paper_runlocal_tuned_20t_seed50_20260311_140818,50,results/paper_runlocal_tuned_20t_seed50_20260311_140818/results.json,24.16,-31.147368421052636,0.0,32.0
+paper_runlocal_tuned_20t_seed51_20260311_140818,51,results/paper_runlocal_tuned_20t_seed51_20260311_140818/results.json,24.32,-30.305263157894736,0.0,20.6
+paper_runlocal_tuned_20t_seed52_20260311_140818,52,results/paper_runlocal_tuned_20t_seed52_20260311_140818/results.json,24.740000000000002,-28.49473684210527,0.0,23.0

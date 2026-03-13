@@ -147,21 +147,28 @@ Overall supervisor state for this ladder was **`canonical-dominant`**. This shou
 The real-data lane is now packaged with an explicit bootstrap-versus-canonical split so the paper does not overread early runs:
 
 - **Bootstrap audio evidence**: `real-audio-seq-001` on `speech_commands`
-- **Canonical audio candidate**: `real-audio-seq-002` on `speech_commands`, `esc50`, `urbansound8k`, and `fsd50k`
+- **Canonical audio evidence**: `real-audio-seq-003` on `speech_commands`, `esc50`, `urbansound8k`, and `fsd50k`
 - **Bootstrap sensor evidence**: `real-seq-004` on `wisdm`
-- **Canonical sensor candidate**: `real-sensor-seq-001` on the integrated real-sensor lineup including `realworld_har`
+- **Canonical sensor candidate**: `real-sensor-seq-002` on the integrated real-sensor lineup including `realworld_har`
 
 Completed bootstrap real-data results are:
 
 - `real-audio-seq-001` (`speech_commands`): mean accuracy **88.32%**
 - `real-seq-004` (`wisdm`): canonical-minus-merged routing gap **+4.19 pp**
 
+Completed canonical integrated audio results are:
+
+- `real-audio-seq-003` (`speech_commands`): mean accuracy **88.32%**
+- `real-audio-seq-003` (`esc50`): mean accuracy **41.83%**
+- `real-audio-seq-003` (`urbansound8k`): mean accuracy **60.57%**
+- `real-audio-seq-003` (`fsd50k`): mean accuracy **9.74%**
+
 Interpretation:
 
 - These bootstrap runs establish that the first real audio and real sensor paths work end to end on Titan.
-- They are useful evidence, but they are not the canonical integrated comparison set for the next paper update.
-- `real-audio-seq-002` is now **completed but not promotable**. It finished the `speech_commands` family, but the same sequence report recorded `esc50` and `urbansound8k` as blocked because Titan did not yet have those raw datasets at launch time.
-- `real-sensor-seq-001` is now **failed rather than merely pending**. The current report shows the sequence reused `wisdm`, launched `pamap2`, and then stopped with `0/6` expected `eval_results.json` artifacts for the `pamap2` family.
+- `real-audio-seq-003` is now the first **promotable canonical integrated audio sequence**. It completed all expected audio families (`speech_commands`, `esc50`, `urbansound8k`, `fsd50k`) with no blocked datasets.
+- `real-audio-seq-002` is retained only as a historical bounded attempt. It completed with blocked datasets and must not be treated as canonical evidence.
+- `real-sensor-seq-002` is now the active **canonical integrated sensor candidate**. It has started cleanly and remains pending until its bounded sequence report is completed without blocked datasets or missing artifacts.
 - The canonical real-data evidence package is promoted only from bounded integrated sequences once they complete with all expected datasets present and no blocked entries.
 
 Operationally, the generated package under `paper/figures/generated/results_package/real_data/` is the source of truth for current real-data status. It separates:

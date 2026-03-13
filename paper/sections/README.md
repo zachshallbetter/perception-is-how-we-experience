@@ -23,7 +23,17 @@ Authoritative files for current paper claims:
 9. `08-conclusion.md`
 10. `10-concept-implementation-audit.md`
 
-`09-examples.md` is non-empirical and illustrative only.
+`09-examples.md` is a non-canonical archive file. It is illustrative only and must not be cited as current evidence.
+
+## Claim Labels
+
+- **Implemented**: present in the current code path
+- **Evidenced**: backed by packaged results or completed reports
+- **Conceptual**: architecture pattern not yet promoted into the canonical paper
+- **Patent candidate**: novelty-oriented idea tracked in [paper/patents](/Users/zachshallbetter/Projects/Perception/paper/patents)
+- **Blocked / open problem**: not runnable or not defined enough
+
+Additional future-use design material lives under [reference/future-concepts/README.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/README.md) and must not be treated as canonical evidence.
 
 ## Recommended Reading Paths
 

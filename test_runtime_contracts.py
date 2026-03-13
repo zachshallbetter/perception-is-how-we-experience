@@ -20,7 +20,10 @@ from src.data.real_sensor import (
     real_sensor_dataset_is_prepared,
 )
 from src.data.real_audio_prepare import prepare_speech_commands_dataset
-from src.data.real_sensor_prepare import prepare_wisdm_dataset
+from src.data.real_sensor_prepare import (
+    prepare_opportunity_dataset,
+    prepare_wisdm_dataset,
+)
 from src.runtime import (
     AppError,
     ErrorCode,
@@ -649,6 +652,34 @@ class RuntimeContractsTest(unittest.TestCase):
             self.assertEqual(tuple(sample["smartwatch"].shape), (8, 7))
             self.assertEqual(tuple(sample["room_env"].shape), (8, 4))
             self.assertEqual(tuple(sample["robot_arm"].shape), (8, 9))
+
+    def test_prepare_opportunity_dataset_resolves_nested_dataset_layout(self):
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            dataset_dir = root / "OpportunityUCIDataset" / "dataset"
+            dataset_dir.mkdir(parents=True, exist_ok=True)
+            rows = []
+            for _ in range(300):
+                row = [0.0] * 244
+                row[16:19] = [1.0, 2.0, 3.0]
+                row[22:25] = [4.0, 5.0, 6.0]
+                row[25:28] = [7.0, 8.0, 9.0]
+                row[31:34] = [0.5, 0.6, 0.7]
+                row[34:37] = [1.5, 1.6, 1.7]
+                row[243] = 1.0
+                rows.append(" ".join(str(value) for value in row))
+            text = "\n".join(rows) + "\n"
+            (dataset_dir / "S1-ADL1.dat").write_text(text, encoding="utf-8")
+            (dataset_dir / "S1-ADL2.dat").write_text(text, encoding="utf-8")
+
+            result = prepare_opportunity_dataset(root, root / "prepared", sequence_length=32)
+
+            self.assertEqual(result["dataset"], "opportunity")
+            prepared_dir = root / "prepared" / "opportunity"
+            self.assertTrue((prepared_dir / "train.pt").exists())
+            manifest = PreparedRealSensorDataset("opportunity", "train", root=root / "prepared")
+            sample = manifest[0]
+            self.assertEqual(tuple(sample["smartwatch"].shape), (32, 7))
 
     def test_prepared_real_audio_dataset_loads_canonical_split(self):
         with TemporaryDirectory() as tmpdir:

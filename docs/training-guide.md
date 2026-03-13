@@ -215,6 +215,32 @@ The autonomy report now updates while the ladder is running, not only at the end
 - artifact progress for that branch
 - final failure state and error message if the supervisor stops early
 
+## 4.1 Promotion Workflow For Paper Updates
+
+Titan sequences do **not** automatically promote themselves into the canonical paper.
+
+A future result changes the paper only when all of the following are true:
+
+1. the bounded sequence report status is `completed`
+2. no blocked entries remain in the sequence report
+3. all expected result artifacts exist for the planned dataset family
+4. the canonical packaging step succeeds without manual patching:
+
+```bash
+bash scripts/sync_titan_real_results.sh
+python3 paper/figures/build_results_package.py
+```
+
+Until those conditions are met:
+
+- update only sequence status and summary artifacts
+- keep the canonical paper text unchanged
+- move broader interpretation, new domain ideas, and architecture extrapolations into:
+  - [reference/future-concepts/README.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/README.md)
+  - [paper/patents/README.md](/Users/zachshallbetter/Projects/Perception/paper/patents/README.md)
+
+This is the required guardrail for `real-audio-seq-*`, `real-sensor-seq-*`, and any future bounded chain.
+
 Low-level commands remain useful during debugging:
 
 ```bash
@@ -363,20 +389,20 @@ python scripts/validate_setup.py --verbose
 - Run the bounded real-audio supervisor with:
   - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/run_real_audio_sequence_autonomous.sh real-audio-seq-001`
 - To continue automatically into the next bounded real-audio sequence after one finishes:
-  - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/chain_real_audio_sequence.sh real-audio-seq-001 real-audio-seq-002`
+  - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/chain_real_audio_sequence.sh real-audio-seq-001 real-audio-seq-003`
 - To hand off from the expanded audio sequence into the real-sensor lineup automatically:
-  - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/chain_audio_to_sensor_sequence.sh real-audio-seq-002 real-sensor-seq-001`
+  - `PYTHON_BIN=/ai/envs/perception/bin/python bash scripts/chain_audio_to_sensor_sequence.sh real-audio-seq-003 real-sensor-seq-002`
 - Check the real-audio supervisor with:
   - `bash scripts/real_audio_sequence_status.sh real-audio-seq-001`
 - To sync Titan-generated real-data evidence back into the local package workflow:
   - `bash scripts/sync_titan_real_results.sh`
 - Treat `real-audio-seq-001` as bootstrap `speech_commands` evidence.
-- Treat `real-audio-seq-002` as the canonical integrated audio **candidate** sequence because it is the first bounded run intended to cover:
+- Treat `real-audio-seq-003` as the canonical integrated audio sequence because it completed the bounded run across:
   - `speech_commands`
   - `esc50`
   - `urbansound8k`
   - `fsd50k`
-- Promote it only if the sequence completes with all expected datasets present and no blocked entries.
+- It is promotable because the sequence completed with all expected datasets present and no blocked entries.
 - Treat `real-seq-004` as bootstrap WISDM evidence.
-- Treat `real-sensor-seq-001` as the canonical integrated real-sensor **candidate** sequence, including `realworld_har`.
+- Treat `real-sensor-seq-002` as the canonical integrated real-sensor **candidate** sequence, including `realworld_har`.
 - If a sequence ends `completed` with blocked datasets or `failed` with missing eval artifacts, keep it out of the canonical paper package.

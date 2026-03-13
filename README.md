@@ -21,7 +21,7 @@ In this repository, that broader idea appears in two coupled layers:
 1. **Perception architecture**
    - modality-specific towers plus shared cross-modal attention in [core.py](/Users/zachshallbetter/Projects/Perception/src/models/core.py)
    - canonical MIME-style modality registry for `sensor_streaming` in [mime_cases.py](/Users/zachshallbetter/Projects/Perception/src/runtime/mime_cases.py)
-   - sensor-streaming modality definitions for `smartwatch`, `room_env`, and `robot_arm`
+   - one current synthetic benchmark instance built around `smartwatch`, `room_env`, and `robot_arm`
 
 2. **Continual-learning evidence path**
    - replay-centric continual-learning benchmarks on Split-CIFAR-100
@@ -32,6 +32,13 @@ The important distinction is:
 
 - **Conceptually**, this project is about multimodal perception with explicit modality semantics and temporal adaptation.
 - **Empirically**, the strongest current validated evidence is still continual-learning behavior, especially how replay placement affects forgetting.
+
+Repo-wide claim labels:
+- **Implemented**: present in the current code path
+- **Evidenced**: backed by packaged results or completed reports
+- **Conceptual**: architecture pattern or design idea not yet promoted
+- **Patent candidate**: novelty-oriented idea tracked outside the canonical paper lane
+- **Blocked / open problem**: not runnable or not defined enough
 
 So this is not just a CIFAR experiment repo, and it is not yet a finished large-scale multimodal foundation model. It is a perception research platform whose current best-proven result is replay-centric continual learning.
 
@@ -73,8 +80,8 @@ For reporting and paper packaging, treat the real-data sequences in two tiers:
   - `real-audio-seq-001` for first-pass `speech_commands`
   - `real-seq-004` for first-pass `wisdm`
 - canonical integrated evidence:
-  - `real-audio-seq-002` for `speech_commands`, `esc50`, `urbansound8k`, `fsd50k`
-  - `real-sensor-seq-001` for the integrated real-sensor lineup including `realworld_har`
+  - `real-audio-seq-003` for `speech_commands`, `esc50`, `urbansound8k`, `fsd50k`
+  - `real-sensor-seq-002` for the integrated real-sensor lineup including `realworld_har`
 If you want one bounded sequence to hand off directly to the next without manual intervention, use the chain helpers:
 - `scripts/chain_real_sensor_sequence.sh`
 - `scripts/chain_real_audio_sequence.sh`
@@ -106,7 +113,7 @@ If you want a general-purpose finished product, this repository is too research-
 If the current claims continue to hold, the practical use of this repository is not "deploy Sensory Perceiver unchanged." The practical use is to adopt the design rules that the experiments are currently supporting:
 
 1. **Use explicit modality structure**
-   - keep `smartwatch`, `room_env`, `robot_arm`, or domain-equivalent modalities separate at the system boundary
+   - keep domain-relevant modalities separate at the system boundary rather than collapsing them into one generic stream
    - avoid flattening heterogeneous sensors into one generic stream until there is evidence that doing so is harmless
 
 2. **Use canonical runtime contracts**
@@ -187,6 +194,7 @@ If you are orienting yourself to the project, read in this order:
 6. [docs/sensor-mime-experiment-plan.md](/Users/zachshallbetter/Projects/Perception/docs/sensor-mime-experiment-plan.md) for the current perception-side evidence ladder.
 7. [paper/sections/README.md](/Users/zachshallbetter/Projects/Perception/paper/sections/README.md), [paper/sections/06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md), and [paper/sections/07-discussion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md) for the current paper-aligned claim surface.
 8. [paper/latex/README.md](/Users/zachshallbetter/Projects/Perception/paper/latex/README.md) for the TeX toolchain and PDF build path.
+9. [reference/future-concepts/README.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/README.md) for reusable multimodal design patterns that are intentionally non-canonical.
 
 ## Concept Map
 

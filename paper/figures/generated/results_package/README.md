@@ -9,8 +9,8 @@ This package is generated from the validated evidence used by the canonical pape
 - Phase 3 uses the discovered tuned-core family `20260311_140818` with 6 synchronized Titan runs.
 - The BWT sweep uses the completed `results/bwt_*/results.json` runs synchronized from Titan.
 - The completed synthetic sensor routing ladder is reported from canonical section text and synchronized sequence summaries.
-- Real-data evidence is split into bootstrap (`real-audio-seq-001`, `real-seq-004`) and canonical integrated (`real-audio-seq-002`, `real-sensor-seq-001`) stages.
-- Canonical promotion requires a sequence to complete with all expected datasets present and no blocked entries. `real-audio-seq-002` is currently completed but not promotable, and `real-sensor-seq-001` is currently failed.
+- Real-data evidence is split into bootstrap (`real-audio-seq-001`, `real-seq-004`) and canonical integrated (`real-audio-seq-003`, `real-sensor-seq-002`) stages.
+- Canonical promotion requires a sequence to complete with all expected datasets present and no blocked entries. `real-audio-seq-003` is currently promotable, and `real-sensor-seq-002` is currently not promotable.
 - The active integrated lineups now extend to `fsd50k` and `realworld_har`; `audioset` and `ubiqlog` remain deferred legacy sources outside the bounded chain.
 
 ## Included artifacts

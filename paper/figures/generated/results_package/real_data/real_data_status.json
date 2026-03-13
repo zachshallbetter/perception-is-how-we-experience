@@ -17,13 +17,13 @@
     "notes": "Bootstrap audio evidence; historical report may still list esc50 and urbansound8k as candidates."
   },
   "canonical_audio_sequence": {
-    "sequence_id": "real-audio-seq-002",
+    "sequence_id": "real-audio-seq-003",
     "status": "completed",
     "completed": [
       {
         "dataset": "speech_commands",
-        "family": "real-audio-seq-002-speech_commands",
-        "summary_file": "/ai/projects/Perception/results/real_audio_sequence_summaries/real-audio-seq-002-speech_commands.json",
+        "family": "real-audio-seq-003-speech_commands",
+        "summary_file": "/ai/projects/Perception/results/real_audio_sequence_summaries/real-audio-seq-003-speech_commands.json",
         "summary": {
           "runs": 3,
           "mean_accuracy": 0.8832231349762907,
@@ -36,27 +36,85 @@
             44
           ]
         }
-      }
-    ],
-    "blocked": [
+      },
       {
         "dataset": "esc50",
-        "status": "awaiting-raw-data",
-        "raw_dir": "/ai/projects/Perception/data/raw/audio/esc50"
+        "family": "real-audio-seq-003-esc50",
+        "summary_file": "/ai/projects/Perception/results/real_audio_sequence_summaries/real-audio-seq-003-esc50.json",
+        "summary": {
+          "runs": 3,
+          "mean_accuracy": 0.41833333333333333,
+          "std_accuracy": 0.009428090415820616,
+          "min_accuracy": 0.405,
+          "max_accuracy": 0.425,
+          "seeds": [
+            42,
+            43,
+            44
+          ]
+        }
       },
       {
         "dataset": "urbansound8k",
-        "status": "awaiting-raw-data",
-        "raw_dir": "/ai/projects/Perception/data/raw/audio/urbansound8k"
+        "family": "real-audio-seq-003-urbansound8k",
+        "summary_file": "/ai/projects/Perception/results/real_audio_sequence_summaries/real-audio-seq-003-urbansound8k.json",
+        "summary": {
+          "runs": 3,
+          "mean_accuracy": 0.6057347670250895,
+          "std_accuracy": 0.007364891281922293,
+          "min_accuracy": 0.5961768219832736,
+          "max_accuracy": 0.6140979689366786,
+          "seeds": [
+            42,
+            43,
+            44
+          ]
+        }
+      },
+      {
+        "dataset": "fsd50k",
+        "family": "real-audio-seq-003-fsd50k",
+        "summary_file": "/ai/projects/Perception/results/real_audio_sequence_summaries/real-audio-seq-003-fsd50k.json",
+        "summary": {
+          "runs": 3,
+          "mean_accuracy": 0.0974469365553318,
+          "std_accuracy": 0.0019757440300787765,
+          "min_accuracy": 0.09485452399138948,
+          "max_accuracy": 0.09964585792653288,
+          "seeds": [
+            42,
+            43,
+            44
+          ]
+        }
       }
     ],
+    "blocked": [],
     "expected_integrated_datasets": [
       "speech_commands",
       "esc50",
       "urbansound8k",
       "fsd50k"
     ],
-    "promotable": false
+    "promotable": true,
+    "superseded_attempts": [
+      {
+        "sequence_id": "real-audio-seq-002",
+        "status": "completed",
+        "blocked": [
+          {
+            "dataset": "esc50",
+            "status": "awaiting-raw-data",
+            "raw_dir": "/ai/projects/Perception/data/raw/audio/esc50"
+          },
+          {
+            "dataset": "urbansound8k",
+            "status": "awaiting-raw-data",
+            "raw_dir": "/ai/projects/Perception/data/raw/audio/urbansound8k"
+          }
+        ]
+      }
+    ]
   },
   "bootstrap_sensor_sequence": {
     "sequence_id": "real-seq-004",
@@ -69,8 +127,8 @@
     "notes": "Bootstrap sensor evidence from the first real WISDM routing sequence."
   },
   "canonical_sensor_sequence": {
-    "sequence_id": "real-sensor-seq-001",
-    "status": "failed",
+    "sequence_id": "real-sensor-seq-002",
+    "status": "running",
     "completed": [],
     "blocked": [],
     "expected_integrated_datasets": [
@@ -84,7 +142,14 @@
       "geomagnetic_wlan",
       "realworld_har"
     ],
-    "promotable": false
+    "promotable": false,
+    "superseded_attempts": [
+      {
+        "sequence_id": "real-sensor-seq-001",
+        "status": "failed",
+        "blocked": []
+      }
+    ]
   },
   "deferred_legacy_datasets": {
     "audio": {

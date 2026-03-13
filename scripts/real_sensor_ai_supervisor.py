@@ -301,7 +301,16 @@ class Supervisor:
                 self.log("dataset-blocked", **prep_state)
                 continue
 
-            self.launch_dataset(dataset, family)
+            if self.count_sessions(family) == 0 and self.count_results(family) == 0:
+                self.launch_dataset(dataset, family)
+            else:
+                self.log(
+                    "reuse-active-family",
+                    dataset=dataset,
+                    family=family,
+                    sessions=self.count_sessions(family),
+                    results=self.count_results(family),
+                )
             self.wait_for_family(family)
             completed.append(self.summarize_family(dataset, family))
 

@@ -57,6 +57,15 @@ This directory is the operator and research bridge between the codebase and the 
 - Research and patent drafts under `paper/supplementary/` and `paper/patents/` are non-canonical and must stay within the claim boundaries defined in:
   - `paper/sections/00-implementation-status-matrix.md`
   - `paper/sections/10-concept-implementation-audit.md`
+- General future-use design material under [reference/future-concepts/README.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/README.md) is non-canonical and must not be cited as current evidence.
+- Paper promotion rules for Titan results are documented in [training-guide.md](/Users/zachshallbetter/Projects/Perception/docs/training-guide.md) and the generated package README under [paper/figures/generated/results_package/README.md](/Users/zachshallbetter/Projects/Perception/paper/figures/generated/results_package/README.md).
+
+Repo-wide labels:
+- **Implemented**
+- **Evidenced**
+- **Conceptual**
+- **Patent candidate**
+- **Blocked / open problem**
 
 ## Current Documentation Priorities
 

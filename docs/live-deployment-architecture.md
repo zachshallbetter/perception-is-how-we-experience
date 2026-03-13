@@ -31,6 +31,19 @@ flowchart LR
     H --> I["Promoted model version"]
 ```
 
+## Live Example Flow
+
+```mermaid
+flowchart LR
+    A["Camera stream"] --> D["Typed live envelopes"]
+    B["Microphone stream"] --> D
+    C["Pose / wearable stream"] --> D
+    D --> E["Synchronization + rolling windows"]
+    E --> F["Mask-aware inference"]
+    F --> G["Alerts / summaries / assistive actions"]
+    F --> H["Bounded adaptation queue"]
+```
+
 ## What A Live User Actually Gets
 
 If the architecture continues to validate, the user-facing result is a system that can:
@@ -101,6 +114,27 @@ Responsibilities:
 - produce predictions, confidence, and modality-health metadata
 - smooth or debounce event outputs over time
 - expose current state and recent evidence to downstream consumers
+
+### 3.0 Tower Semantics Versus Tower Class
+
+The live-system idea depends on **semantically distinct** modality towers, but that should not be confused with claiming that every modality already has a different neural block type in the current implementation.
+
+Current implemented state:
+- the repository uses one core `PerceiverTower` family
+- modality differences are expressed through canonical routing, feature width, masking, and configuration
+
+Live-system direction:
+- a wearable or smartwatch stream may justify a stronger temporal bias
+- an ambient room stream may justify a lighter contextual encoder
+- a robot/device telemetry stream may justify a different structural bias for joint or actuator state
+
+So the conceptual rule is:
+- towers are distinct because the **meaning and structure** of their inputs differ
+- specialization of the internal tower architecture is a deployment/design choice that can evolve over time
+
+This distinction matters because the paper's current claim is about preserving modality semantics and learning cross-modal relationships, not about already shipping a different bespoke network class per modality.
+
+The same distinction applies to the repository's current synthetic benchmark: `smartwatch`, `room_env`, and `robot_arm` are a concrete benchmark instance, not the universal modality set for a live Sensory Perceiver deployment.
 
 ### 3.1 Live Adapter Boundary
 

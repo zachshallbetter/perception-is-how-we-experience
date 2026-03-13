@@ -831,7 +831,7 @@ def prepare_opportunity_dataset(
 ) -> Dict[str, object]:
     root = _resolve_candidate_root(
         raw_dir.resolve(),
-        ["", "OpportunityUCIDataset", "OpportunityUCIDataset/dataset", "dataset"],
+        ["OpportunityUCIDataset/dataset", "dataset", "OpportunityUCIDataset", ""],
     )
     dataset_dir = root if root.name == "dataset" else root / "dataset"
     files = sorted(dataset_dir.glob("*.dat"))

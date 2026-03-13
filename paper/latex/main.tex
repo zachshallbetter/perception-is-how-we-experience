@@ -38,14 +38,14 @@
 \maketitle
 
 \begin{abstract}
-Sensory Perceiver is a multimodal architecture that combines modality-specific towers with shared cross-modal attention in settings where systems must keep learning over time. The implementation keeps modality identity explicit through runtime-validated MIME-style contracts, while the current empirical core is a replay-centric continual-learning program. On Split-CIFAR-100, feature-only replay fails with severe forgetting (CIL 4.86\%, BWT $-53.80\%$), raw-input replay with reservoir sampling materially improves retention (CIL 19.54\%, BWT $-34.91\%$), and the current tuned-core configuration improves the multiseed mean further to CIL 23.96\% and BWT $-30.39\%$ over six Titan runs. The strongest mechanistic conclusion is therefore that replay signals must reach shared feature extractors, not only late task heads.
+Sensory Perceiver is a multimodal architecture that combines modality-specific towers with shared cross-modal attention in settings where systems must keep learning over time. The implementation keeps modality identity explicit through runtime-validated MIME-style contracts, while the current empirical core is a replay-centric continual-learning program built on the attention and latent-bottleneck lineage running from Transformers to Perceivers \citep{cite1,cite2,cite3}. On Split-CIFAR-100, feature-only replay fails with severe forgetting (CIL 4.86\%, BWT $-53.80\%$), raw-input replay with reservoir sampling materially improves retention (CIL 19.54\%, BWT $-34.91\%$), and the current tuned-core configuration improves the multiseed mean further to CIL 23.96\% and BWT $-30.39\%$ over six Titan runs. The strongest mechanistic conclusion is therefore that replay signals must reach shared feature extractors, not only late task heads.
 
-The strongest completed perception-side evidence is the hardened synthetic sensor-routing ladder, where typed canonical routing outperforms merged routing on the baseline, capacity-matched control, leave-one-out branches, corruption branch, and two of three single-modality noise branches, with \texttt{noise\_robot\_arm} as the main exception. Real-data evidence is now reported conservatively with an explicit bootstrap-versus-canonical split: bootstrap runs on Speech Commands and WISDM are includable now, while canonical integrated promotion remains gated. In the current synced reports, \texttt{real-audio-seq-002} is completed but not promotable because blocked datasets remained, and \texttt{real-sensor-seq-001} is failed at \texttt{pamap2}. The current contribution is therefore a disciplined blueprint for building domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone.
+The strongest completed perception-side evidence is the hardened synthetic sensor-routing ladder, where typed canonical routing outperforms merged routing on the baseline, capacity-matched control, leave-one-out branches, corruption branch, and two of three single-modality noise branches, with \texttt{noise\_robot\_arm} as the main exception. Real-data evidence is now reported conservatively with an explicit bootstrap-versus-canonical split: bootstrap runs on Speech Commands and WISDM are includable now, \texttt{real-audio-seq-003} is the first promotable canonical integrated audio sequence, and \texttt{real-sensor-seq-002} remains pending behind the same promotion gate. The current contribution is therefore a disciplined blueprint for building domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone.
 \end{abstract}
 
 \section{Introduction}
 
-Sensory Perceiver is motivated by a simple systems question: how should a perception model be structured if it must ingest heterogeneous sensory inputs, keep modality identity explicit, and continue adapting without full retraining each time new data arrives? The repository's answer combines three ideas:
+Sensory Perceiver is motivated by a simple systems question: how should a perception model be structured if it must ingest heterogeneous sensory inputs, keep modality identity explicit, and continue adapting without full retraining each time new data arrives? Attention-based sequence models made it practical to reason globally over flexible input sets \citep{cite1}, while the Perceiver family showed that a shared latent bottleneck could extend that flexibility to large, heterogeneous perceptual inputs \citep{cite2,cite3}. The repository's answer combines three ideas:
 \begin{enumerate}[leftmargin=*]
   \item modality-specific towers preserve sensor identity rather than collapsing heterogeneous streams into one generic input;
   \item a shared cross-modal core integrates those streams into a common latent representation;
@@ -56,41 +56,98 @@ The broad framing is machine perception, but the evidence is intentionally bound
 
 \section{Related Work}
 
-Sensory Perceiver sits at the intersection of multimodal integration, continual learning, and systems-oriented runtime design. The architectural lineage runs through attention-based sequence models and the Perceiver family, which demonstrated that a shared latent core can process heterogeneous inputs without a separate end-to-end architecture per modality. The continual-learning lineage runs through replay, reservoir sampling, EWC, SI, and gradient-projection methods, all of which address catastrophic forgetting from different directions.
+Sensory Perceiver sits at the intersection of multimodal integration, continual learning, and systems-oriented runtime design. The architectural lineage runs through attention-based sequence models \citep{cite1,cite4,cite5,cite6,cite7} and the Perceiver family \citep{cite2,cite3}, which demonstrated that a shared latent core can process heterogeneous inputs without a separate end-to-end architecture per modality. The continual-learning lineage runs through replay, reservoir sampling, EWC, SI, and gradient-projection methods, all of which address catastrophic forgetting from different directions \citep{kirkpatrick2017,lopezmanzanares2017,chaudhry2019,buzzega2020}.
 
-The implementation here differs in emphasis. The central claim is not that MIME-style modality semantics are parsed directly inside model forward passes, but that explicit modality contracts at the runtime boundary reduce interface drift and make typed routing experimentally tractable. The empirical center of gravity is replay-path design: raw-input replay through the shared backbone matters much more in the current codebase than mild follow-on regularization.
+The implementation here differs in emphasis. The central claim is not that MIME-style modality semantics are parsed directly inside model forward passes, but that explicit modality contracts at the runtime boundary reduce interface drift and make typed routing experimentally tractable. The empirical center of gravity is replay-path design: raw-input replay through the shared backbone matters much more in the current codebase than mild follow-on regularization. That systems emphasis places the work closer to deployable perception stacks than to another incremental attention variant.
 
 \section{Methods}
 
 \subsection{Architecture}
 
-Each modality is routed through its own tower and then integrated through a shared cross-modal attention core. The current codebase treats modality identity as a canonical runtime concept rather than an implicit property of tensor shape. MIME-style modality registries are used for validation and setup derivation at the contract boundary, while downstream model dispatch remains modality-key based.
+Each modality is routed through its own tower and then integrated through a shared cross-modal attention core. This design follows the Perceiver intuition that large heterogeneous inputs should be compressed into a tractable latent workspace \citep{cite2,cite3}, but it layers typed runtime contracts and bounded adaptation on top of that architectural core. The current codebase treats modality identity as a canonical runtime concept rather than an implicit property of tensor shape. MIME-style modality registries are used for validation and setup derivation at the contract boundary, while downstream model dispatch remains modality-key based.
+
+Towers should be read as modality-specific encoders for related but semantically distinct sensory views. They are often different observations of the same world-state, user state, environment, or task context, but they should not be flattened together before the model has a chance to preserve their local structure and learn how they interact. Typical tower groupings could include camera + microphone + pose, wearable + room sensors + medical device telemetry, or robot state + environment sensors + operator signals. The general architectural claim is therefore that each tower should honor the semantics of its own modality, the shared core should learn cross-modal relationships, and replay should re-enter through the towers so those semantics do not drift during continual learning.
+
+The current implementation should be read carefully here: these towers share one \texttt{PerceiverTower} family with modality-specific configuration, rather than three completely different neural block classes. The paper's implemented claim is therefore semantic distinction first. A more mature live deployment could specialize tower internals further for temporal wearable streams, sparse ambient context, or structured actuator telemetry, but that stronger specialization remains architectural direction rather than the present code-level claim.
+
+Broader domain-specific tower examples and future live-system specializations are tracked outside the canonical paper lane in the repository's future concept library. They should be read as conceptual architecture patterns unless and until they are implemented and evidenced in the current codebase.
+
+\paragraph{Current synthetic benchmark instance.}
+The repository's current synthetic perception-side benchmark, \texttt{sensor\_streaming}, instantiates the general tower pattern with three canonical modalities:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{smartwatch}: a 7-feature wearable stream representing body-side signals such as heart-rate and motion-derived measurements,
+  \item \texttt{room\_env}: a 4-feature ambient stream representing environmental state such as temperature, humidity, CO\textsubscript{2}, and light,
+  \item \texttt{robot\_arm}: a 9-feature actuation and kinematics stream representing joint and force/torque state.
+\end{itemize}
+Those three modalities are one benchmark instance, not the universal definition of a Sensory Perceiver deployment.
+
+\begin{figure*}[t]
+  \centering
+  \begin{tikzpicture}[
+      font=\small,
+      stage/.style={draw, rounded corners, align=center, minimum height=0.9cm, minimum width=3.2cm, fill=gray!8},
+      stagep/.style={draw, rounded corners, align=center, minimum height=0.9cm, minimum width=3.2cm, fill=blue!8},
+      stages/.style={draw, rounded corners, align=center, minimum height=0.9cm, minimum width=3.4cm, fill=orange!12},
+      label/.style={font=\bfseries\small},
+      arrow/.style={-Latex, thick}
+    ]
+    \node[label] (lt) at (0,2.4) {Transformer};
+    \node[stage] (t1) at (0,1.4) {Input tokens};
+    \node[stage, below=0.55cm of t1] (t2) {Embedding + positional\\encoding};
+    \node[stage, below=0.55cm of t2] (t3) {Encoder / decoder\\stack};
+    \node[stage, below=0.55cm of t3] (t4) {Token prediction};
+    \draw[arrow] (t1) -- (t2);
+    \draw[arrow] (t2) -- (t3);
+    \draw[arrow] (t3) -- (t4);
+
+    \node[label] (lp) at (6.2,2.4) {Perceiver / Perceiver IO};
+    \node[stagep] (p1) at (6.2,1.4) {Arbitrary input array};
+    \node[stagep, below=0.55cm of p1] (p2) {Cross-attend into\\latent array};
+    \node[stagep, below=0.55cm of p2] (p3) {Latent self-attention\\processing};
+    \node[stagep, below=0.55cm of p3] (p4) {Query-based output};
+    \draw[arrow] (p1) -- (p2);
+    \draw[arrow] (p2) -- (p3);
+    \draw[arrow] (p3) -- (p4);
+
+    \node[label] (ls) at (12.7,2.4) {Sensory Perceiver};
+    \node[stages] (s1) at (12.7,1.4) {Typed capture envelopes\\per modality};
+    \node[stages, below=0.55cm of s1] (s2) {Synchronization +\\mask-aware windows};
+    \node[stages, below=0.55cm of s2] (s3) {Per-modality towers +\\shared latent core};
+    \node[stages, below=0.55cm of s3] (s4) {User outputs + bounded\\adaptation gate};
+    \draw[arrow] (s1) -- (s2);
+    \draw[arrow] (s2) -- (s3);
+    \draw[arrow] (s3) -- (s4);
+  \end{tikzpicture}
+  \caption{Positioning the system in the literature. Transformers provide the attention primitive \citep{cite1}, Perceivers provide the latent-bottleneck perception architecture \citep{cite2,cite3}, and Sensory Perceiver adds typed routing, synchronization, bounded adaptation, and replay-backed operation on top of that lineage.}
+  \label{fig:transformer-perceiver-sensory-comparison}
+\end{figure*}
 
 \begin{figure}[t]
   \centering
   \begin{tikzpicture}[
       font=\small,
-      box/.style={draw, rounded corners, align=center, minimum height=1cm, minimum width=2.5cm, fill=blue!6},
+      box/.style={draw, rounded corners, align=center, minimum height=1cm, minimum width=2.8cm, fill=blue!6},
       core/.style={draw, rounded corners, align=center, minimum height=1cm, minimum width=3cm, fill=orange!10},
+      replayarrow/.style={-Latex, thick, dashed, draw=red!75!black},
       arrow/.style={-Latex, thick}
     ]
     \node[box] (input) {Typed modality\\input};
-    \node[box, right=1.0cm of input, yshift=1.2cm] (tower1) {Tower\\smartwatch};
-    \node[box, right=1.0cm of input] (tower2) {Tower\\room\_env};
-    \node[box, right=1.0cm of input, yshift=-1.2cm] (tower3) {Tower\\robot\_arm / audio};
+    \node[box, right=1.0cm of input, yshift=1.35cm] (tower1) {Tower\\vision / wearable / device};
+    \node[box, right=1.0cm of input] (tower2) {Tower\\audio / ambient / room};
+    \node[box, right=1.0cm of input, yshift=-1.35cm] (tower3) {Tower\\pose / telemetry / actuation};
     \node[core, right=1.2cm of tower2] (shared) {Shared cross-modal\\attention};
     \node[box, right=1.2cm of shared] (head) {Adapters +\\output head};
-    \node[box, below=0.8cm of shared] (replay) {Replay buffer};
+    \node[box, below=0.8cm of shared] (replay) {Replay buffer\\raw modality inputs};
     \draw[arrow] (input) -- (tower1);
     \draw[arrow] (input) -- (tower2);
     \draw[arrow] (input) -- (tower3);
     \draw[arrow] (tower1) -- (shared);
     \draw[arrow] (tower2) -- (shared);
     \draw[arrow] (tower3) -- (shared);
-    \draw[arrow] (replay) -- (shared);
+    \draw[replayarrow] (replay) -- (shared);
     \draw[arrow] (shared) -- (head);
   \end{tikzpicture}
-  \caption{Sensory Perceiver keeps modality identity explicit through separate towers, integrates those streams in a shared core, and applies replay to the shared backbone rather than only to late heads.}
+  \caption{Sensory Perceiver keeps modality identity explicit through separate towers for semantically distinct but task-related inputs before masked shared attention learns their cross-modal relationships. The dashed replay path shows the key mechanistic result from the paper's phase progression: raw inputs must feed back into the shared backbone, not only into late heads, to improve retention. The current synthetic benchmark instance uses \texttt{smartwatch}, \texttt{room\_env}, and \texttt{robot\_arm} as one concrete instantiation of this more general pattern.}
   \label{fig:sensory-perceiver-architecture}
 \end{figure}
 
@@ -104,7 +161,7 @@ The preferred path is native mask-aware model support, with an explicit adapter 
 
 \subsection{Continual Learning}
 
-The continual-learning program is replay-centric. Phase 1 used replay too high in the stack and failed badly. Phase 2 moved replay back to raw inputs with reservoir sampling, restoring replay gradients through shared feature extractors. The current tuned-core path improves on that configuration without changing the main conclusion: replay-path design is the strongest validated retention lever in this repository.
+The continual-learning program is replay-centric. Phase 1 used replay too high in the stack and failed badly. Phase 2 moved replay back to raw inputs with reservoir sampling, restoring replay gradients through shared feature extractors. The current tuned-core path improves on that configuration without changing the main conclusion: replay-path design is the strongest validated retention lever in this repository. That conclusion is consistent with replay-sensitive continual-learning baselines in the literature, where weighting and placement of replay constraints are first-order factors rather than implementation details \citep{chaudhry2019,buzzega2020}.
 
 \subsection{Perception-Side Evaluation}
 
@@ -117,6 +174,16 @@ It includes a baseline, a capacity-matched control, leave-one-out branches, bind
 \begin{itemize}[leftmargin=*]
   \item \textbf{bootstrap}: first executable real-data runs used to validate ingestion and end-to-end operation,
   \item \textbf{canonical integrated}: bounded multi-dataset sequences promoted only after successful completion.
+\end{itemize}
+
+The active bootstrap and integrated real-data sources are:
+\begin{itemize}[leftmargin=*]
+  \item \href{https://huggingface.co/datasets/google/speech_commands}{Speech Commands}
+  \item \href{https://archive.ics.uci.edu/dataset/507/wisdm\%2Bsmartphone\%2Band\%2Bsmartwatch\%2Bactivity\%2Band\%2Bbiometrics\%2Bdataset}{WISDM}
+  \item \href{https://github.com/karolpiczak/ESC-50}{ESC-50}
+  \item \href{https://urbansounddataset.weebly.com/urbansound8k.html}{UrbanSound8K}
+  \item \href{https://zenodo.org/records/4060432}{FSD50K}
+  \item \href{https://huggingface.co/datasets/sha-ce/SensorData}{RealWorld HAR via sha-ce/SensorData}
 \end{itemize}
 
 \begin{figure}[t]
@@ -159,10 +226,10 @@ The real-data lane is intentionally conservative. Bootstrap evidence is includab
   \item \texttt{real-audio-seq-001} on \texttt{speech\_commands}
   \item \texttt{real-seq-004} on \texttt{wisdm}
 \end{itemize}
-Canonical integrated evidence is still not promotable:
+Canonical integrated audio evidence is now promotable, while the integrated sensor lane remains pending:
 \begin{itemize}[leftmargin=*]
-  \item \texttt{real-audio-seq-002} on \texttt{speech\_commands}, \texttt{esc50}, \texttt{urbansound8k}, and \texttt{fsd50k}
-  \item \texttt{real-sensor-seq-001} on the integrated real-sensor lineup including \texttt{realworld\_har}
+  \item \texttt{real-audio-seq-003} on \texttt{speech\_commands}, \texttt{esc50}, \texttt{urbansound8k}, and \texttt{fsd50k}
+  \item \texttt{real-sensor-seq-002} on the integrated real-sensor lineup including \texttt{realworld\_har}
 \end{itemize}
 Deferred legacy sources remain explicit but are no longer part of the active bounded chain:
 \begin{itemize}[leftmargin=*]
@@ -208,7 +275,7 @@ Figure~\ref{fig:real-data-evidence-overview} summarizes the current real-data pa
   \item \texttt{real-audio-seq-001} on Speech Commands: mean accuracy 88.32\%
   \item \texttt{real-seq-004} on WISDM: canonical-minus-merged gap $+4.19$ percentage points
 \end{itemize}
-These runs establish that the first real audio and real sensor paths work end to end on Titan, but they are not yet the canonical integrated comparison set for the next paper update. \texttt{real-audio-seq-002} is completed but not promotable because blocked datasets remained, and \texttt{real-sensor-seq-001} is currently failed at \texttt{pamap2}. The generated package under \texttt{paper/figures/generated/results\_package/real\_data/} is the source of truth for bootstrap-versus-canonical status.
+These runs establish that the first real audio and real sensor paths work end to end on Titan. \texttt{real-audio-seq-003} is now the first promotable canonical integrated audio sequence because it completed all expected datasets without blocked entries. \texttt{real-audio-seq-002} remains historical only, because it completed with blocked datasets. \texttt{real-sensor-seq-002} is the current integrated sensor candidate and remains pending until its bounded report completes cleanly. The generated package under \texttt{paper/figures/generated/results\_package/real\_data/} is the source of truth for bootstrap-versus-canonical status.
 
 \section{Discussion}
 
@@ -222,7 +289,7 @@ The completed synthetic sensor ladder materially strengthens the broader percept
 
 \subsection{What The Real-Data Lane Adds}
 
-The real-data lane now matters because it prevents the project from staying trapped in synthetic-only evidence. Bootstrap Speech Commands and WISDM runs prove that the real-data path is executable. However, the paper should still treat the integrated sequences as unpromoted. \texttt{real-audio-seq-002} is completed but not promotable because blocked datasets remained, while \texttt{real-sensor-seq-001} is currently failed at \texttt{pamap2}. This bootstrap-versus-canonical split is the main guardrail against overstating progress while Titan is still resolving bounded evidence chains.
+The real-data lane now matters because it prevents the project from staying trapped in synthetic-only evidence. Bootstrap Speech Commands and WISDM runs prove that the real-data path is executable. The first integrated audio sequence has now cleared the evidence gate: \texttt{real-audio-seq-003} completed all expected datasets with no blocked entries. The corresponding sensor lane remains intentionally conservative: \texttt{real-sensor-seq-002} is still running and should not be promoted until its bounded report completes cleanly. This bootstrap-versus-canonical split is the main guardrail against overstating progress while Titan is still resolving bounded evidence chains.
 
 \subsection{Claim Surface Versus Evidence Surface}
 
@@ -244,6 +311,31 @@ For an applied reader, the present result is not a finished universal perception
   \item remain useful when one stream is degraded,
   \item and adapt over time without constant full retraining.
 \end{itemize}
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[
+      font=\small,
+      box/.style={draw, rounded corners, align=center, minimum height=1cm, minimum width=2.4cm, fill=cyan!8},
+      arrow/.style={-Latex, thick}
+    ]
+    \node[box] (camera) {Camera\\RGB / scene};
+    \node[box, below=0.75cm of camera] (mic) {Microphone\\audio chunks};
+    \node[box, below=0.75cm of mic] (pose) {Pose / wearable\\state};
+    \node[box, right=1.1cm of mic] (contracts) {Typed live\\envelopes};
+    \node[box, right=1.1cm of contracts] (sync) {Sync +\\window assembly};
+    \node[box, right=1.1cm of sync] (infer) {Mask-aware\\inference};
+    \node[box, right=1.1cm of infer] (surface) {Alerts, summaries,\\assistive actions};
+    \draw[arrow] (camera) -- (contracts);
+    \draw[arrow] (mic) -- (contracts);
+    \draw[arrow] (pose) -- (contracts);
+    \draw[arrow] (contracts) -- (sync);
+    \draw[arrow] (sync) -- (infer);
+    \draw[arrow] (infer) -- (surface);
+  \end{tikzpicture}
+  \caption{A concrete live deployment pattern. Multiple live sensory channels are preserved as typed envelopes, synchronized into bounded windows, then passed into mask-aware inference before being surfaced as alerts, summaries, or assistive actions.}
+  \label{fig:live-user-example}
+\end{figure}
 
 \begin{figure}[t]
   \centering

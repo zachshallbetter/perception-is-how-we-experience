@@ -107,6 +107,14 @@ def first_existing_json(*paths: Path) -> dict | None:
     return None
 
 
+def latest_sequence_report(summary_dir: Path, prefix: str) -> tuple[str | None, dict | None]:
+    reports = sorted(summary_dir.glob(f"{prefix}-report.json"))
+    if not reports:
+        return None, None
+    latest = reports[-1]
+    return latest.name.removesuffix("-report.json"), load_json_if_exists(latest)
+
+
 def task0_retention_from_result(result: dict) -> float | None:
     matrix = result.get("R_matrix")
     if not matrix:
@@ -589,12 +597,18 @@ def main() -> int:
     real_audio_seq002_report = load_json_if_exists(
         REAL_AUDIO_SUMMARY_DIR / "real-audio-seq-002-report.json"
     )
+    canonical_audio_sequence_id, canonical_audio_report = latest_sequence_report(
+        REAL_AUDIO_SUMMARY_DIR, "real-audio-seq-*"
+    )
     real_sensor_seq004_report = load_json_if_exists(
         REAL_SENSOR_SUMMARY_DIR / "real-seq-004-report.json"
     )
     real_sensor_seq001_report = first_existing_json(
         REAL_SENSOR_SUMMARY_DIR / "real-sensor-seq-001-report.json",
         REAL_SENSOR_SUMMARY_DIR / "real-seq-001-report.json",
+    )
+    canonical_sensor_sequence_id, canonical_sensor_report = latest_sequence_report(
+        REAL_SENSOR_SUMMARY_DIR, "real-sensor-seq-*"
     )
     canonical_audio_expected = ["speech_commands", "esc50", "urbansound8k", "fsd50k"]
     canonical_sensor_expected = [
@@ -609,18 +623,24 @@ def main() -> int:
         "realworld_har",
     ]
     canonical_audio_promotable = sequence_promotable(
-        real_audio_seq002_report, canonical_audio_expected
+        canonical_audio_report, canonical_audio_expected
     )
     canonical_sensor_promotable = sequence_promotable(
-        real_sensor_seq001_report, canonical_sensor_expected
+        canonical_sensor_report, canonical_sensor_expected
+    )
+    canonical_audio_sequence_latex = (
+        (canonical_audio_sequence_id or "canonical-audio-sequence").replace("_", "\\_")
+    )
+    canonical_sensor_sequence_latex = (
+        (canonical_sensor_sequence_id or "canonical-sensor-sequence").replace("_", "\\_")
     )
 
     real_audio_table_rows = real_audio_rows(
         real_audio_seq001_report, stage="bootstrap", canonical=False
-    ) + real_audio_rows(real_audio_seq002_report, stage="canonical", canonical=True)
+    ) + real_audio_rows(canonical_audio_report, stage="canonical", canonical=True)
     real_sensor_table_rows = real_sensor_rows(
         real_sensor_seq004_report, stage="bootstrap", canonical=False
-    ) + real_sensor_rows(real_sensor_seq001_report, stage="canonical", canonical=True)
+    ) + real_sensor_rows(canonical_sensor_report, stage="canonical", canonical=True)
 
     bootstrap_audio_entry = extract_completed_audio_entry(
         real_audio_seq001_report, "speech_commands"
@@ -672,24 +692,39 @@ def main() -> int:
                 "notes": "Bootstrap audio evidence; historical report may still list esc50 and urbansound8k as candidates.",
             },
             "canonical_audio_sequence": {
-                "sequence_id": "real-audio-seq-002",
+                "sequence_id": canonical_audio_sequence_id,
                 "status": (
                     None
-                    if real_audio_seq002_report is None
-                    else real_audio_seq002_report.get("status")
+                    if canonical_audio_report is None
+                    else canonical_audio_report.get("status")
                 ),
                 "completed": (
                     []
-                    if real_audio_seq002_report is None
-                    else real_audio_seq002_report.get("completed", [])
+                    if canonical_audio_report is None
+                    else canonical_audio_report.get("completed", [])
                 ),
                 "blocked": (
                     []
-                    if real_audio_seq002_report is None
-                    else real_audio_seq002_report.get("blocked", [])
+                    if canonical_audio_report is None
+                    else canonical_audio_report.get("blocked", [])
                 ),
                 "expected_integrated_datasets": canonical_audio_expected,
                 "promotable": canonical_audio_promotable,
+                "superseded_attempts": [
+                    {
+                        "sequence_id": "real-audio-seq-002",
+                        "status": (
+                            None
+                            if real_audio_seq002_report is None
+                            else real_audio_seq002_report.get("status")
+                        ),
+                        "blocked": (
+                            []
+                            if real_audio_seq002_report is None
+                            else real_audio_seq002_report.get("blocked", [])
+                        ),
+                    }
+                ],
             },
             "bootstrap_sensor_sequence": {
                 "sequence_id": "real-seq-004",
@@ -706,24 +741,39 @@ def main() -> int:
                 "notes": "Bootstrap sensor evidence from the first real WISDM routing sequence.",
             },
             "canonical_sensor_sequence": {
-                "sequence_id": "real-sensor-seq-001",
+                "sequence_id": canonical_sensor_sequence_id,
                 "status": (
                     None
-                    if real_sensor_seq001_report is None
-                    else real_sensor_seq001_report.get("status")
+                    if canonical_sensor_report is None
+                    else canonical_sensor_report.get("status")
                 ),
                 "completed": (
                     []
-                    if real_sensor_seq001_report is None
-                    else real_sensor_seq001_report.get("completed", [])
+                    if canonical_sensor_report is None
+                    else canonical_sensor_report.get("completed", [])
                 ),
                 "blocked": (
                     []
-                    if real_sensor_seq001_report is None
-                    else real_sensor_seq001_report.get("blocked", [])
+                    if canonical_sensor_report is None
+                    else canonical_sensor_report.get("blocked", [])
                 ),
                 "expected_integrated_datasets": canonical_sensor_expected,
                 "promotable": canonical_sensor_promotable,
+                "superseded_attempts": [
+                    {
+                        "sequence_id": "real-sensor-seq-001",
+                        "status": (
+                            None
+                            if real_sensor_seq001_report is None
+                            else real_sensor_seq001_report.get("status")
+                        ),
+                        "blocked": (
+                            []
+                            if real_sensor_seq001_report is None
+                            else real_sensor_seq001_report.get("blocked", [])
+                        ),
+                    }
+                ],
             },
             "deferred_legacy_datasets": {
                 "audio": {"audioset": "replaced-operationally-by-fsd50k"},
@@ -761,8 +811,8 @@ def main() -> int:
                 f"- Phase 3 uses the discovered tuned-core family `{tuned_family}` with {len(tuned_rows)} synchronized Titan runs.",
                 "- The BWT sweep uses the completed `results/bwt_*/results.json` runs synchronized from Titan.",
                 "- The completed synthetic sensor routing ladder is reported from canonical section text and synchronized sequence summaries.",
-                "- Real-data evidence is split into bootstrap (`real-audio-seq-001`, `real-seq-004`) and canonical integrated (`real-audio-seq-002`, `real-sensor-seq-001`) stages.",
-                "- Canonical promotion requires a sequence to complete with all expected datasets present and no blocked entries. `real-audio-seq-002` is currently completed but not promotable, and `real-sensor-seq-001` is currently failed.",
+                f"- Real-data evidence is split into bootstrap (`real-audio-seq-001`, `real-seq-004`) and canonical integrated (`{canonical_audio_sequence_id or 'pending-audio-sequence'}`, `{canonical_sensor_sequence_id or 'pending-sensor-sequence'}`) stages.",
+                f"- Canonical promotion requires a sequence to complete with all expected datasets present and no blocked entries. `{canonical_audio_sequence_id or 'canonical-audio-sequence'}` is currently {'promotable' if canonical_audio_promotable else 'not promotable'}, and `{canonical_sensor_sequence_id or 'canonical-sensor-sequence'}` is currently {'promotable' if canonical_sensor_promotable else 'not promotable'}.",
                 "- The active integrated lineups now extend to `fsd50k` and `realworld_har`; `audioset` and `ubiqlog` remain deferred legacy sources outside the bounded chain.",
                 "",
                 "## Included artifacts",
@@ -810,7 +860,7 @@ def main() -> int:
                 "Exploratory BWT sweep ranked by final BWT. The dashed reference line marks the tuned-core multiseed mean. None of the completed EWC, SI, larger-buffer ER, or contrastive replay runs surpass the tuned-core baseline.",
                 "",
                 "## Figure 4",
-                "Real-data evidence overview. Bootstrap evidence comes from `real-audio-seq-001` on Speech Commands and `real-seq-004` on WISDM. Canonical evidence is promoted only when bounded integrated sequences finish with all expected datasets present and no blocked entries. `real-audio-seq-002` is currently completed but not promotable because blocked datasets remain, and `real-sensor-seq-001` is currently failed at `pamap2`.",
+                f"Real-data evidence overview. Bootstrap evidence comes from `real-audio-seq-001` on Speech Commands and `real-seq-004` on WISDM. Canonical evidence is promoted only when bounded integrated sequences finish with all expected datasets present and no blocked entries. `{canonical_audio_sequence_id or 'canonical-audio-sequence'}` is the current canonical audio sequence, while `{canonical_sensor_sequence_id or 'canonical-sensor-sequence'}` remains pending promotion until it completes cleanly.",
                 "",
                 "## Source Matrices",
                 "The copied accuracy-matrix images provide the underlying per-task retention structure for the reported Phase 2 raw-input replay run and the three tuned-core Titan runs.",
@@ -857,9 +907,7 @@ def main() -> int:
                 "\\begin{figure}[t]",
                 "  \\centering",
                 "  \\includegraphics[width=\\linewidth]{../figures/generated/results_package/figure_real_data_evidence.pdf}",
-                "  \\caption{Real-data evidence overview. Bootstrap evidence comes from \\texttt{real-audio-seq-001} on Speech Commands and \\texttt{real-seq-004} on WISDM. Canonical evidence is promoted only when bounded integrated sequences finish with all expected datasets present and no blocked entries. \\texttt{real-audio-seq-002} is currently completed but not promotable because blocked datasets remain, and \\texttt{real-sensor-seq-001} is currently failed at \\texttt{pamap2}.}".replace(
-                    "_", "\\_"
-                ),
+                f"  \\caption{{Real-data evidence overview. Bootstrap evidence comes from \\texttt{{real-audio-seq-001}} on Speech Commands and \\texttt{{real-seq-004}} on WISDM. Canonical evidence is promoted only when bounded integrated sequences finish with all expected datasets present and no blocked entries. \\texttt{{{canonical_audio_sequence_latex}}} is the current canonical audio sequence, while \\texttt{{{canonical_sensor_sequence_latex}}} remains pending promotion until it completes cleanly.}}",
                 "  \\label{fig:real-data-evidence-overview}",
                 "\\end{figure}",
                 "",

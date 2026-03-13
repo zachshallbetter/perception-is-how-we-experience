@@ -27,6 +27,35 @@ Authoritative claim files:
 - The current paper-primary quantitative evidence is the 6-seed tuned-core Split-CIFAR-100 result.
 - The current perception-side evidence path is the completed synthetic `sensor_streaming` canonical-vs-merged ladder plus bounded real-data follow-on sequences.
 
+## Authority Labels
+
+- **Implemented**: present in the current code path
+- **Evidenced**: backed by packaged results or completed reports
+- **Conceptual**: design idea or architecture pattern not yet promoted into the canonical paper
+- **Patent candidate**: novelty-oriented idea tracked separately under [paper/patents](/Users/zachshallbetter/Projects/Perception/paper/patents)
+- **Blocked / open problem**: not runnable or not defined enough
+
+Conceptual architecture extensions and domain examples now live under [reference/future-concepts/README.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/README.md). They are useful for future implementation and IP work, but they are not current paper evidence unless promoted by the implementation and results gates.
+
+## Promotion Workflow
+
+New Titan evidence does not change the paper automatically.
+
+Promotion into the canonical paper requires:
+
+1. a bounded sequence report with status `completed`
+2. no blocked entries in that report
+3. all expected result artifacts present
+4. a successful rebuild of the canonical package under [paper/figures/generated/results_package](/Users/zachshallbetter/Projects/Perception/paper/figures/generated/results_package)
+
+If a sequence blocks or fails, it should update:
+
+- sequence summaries
+- package status files
+- future-use concept or patent notes if helpful
+
+It should **not** update the canonical Results or Discussion sections until the package gate clears.
+
 ## Reader Map
 
 If you want to understand the paper quickly, read:
@@ -89,8 +118,8 @@ Current completed perception-side evidence:
 
 Current bounded but not yet promotable evidence:
 
-- `real-audio-seq-002` completed, but blocked datasets remained
-- `real-sensor-seq-001` failed at `pamap2`
+- `real-audio-seq-003` completed cleanly and is now the promotable canonical integrated audio sequence
+- `real-sensor-seq-002` is the current pending canonical integrated sensor sequence
 
 ## Monolith Policy
 

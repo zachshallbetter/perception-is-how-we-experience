@@ -13,7 +13,7 @@ We also formalize modality protocol semantics through canonical `sensor_streamin
 At the same time, two boundaries remain explicit:
 
 1. Parameter-isolation APIs and opt-in service-path activation are implemented, but current exploratory EWC/SI-style follow-on sweeps have not yet surpassed the tuned-core replay baseline.
-2. Real multimodal benchmark coverage is underway but still bounded: bootstrap WISDM and Speech Commands evidence exists, `real-audio-seq-002` is completed but not promotable because blocked datasets remained, and `real-sensor-seq-001` is currently failed at `pamap2`.
+2. Real multimodal benchmark coverage is underway but still bounded: bootstrap WISDM and Speech Commands evidence exists, `real-audio-seq-003` is now promotable as the first integrated audio sequence, and `real-sensor-seq-002` is the pending integrated sensor sequence still behind the same evidence gate.
 
 The immediate path forward is therefore clear: complete the bounded integrated real-data sequences, promote them into the canonical results package only after successful sequence completion, strengthen the tuned-core result with fuller statistical treatment, test whether structural isolation can beat that baseline rather than merely exist in code, and extend from bootstrap real-domain evidence to broader integrated multimodal benchmarks. If those steps succeed, the practical output is a disciplined blueprint for building domain-specific perception systems that can ingest typed sensory inputs and keep learning over time without fully retraining from scratch.
 

@@ -16,7 +16,7 @@ This section compares core paper concepts against current implementation behavio
 | MIME-string-driven dispatch inside model forward | Architectural ideal of semantic routing in-model | `src/models/core.py` forward dispatches by modality keys in input dict, not MIME strings | Partial by design | Medium |
 | Modern runtime/service/observability architecture | Typed contracts + services + structured metrics/logging | `src/runtime/*`, `src/services/*`, `src/observability/*` | Implemented | Low |
 | Bootstrap real-data benchmark ingestion | Bootstrap evidence is includable now | Speech Commands and WISDM sequence reports are present and packaged as bootstrap evidence | Implemented | Low |
-| Canonical integrated real-data benchmark ingestion | Promoted only after bounded sequence completion with no blocked datasets | `real-audio-seq-002` is completed but not promotable; `real-sensor-seq-001` is failed at `pamap2` | Partial / Pending | Medium |
+| Canonical integrated real-data benchmark ingestion | Promoted only after bounded sequence completion with no blocked datasets | `real-audio-seq-003` is completed and promotable; `real-sensor-seq-002` is currently running and still pending promotion | Partial / Pending | Medium |
 | AudioSet media-backed integration | Deferred legacy source | Metadata present; active operational replacement is `fsd50k` | Deferred | Medium |
 | UbiqLog supervised integration | Deferred legacy source | Raw logs present; active operational replacement is `realworld_har` | Deferred | Medium |
 

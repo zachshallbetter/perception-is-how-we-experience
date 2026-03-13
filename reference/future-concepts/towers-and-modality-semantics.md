@@ -21,6 +21,8 @@ Different modalities have different structure:
 
 Treating them as one generic input stream too early risks destroying exactly the structure the model should learn.
 
+This is one instance of a broader repository pattern captured in [distinction-and-separation.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/distinction-and-separation.md): preserve important distinctions early, integrate later, and only collapse structure when the model has already extracted the semantics that make those distinctions useful.
+
 ## Where It Applies
 
 - security and monitoring

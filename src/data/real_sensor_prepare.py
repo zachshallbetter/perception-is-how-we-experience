@@ -476,7 +476,7 @@ def prepare_uci_har_dataset(
         samples = []
         for idx in range(body_acc.shape[0]):
             smartwatch = np.concatenate(
-                [body_acc[idx], _vector_norm(body_acc[idx])], axis=1
+                [body_acc[idx], body_gyro[idx], _vector_norm(body_acc[idx])], axis=1
             )
             room_env = np.concatenate(
                 [total_acc[idx], _vector_norm(total_acc[idx])], axis=1

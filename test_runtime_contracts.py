@@ -22,6 +22,7 @@ from src.data.real_sensor import (
 from src.data.real_audio_prepare import prepare_speech_commands_dataset
 from src.data.real_sensor_prepare import (
     prepare_opportunity_dataset,
+    prepare_uci_har_dataset,
     prepare_wisdm_dataset,
 )
 from src.runtime import (
@@ -680,6 +681,68 @@ class RuntimeContractsTest(unittest.TestCase):
             manifest = PreparedRealSensorDataset("opportunity", "train", root=root / "prepared")
             sample = manifest[0]
             self.assertEqual(tuple(sample["smartwatch"].shape), (32, 7))
+
+    def test_prepare_uci_har_dataset_builds_canonical_feature_dims(self):
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            dataset_root = root / "UCI HAR Dataset"
+            train_signals = dataset_root / "train" / "Inertial Signals"
+            test_signals = dataset_root / "test" / "Inertial Signals"
+            train_signals.mkdir(parents=True, exist_ok=True)
+            test_signals.mkdir(parents=True, exist_ok=True)
+
+            def write_signal(split: str, prefix: str, rows: list[list[float]]) -> None:
+                signals_root = train_signals if split == "train" else test_signals
+                for axis in ("x", "y", "z"):
+                    (signals_root / f"{prefix}_{axis}_{split}.txt").write_text(
+                        "\n".join(
+                            " ".join(str(value) for value in values) for values in rows
+                        )
+                        + "\n",
+                        encoding="utf-8",
+                    )
+
+            write_signal(
+                "train",
+                "body_acc",
+                [[0.1, 0.2, 0.3, 0.4], [0.4, 0.5, 0.6, 0.7]],
+            )
+            write_signal(
+                "train",
+                "body_gyro",
+                [[0.5, 0.6, 0.7, 0.8], [0.8, 0.9, 1.0, 1.1]],
+            )
+            write_signal(
+                "train",
+                "total_acc",
+                [[1.0, 1.1, 1.2, 1.3], [1.3, 1.4, 1.5, 1.6]],
+            )
+            write_signal(
+                "test",
+                "body_acc",
+                [[0.2, 0.3, 0.4, 0.5], [0.5, 0.6, 0.7, 0.8]],
+            )
+            write_signal(
+                "test",
+                "body_gyro",
+                [[0.6, 0.7, 0.8, 0.9], [0.9, 1.0, 1.1, 1.2]],
+            )
+            write_signal(
+                "test",
+                "total_acc",
+                [[1.1, 1.2, 1.3, 1.4], [1.4, 1.5, 1.6, 1.7]],
+            )
+            (dataset_root / "train" / "y_train.txt").write_text("1\n2\n", encoding="utf-8")
+            (dataset_root / "test" / "y_test.txt").write_text("2\n3\n", encoding="utf-8")
+
+            result = prepare_uci_har_dataset(root, root / "prepared", sequence_length=4)
+
+            self.assertEqual(result["dataset"], "uci_har")
+            prepared = PreparedRealSensorDataset("uci_har", "train", root=root / "prepared")
+            sample = prepared[0]
+            self.assertEqual(tuple(sample["smartwatch"].shape), (4, 7))
+            self.assertEqual(tuple(sample["room_env"].shape), (4, 4))
+            self.assertEqual(tuple(sample["robot_arm"].shape), (4, 9))
 
     def test_prepared_real_audio_dataset_loads_canonical_split(self):
         with TemporaryDirectory() as tmpdir:

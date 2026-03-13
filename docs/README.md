@@ -30,7 +30,11 @@ This directory is the operator and research bridge between the codebase and the 
 7. `real-sensor-datasets.md`
    - [/Users/zachshallbetter/Projects/Perception/docs/real-sensor-datasets.md](/Users/zachshallbetter/Projects/Perception/docs/real-sensor-datasets.md)
    - real-data support matrix, prepared-data contract, and autonomous progression rules
-8. `paper/latex/README.md`
+8. `completed-summary-analysis.md`
+   - [/Users/zachshallbetter/Projects/Perception/docs/completed-summary-analysis.md](/Users/zachshallbetter/Projects/Perception/docs/completed-summary-analysis.md)
+   - operator-facing synthesis of completed summary files
+   - what is promotable now vs still pending
+9. `paper/latex/README.md`
    - [/Users/zachshallbetter/Projects/Perception/paper/latex/README.md](/Users/zachshallbetter/Projects/Perception/paper/latex/README.md)
    - TeX toolchain installation and manuscript PDF generation
 
@@ -38,6 +42,7 @@ This directory is the operator and research bridge between the codebase and the 
 
 - If you are operating Titan today, start with `training-guide.md`.
 - If you are trying to understand what the paper currently proves, read [sensor-mime-experiment-plan.md](/Users/zachshallbetter/Projects/Perception/docs/sensor-mime-experiment-plan.md) together with [06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md) and [07-discussion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md).
+- If you need the current bounded evidence state in one place, read [completed-summary-analysis.md](/Users/zachshallbetter/Projects/Perception/docs/completed-summary-analysis.md) before promoting any Titan run into the paper.
 - If you are trying to decide whether this work is usable beyond the paper, read [productization-roadmap.md](/Users/zachshallbetter/Projects/Perception/docs/productization-roadmap.md).
 - If you are thinking about a real live deployment, read [live-deployment-architecture.md](/Users/zachshallbetter/Projects/Perception/docs/live-deployment-architecture.md) before trying to infer product behavior from the training scripts.
 - If you are trying to understand the user-facing outcome rather than the mechanism details, read [README.md](/Users/zachshallbetter/Projects/Perception/README.md) together with [productization-roadmap.md](/Users/zachshallbetter/Projects/Perception/docs/productization-roadmap.md).

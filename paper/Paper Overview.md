@@ -77,14 +77,14 @@ flowchart TD
     A["Replay-centric continual learning"] --> B["Strongest validated quantitative result"]
     C["Synthetic sensor routing ladder"] --> D["Strongest completed perception-side evidence"]
     E["Bootstrap real-data runs"] --> F["Executable real-data proof"]
-    G["Canonical integrated sequences"] --> H["Next promotable evidence gate"]
+    G["Canonical integrated sequences"] --> H["Promoted integrated evidence"]
     B --> I["Current paper core"]
     D --> I
     F --> I
-    H --> J["Future paper update"]
+    H --> I
 ```
 
-This is important because the current strongest evidence remains replay-centric continual learning, while the broader perception-side sensor/MIME claim is now supported by a completed synthetic routing ladder and only partially supported by bootstrap real-data evidence.
+This is important because the current strongest evidence remains replay-centric continual learning, while the broader perception-side sensor/MIME claim is now supported by a completed synthetic routing ladder plus completed promotable integrated audio and sensor sequences.
 
 ## Practical Reader Takeaway
 
@@ -93,7 +93,7 @@ The practical takeaway should be read at two levels:
 1. **What the project currently proves**
    - replay placement matters for continual retention
    - typed routing has meaningful synthetic perception-side support
-   - real wearable and audio evidence is now moving from scaffold to executable benchmark path
+   - real wearable and audio evidence now exists as bounded, completed integrated benchmark paths
 
 2. **What a future user would actually get if the architecture continues to validate**
    - a perception system that can combine multiple sensory channels,
@@ -116,10 +116,10 @@ Current completed perception-side evidence:
 - leave-one-out, corruption, and noise stress tests
 - capacity-matched routing control
 
-Current bounded but not yet promotable evidence:
+Current promotable integrated evidence:
 
 - `real-audio-seq-003` completed cleanly and is now the promotable canonical integrated audio sequence
-- `real-sensor-seq-002` is the current pending canonical integrated sensor sequence
+- `real-sensor-seq-002` completed cleanly and is now the promotable canonical integrated sensor sequence
 
 ## Monolith Policy
 

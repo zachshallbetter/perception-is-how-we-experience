@@ -109,7 +109,7 @@ Therefore, this section claims a robust replay-centric continual result, not a s
 2. The tuned-core result has multiseed coverage, but confidence intervals and broader statistical treatment are still needed.
 3. Preliminary BWT sweep results are diagnostic and not yet strong enough to replace the tuned-core result as the main reported configuration.
 4. The synthetic sensor/MIME routing ladder is complete and reportable, but it remains controlled synthetic evidence rather than the final real-domain perception claim.
-5. Real-data evidence is now split into bootstrap and canonical integrated stages. Bootstrap WISDM and Speech Commands runs are includable; canonical integrated promotion still requires all expected datasets to finish with no blocked entries.
+5. Real-data evidence is now split into bootstrap and canonical integrated stages. Bootstrap WISDM and Speech Commands runs are includable, and both canonical integrated sequences now clear the bounded promotion gate.
 
 ## 6.8 Completed Sensor/MIME Routing Summary
 
@@ -149,7 +149,7 @@ The real-data lane is now packaged with an explicit bootstrap-versus-canonical s
 - **Bootstrap audio evidence**: `real-audio-seq-001` on `speech_commands`
 - **Canonical audio evidence**: `real-audio-seq-003` on `speech_commands`, `esc50`, `urbansound8k`, and `fsd50k`
 - **Bootstrap sensor evidence**: `real-seq-004` on `wisdm`
-- **Canonical sensor candidate**: `real-sensor-seq-002` on the integrated real-sensor lineup including `realworld_har`
+- **Canonical sensor evidence**: `real-sensor-seq-002` on the integrated real-sensor lineup including `realworld_har`
 
 Completed bootstrap real-data results are:
 
@@ -168,7 +168,7 @@ Interpretation:
 - These bootstrap runs establish that the first real audio and real sensor paths work end to end on Titan.
 - `real-audio-seq-003` is now the first **promotable canonical integrated audio sequence**. It completed all expected audio families (`speech_commands`, `esc50`, `urbansound8k`, `fsd50k`) with no blocked datasets.
 - `real-audio-seq-002` is retained only as a historical bounded attempt. It completed with blocked datasets and must not be treated as canonical evidence.
-- `real-sensor-seq-002` is now the active **canonical integrated sensor candidate**. It has started cleanly and remains pending until its bounded sequence report is completed without blocked datasets or missing artifacts.
+- `real-sensor-seq-002` is now the first **promotable canonical integrated sensor sequence**. It completed all expected sensor families (`wisdm`, `pamap2`, `opportunity`, `uci_har`, `hhar`, `mhealth`, `selfback`, `geomagnetic_wlan`, `realworld_har`) with no blocked datasets.
 - The canonical real-data evidence package is promoted only from bounded integrated sequences once they complete with all expected datasets present and no blocked entries.
 
 Operationally, the generated package under `paper/figures/generated/results_package/real_data/` is the source of truth for current real-data status. It separates:

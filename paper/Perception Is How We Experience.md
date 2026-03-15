@@ -8,7 +8,7 @@ The implementation includes a modernized runtime/service architecture with typed
 
 Parameter-isolation primitives (task adapters with freeze/rollover APIs) are implemented in the model and validated in targeted tests. Sequential activation is available as an opt-in service path, but current preliminary BWT sweeps with EWC and SI regularization have not yet surpassed the tuned-core replay result.
 
-Current multimodal support includes completed synthetic `sensor_streaming` evidence plus bootstrap real-data evidence on WISDM and Speech Commands. The completed synthetic perception-side ladder shows that typed canonical routing outperforms merged routing across the baseline, capacity-matched, leave-one-out, corruption, and most single-modality noise conditions, with `noise_robot_arm` as the principal exception. Real integrated benchmark sequences are now bounded explicitly: bootstrap evidence is reportable, `real-audio-seq-003` is the first promotable canonical integrated audio sequence, and `real-sensor-seq-002` remains pending behind the same promotion gate. Deferred legacy sources such as AudioSet and UbiqLog remain explicit rather than being promoted as evidence.
+Current multimodal support includes completed synthetic `sensor_streaming` evidence plus bounded real-data evidence on WISDM, Speech Commands, and the completed canonical integrated audio and sensor sequences. The completed synthetic perception-side ladder shows that typed canonical routing outperforms merged routing across the baseline, capacity-matched, leave-one-out, corruption, and most single-modality noise conditions, with `noise_robot_arm` as the principal exception. Real integrated benchmark sequences are now bounded explicitly: bootstrap evidence is reportable, `real-audio-seq-003` is the first promotable canonical integrated audio sequence, and `real-sensor-seq-002` is now the promotable canonical integrated sensor sequence. Deferred legacy sources such as AudioSet and UbiqLog remain explicit rather than being promoted as evidence.
 
 Practically, the present contribution is therefore best understood as a blueprint for domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone rather than only late task heads. If the broader concept continues to validate, the user-facing result is a structured multimodal perception engine that can watch, listen, track, and adapt without constantly starting over.
 
@@ -419,7 +419,7 @@ To avoid over-claiming:
 
 1. Task-adapter rollover is implemented in the service path and can be enabled via `adapter_rollover` with `continual_task_count > 1`.
 2. MIME routing is implemented as canonical modality-case registry + validation, while model dispatch uses modality keys in input dicts.
-3. Real-data evidence is split into bootstrap and canonical integrated stages. Speech Commands and WISDM bootstrap runs are includable now. `real-audio-seq-003` is the first promotable integrated audio sequence because it completed `speech_commands`, `esc50`, `urbansound8k`, and `fsd50k` without blocked datasets. `real-sensor-seq-002` is the current integrated sensor candidate and remains pending until its bounded sequence completes cleanly. The active integrated lineups now include HF-backed `fsd50k` and `realworld_har`, while legacy `audioset` and `ubiqlog` stay outside the bounded chain.
+3. Real-data evidence is split into bootstrap and canonical integrated stages. Speech Commands and WISDM bootstrap runs are includable now. `real-audio-seq-003` is the first promotable integrated audio sequence because it completed `speech_commands`, `esc50`, `urbansound8k`, and `fsd50k` without blocked datasets. `real-sensor-seq-002` is now the promotable integrated sensor sequence because it completed `wisdm`, `pamap2`, `opportunity`, `uci_har`, `hhar`, `mhealth`, `selfback`, `geomagnetic_wlan`, and `realworld_har` without blocked datasets. The active integrated lineups now include HF-backed `fsd50k` and `realworld_har`, while legacy `audioset` and `ubiqlog` stay outside the bounded chain.
 4. Preliminary BWT sweeps are interpreted as follow-on evidence only if they beat the tuned-core continual baseline; otherwise they are diagnostic evidence about what does not improve forgetting.
 5. The sensor/MIME lane is bounded by explicit decision states (`canonical-dominant`, `capacity-confounded`, `competitive`, `merged-favored`) and should not be described as an unconstrained autonomous search for perfect results.
 
@@ -535,7 +535,7 @@ Therefore, this section claims a robust replay-centric continual result, not a s
 2. The tuned-core result has multiseed coverage, but confidence intervals and broader statistical treatment are still needed.
 3. Preliminary BWT sweep results are diagnostic and not yet strong enough to replace the tuned-core result as the main reported configuration.
 4. The synthetic sensor/MIME routing ladder is complete and reportable, but it remains controlled synthetic evidence rather than the final real-domain perception claim.
-5. Real-data evidence is now split into bootstrap and canonical integrated stages. Bootstrap WISDM and Speech Commands runs are includable; canonical integrated promotion still requires all expected datasets to finish with no blocked entries.
+5. Real-data evidence is now split into bootstrap and canonical integrated stages. Bootstrap WISDM and Speech Commands runs are includable, and both canonical integrated sequences now clear the bounded promotion gate.
 
 ## 6.8 Completed Sensor/MIME Routing Summary
 
@@ -575,7 +575,7 @@ The real-data lane is now packaged with an explicit bootstrap-versus-canonical s
 - **Bootstrap audio evidence**: `real-audio-seq-001` on `speech_commands`
 - **Canonical audio evidence**: `real-audio-seq-003` on `speech_commands`, `esc50`, `urbansound8k`, and `fsd50k`
 - **Bootstrap sensor evidence**: `real-seq-004` on `wisdm`
-- **Canonical sensor candidate**: `real-sensor-seq-002` on the integrated real-sensor lineup including `realworld_har`
+- **Canonical sensor evidence**: `real-sensor-seq-002` on the integrated real-sensor lineup including `realworld_har`
 
 Completed bootstrap real-data results are:
 
@@ -594,7 +594,7 @@ Interpretation:
 - These bootstrap runs establish that the first real audio and real sensor paths work end to end on Titan.
 - `real-audio-seq-003` is now the first **promotable canonical integrated audio sequence**. It completed all expected audio families (`speech_commands`, `esc50`, `urbansound8k`, `fsd50k`) with no blocked datasets.
 - `real-audio-seq-002` is retained only as a historical bounded attempt. It completed with blocked datasets and must not be treated as canonical evidence.
-- `real-sensor-seq-002` is now the active **canonical integrated sensor candidate**. It has started cleanly and remains pending until its bounded sequence report is completed without blocked datasets or missing artifacts.
+- `real-sensor-seq-002` is now the first **promotable canonical integrated sensor sequence**. It completed all expected sensor families (`wisdm`, `pamap2`, `opportunity`, `uci_har`, `hhar`, `mhealth`, `selfback`, `geomagnetic_wlan`, `realworld_har`) with no blocked datasets.
 - The canonical real-data evidence package is promoted only from bounded integrated sequences once they complete with all expected datasets present and no blocked entries.
 
 Operationally, the generated package under `paper/figures/generated/results_package/real_data/` is the source of truth for current real-data status. It separates:
@@ -662,7 +662,7 @@ The next decisive question is no longer "can we tweak BWT a little more with nea
 
 This matters because it is the shortest path from architectural argument to measured perception-side evidence. The bounded Titan-local supervisor is useful here not as an optimization oracle, but as a way to execute that evidence ladder in a fixed, interpretable order with explicit stop states.
 
-The same discipline now applies to the real-data path. The repository now distinguishes **bootstrap** real-data evidence from the **canonical integrated** sequences that carry the next paper-facing quantitative claim. WISDM and Speech Commands established the first executable sensor and audio paths, and `real-audio-seq-003` is now the first promotable canonical integrated audio sequence because it completed all expected datasets without blocked entries. `real-sensor-seq-002` is the active canonical integrated sensor candidate and remains pending until its bounded report is completed cleanly. Crucially, the real-data supervisors do not erase implementation boundaries: datasets without prepared canonical splits remain blocked, and broader sensor/body or audio candidates are tracked as queued rather than reported as if they were already empirical support. This keeps the paper aligned with actual executable evidence instead of with aspirational coverage.
+The same discipline now applies to the real-data path. The repository now distinguishes **bootstrap** real-data evidence from the **canonical integrated** sequences that carry the next paper-facing quantitative claim. WISDM and Speech Commands established the first executable sensor and audio paths, and both integrated sequences have now cleared the bounded promotion gate: `real-audio-seq-003` completed all expected audio datasets without blocked entries, and `real-sensor-seq-002` completed all expected sensor datasets without blocked entries. Crucially, the real-data supervisors do not erase implementation boundaries: datasets without prepared canonical splits remain blocked, and broader sensor/body or audio candidates are tracked as queued rather than reported as if they were already empirical support. This keeps the paper aligned with actual executable evidence instead of with aspirational coverage.
 
 ```mermaid
 flowchart LR
@@ -688,7 +688,7 @@ The right current discussion stance is therefore:
 2. capacity confounding is no longer the leading explanation for the baseline gap,
 3. the claim should still be framed as controlled synthetic support until real-domain benchmarks exist.
 
-The current real-data gate reinforces the same discipline. `real-audio-seq-003` is promotable because it completed with all expected audio datasets present and no blocked entries. `real-audio-seq-002` remains a historical failed-attempt sequence because blocked datasets remained, and `real-sensor-seq-002` should not be promoted while it is still running. Those distinctions are exactly why the bootstrap-versus-canonical taxonomy exists.
+The current real-data gate reinforces the same discipline. `real-audio-seq-003` and `real-sensor-seq-002` are promotable because they completed with all expected datasets present and no blocked entries. `real-audio-seq-002` remains a historical failed-attempt sequence because blocked datasets remained. Those distinctions are exactly why the bootstrap-versus-canonical taxonomy exists.
 
 ## 7.7 Next Experimental Priorities
 
@@ -760,7 +760,7 @@ We also formalize modality protocol semantics through canonical `sensor_streamin
 At the same time, two boundaries remain explicit:
 
 1. Parameter-isolation APIs and opt-in service-path activation are implemented, but current exploratory EWC/SI-style follow-on sweeps have not yet surpassed the tuned-core replay baseline.
-2. Real multimodal benchmark coverage is underway but still bounded: bootstrap WISDM and Speech Commands evidence exists, `real-audio-seq-003` is now promotable as the first integrated audio sequence, and `real-sensor-seq-002` is the pending integrated sensor sequence still behind the same evidence gate.
+2. Real multimodal benchmark coverage is now materially stronger but still bounded: bootstrap WISDM and Speech Commands evidence exists, `real-audio-seq-003` is now promotable as the first integrated audio sequence, and `real-sensor-seq-002` is now promotable as the first integrated sensor sequence behind the same evidence gate.
 
 The immediate path forward is therefore clear: complete the bounded integrated real-data sequences, promote them into the canonical results package only after successful sequence completion, strengthen the tuned-core result with fuller statistical treatment, test whether structural isolation can beat that baseline rather than merely exist in code, and extend from bootstrap real-domain evidence to broader integrated multimodal benchmarks. If those steps succeed, the practical output is a disciplined blueprint for building domain-specific perception systems that can ingest typed sensory inputs and keep learning over time without fully retraining from scratch.
 
@@ -812,7 +812,7 @@ This matrix maps paper claims to current implementation status in the codebase.
 | Sensor streaming dataset in dataloader factory | Implemented | `src/data/loaders.py` (`SensorStreamingDataset`, `create_dataloaders`) | Uses generated streams. |
 | Audio-visual multimodal support in dataloader factory | Implemented (proxy) | `src/data/loaders.py` (`AudioVisualProxyDataset`) | Proxy dataset, not production ingestion. |
 | Real-data bootstrap evidence on Speech Commands and WISDM | Implemented | `results/real_audio_sequence_summaries/real-audio-seq-001-report.json`, `results/real_sensor_sequence_summaries/real-seq-004-report.json` | Bootstrap evidence only; not the canonical integrated package. |
-| Canonical integrated real-data sequences | Partial / Audio promotable, sensor pending | `results/real_audio_sequence_summaries/real-audio-seq-003-report.json`, `results/real_sensor_sequence_summaries/real-sensor-seq-002-report.json` | `real-audio-seq-003` completed cleanly across the integrated audio lineup; `real-sensor-seq-002` is currently running and not yet promotable. |
+| Canonical integrated real-data sequences | Completed / Audio and sensor promotable | `results/real_audio_sequence_summaries/real-audio-seq-003-report.json`, `results/real_sensor_sequence_summaries/real-sensor-seq-002-report.json` | `real-audio-seq-003` completed cleanly across the integrated audio lineup, and `real-sensor-seq-002` completed cleanly across the integrated sensor lineup. |
 | AudioSet media-backed training pipeline integration | Deferred legacy source | Metadata staged locally; active operational replacement is `fsd50k` | Keep outside bounded chain. |
 | UbiqLog supervised benchmark integration | Deferred legacy source | Raw logs present, but active operational replacement is `realworld_har` | Keep outside bounded chain. |
 | Additional IMU/text towers in active model config | Planned | N/A in `resolve_modality_setup` | Current active multimodal setup is still bounded and dataset-specific. |
@@ -848,7 +848,7 @@ This section compares core paper concepts against current implementation behavio
 | MIME-string-driven dispatch inside model forward | Architectural ideal of semantic routing in-model | `src/models/core.py` forward dispatches by modality keys in input dict, not MIME strings | Partial by design | Medium |
 | Modern runtime/service/observability architecture | Typed contracts + services + structured metrics/logging | `src/runtime/*`, `src/services/*`, `src/observability/*` | Implemented | Low |
 | Bootstrap real-data benchmark ingestion | Bootstrap evidence is includable now | Speech Commands and WISDM sequence reports are present and packaged as bootstrap evidence | Implemented | Low |
-| Canonical integrated real-data benchmark ingestion | Promoted only after bounded sequence completion with no blocked datasets | `real-audio-seq-003` is completed and promotable; `real-sensor-seq-002` is currently running and still pending promotion | Partial / Pending | Medium |
+| Canonical integrated real-data benchmark ingestion | Promoted only after bounded sequence completion with no blocked datasets | `real-audio-seq-003` and `real-sensor-seq-002` are completed and promotable | Completed / Promotable | Medium |
 | AudioSet media-backed integration | Deferred legacy source | Metadata present; active operational replacement is `fsd50k` | Deferred | Medium |
 | UbiqLog supervised integration | Deferred legacy source | Raw logs present; active operational replacement is `realworld_har` | Deferred | Medium |
 

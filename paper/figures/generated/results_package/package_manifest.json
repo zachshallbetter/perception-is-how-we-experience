@@ -302,6 +302,96 @@
       "merged_mean_accuracy": 0.6361904761904762,
       "canonical_minus_merged": 0.04190476190476189,
       "status": "completed"
+    },
+    {
+      "stage": "canonical",
+      "canonical": true,
+      "dataset": "wisdm",
+      "family": "real-sensor-seq-002-wisdm",
+      "canonical_mean_accuracy": 0.6780952380952381,
+      "merged_mean_accuracy": 0.6361904761904762,
+      "canonical_minus_merged": 0.04190476190476189,
+      "status": "completed"
+    },
+    {
+      "stage": "canonical",
+      "canonical": true,
+      "dataset": "pamap2",
+      "family": "real-sensor-seq-002-pamap2",
+      "canonical_mean_accuracy": 0.5964653902798233,
+      "merged_mean_accuracy": 0.4144984454262805,
+      "canonical_minus_merged": 0.18196694485354276,
+      "status": "completed"
+    },
+    {
+      "stage": "canonical",
+      "canonical": true,
+      "dataset": "opportunity",
+      "family": "real-sensor-seq-002-opportunity",
+      "canonical_mean_accuracy": 0.871294287780188,
+      "merged_mean_accuracy": 0.8626174981923355,
+      "canonical_minus_merged": 0.008676789587852562,
+      "status": "completed"
+    },
+    {
+      "stage": "canonical",
+      "canonical": true,
+      "dataset": "uci_har",
+      "family": "real-sensor-seq-002-uci_har",
+      "canonical_mean_accuracy": 0.9265920144780002,
+      "merged_mean_accuracy": 0.929872186404253,
+      "canonical_minus_merged": -0.0032801719262527396,
+      "status": "completed"
+    },
+    {
+      "stage": "canonical",
+      "canonical": true,
+      "dataset": "hhar",
+      "family": "real-sensor-seq-002-hhar",
+      "canonical_mean_accuracy": 0.8900675024108003,
+      "merged_mean_accuracy": 0.8907103825136612,
+      "canonical_minus_merged": -0.0006428801028608433,
+      "status": "completed"
+    },
+    {
+      "stage": "canonical",
+      "canonical": true,
+      "dataset": "mhealth",
+      "family": "real-sensor-seq-002-mhealth",
+      "canonical_mean_accuracy": 0.886892880904857,
+      "merged_mean_accuracy": 0.9807052561543579,
+      "canonical_minus_merged": -0.09381237524950092,
+      "status": "completed"
+    },
+    {
+      "stage": "canonical",
+      "canonical": true,
+      "dataset": "selfback",
+      "family": "real-sensor-seq-002-selfback",
+      "canonical_mean_accuracy": 0.7750987966786554,
+      "merged_mean_accuracy": 0.7536077438834865,
+      "canonical_minus_merged": 0.02149105279516894,
+      "status": "completed"
+    },
+    {
+      "stage": "canonical",
+      "canonical": true,
+      "dataset": "geomagnetic_wlan",
+      "family": "real-sensor-seq-002-geomagnetic_wlan",
+      "canonical_mean_accuracy": 0.0,
+      "merged_mean_accuracy": 0.0,
+      "canonical_minus_merged": 0.0,
+      "status": "completed"
+    },
+    {
+      "stage": "canonical",
+      "canonical": true,
+      "dataset": "realworld_har",
+      "family": "real-sensor-seq-002-realworld_har",
+      "canonical_mean_accuracy": 0.9206827309236948,
+      "merged_mean_accuracy": 0.8969210174029452,
+      "canonical_minus_merged": 0.023761713520749628,
+      "status": "completed"
     }
   ],
   "source_matrices": {

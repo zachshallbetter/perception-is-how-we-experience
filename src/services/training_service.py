@@ -20,6 +20,7 @@ from src.data.loaders import create_dataloaders
 from src.models import ContrastiveLoss, SensoryPerceiver
 from src.observability import MetricsCollector, emit_event, generate_trace_id
 from src.runtime import (
+    AppError,
     TRAIN_CONFIG_SCHEMA_VERSION,
     ErrorCode,
     TrainRuntimeConfig,
@@ -80,7 +81,7 @@ class Trainer:
         self.config = config
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        self.best_val_acc = 0.0
+        self.best_val_acc = float("-inf")
         self.train_history = {"loss": [], "acc": [], "val_loss": [], "val_acc": []}
         self.feature_replay_features = None
         self.feature_replay_labels = None
@@ -405,6 +406,22 @@ class Trainer:
             param.requires_grad_(False)
 
 
+def _require_training_artifacts(output_dir: Path) -> None:
+    """Fail hard if a training run did not emit its canonical artifacts."""
+    required = (
+        output_dir / "best_model.pt",
+        output_dir / "latest_model.pt",
+        output_dir / "train_log.csv",
+    )
+    missing = [str(path) for path in required if not path.exists()]
+    if missing:
+        raise AppError(
+            ErrorCode.IO_ERROR,
+            "Training completed without required artifacts",
+            context={"missing_artifacts": ",".join(missing)},
+        )
+
+
 def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
     """Execute a training job from validated runtime config."""
     trace_id = generate_trace_id("training")
@@ -558,14 +575,16 @@ def run_training(runtime_config: TrainRuntimeConfig) -> TrainingRunResult:
 
             if runtime_config.adapter_rollover and task_id < n_continual_tasks - 1:
                 trainer.model.freeze_task()
-                emit_event(
-                    logger,
-                    logging.INFO,
-                    "training.task.adapter_frozen",
-                    trace_id,
-                    task_id=task_id,
-                    next_task_id=task_id + 1,
+            emit_event(
+                logger,
+                logging.INFO,
+                "training.task.adapter_frozen",
+                trace_id,
+                task_id=task_id,
+                next_task_id=task_id + 1,
                 )
+
+        _require_training_artifacts(output_dir)
 
         duration_sec = time.perf_counter() - start_time
         metrics.increment("training.runs.success")

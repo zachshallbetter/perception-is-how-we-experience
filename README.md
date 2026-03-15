@@ -81,7 +81,7 @@ For reporting and paper packaging, treat the real-data sequences in two tiers:
   - `real-seq-004` for first-pass `wisdm`
 - canonical integrated evidence:
   - `real-audio-seq-003` for `speech_commands`, `esc50`, `urbansound8k`, `fsd50k`
-  - `real-sensor-seq-002` for the integrated real-sensor lineup including `realworld_har`
+  - `real-sensor-seq-002` for the completed integrated real-sensor lineup including `realworld_har`
 If you want one bounded sequence to hand off directly to the next without manual intervention, use the chain helpers:
 - `scripts/chain_real_sensor_sequence.sh`
 - `scripts/chain_real_audio_sequence.sh`
@@ -191,11 +191,12 @@ If you are orienting yourself to the project, read in this order:
 3. [docs/productization-roadmap.md](/Users/zachshallbetter/Projects/Perception/docs/productization-roadmap.md) for the path from research result to usable system.
 4. [docs/live-deployment-architecture.md](/Users/zachshallbetter/Projects/Perception/docs/live-deployment-architecture.md) for the concrete live-system interpretation of the current architecture.
 5. [docs/training-guide.md](/Users/zachshallbetter/Projects/Perception/docs/training-guide.md) for the canonical Titan workflow.
-6. [docs/completed-summary-analysis.md](/Users/zachshallbetter/Projects/Perception/docs/completed-summary-analysis.md) for the current completed evidence state, including what is promotable now versus still pending.
-7. [docs/sensor-mime-experiment-plan.md](/Users/zachshallbetter/Projects/Perception/docs/sensor-mime-experiment-plan.md) for the current perception-side evidence ladder.
-8. [paper/sections/README.md](/Users/zachshallbetter/Projects/Perception/paper/sections/README.md), [paper/sections/06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md), and [paper/sections/07-discussion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md) for the current paper-aligned claim surface.
-9. [paper/latex/README.md](/Users/zachshallbetter/Projects/Perception/paper/latex/README.md) for the TeX toolchain and PDF build path.
-10. [reference/future-concepts/README.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/README.md) for reusable multimodal design patterns that are intentionally non-canonical.
+6. [docs/completed-summary-analysis.md](/Users/zachshallbetter/Projects/Perception/docs/completed-summary-analysis.md) for the current completed evidence state and why the current paper-grade experiment program is now complete.
+7. [docs/strategic-next-questions.md](/Users/zachshallbetter/Projects/Perception/docs/strategic-next-questions.md) for what is strategically worth running after canonical completion.
+8. [docs/sensor-mime-experiment-plan.md](/Users/zachshallbetter/Projects/Perception/docs/sensor-mime-experiment-plan.md) for the current perception-side evidence ladder.
+9. [paper/sections/README.md](/Users/zachshallbetter/Projects/Perception/paper/sections/README.md), [paper/sections/06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md), and [paper/sections/07-discussion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md) for the current paper-aligned claim surface.
+10. [paper/latex/README.md](/Users/zachshallbetter/Projects/Perception/paper/latex/README.md) for the TeX toolchain and PDF build path.
+11. [reference/future-concepts/README.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/README.md) for reusable multimodal design patterns that are intentionally non-canonical.
 
 ## Concept Map
 

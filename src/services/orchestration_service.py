@@ -187,7 +187,8 @@ class ExperimentOrchestrator:
         """Run evaluation on completed experiment."""
         checkpoint = exp.output_dir / "best_model.pt"
         if not checkpoint.exists():
-            logger.warning(f"Checkpoint not found: {checkpoint}")
+            logger.error(f"Checkpoint not found: {checkpoint}")
+            exp.status = "failed"
             return {}
         dataset = getattr(exp, "dataset_override", exp.dataset)
         experiment_name = self._resolve_experiment_for_dataset(dataset)

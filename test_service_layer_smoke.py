@@ -62,6 +62,46 @@ def chdir(path: Path):
 
 
 class ServiceLayerSmokeTest(unittest.TestCase):
+    @patch("src.services.evaluation_service.Evaluator")
+    @patch("src.services.evaluation_service.create_dataloaders")
+    @patch("src.services.evaluation_service.load_checkpoint")
+    def test_run_evaluation_uses_runtime_sensor_variant_for_probe_eval(
+        self, mock_load_checkpoint, mock_create_dataloaders, mock_evaluator
+    ):
+        mock_load_checkpoint.return_value = (
+            nn.Linear(4, 2),
+            None,
+            {"n_classes": 2, "modality_routing_mode": "canonical", "sensor_variant": "baseline"},
+        )
+        mock_create_dataloaders.return_value = ([], [])
+        evaluator_instance = mock_evaluator.return_value
+        evaluator_instance.evaluate.return_value = {"overall_accuracy": 0.5, "n_samples": 1}
+        evaluator_instance.save_results.return_value = None
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint = Path(tmpdir) / "best_model.pt"
+            checkpoint.write_bytes(b"placeholder")
+            output_file = Path(tmpdir) / "eval_results.json"
+            runtime_config = EvalRuntimeConfig(
+                checkpoint=checkpoint,
+                experiment="sensor_streaming",
+                dataset="pamap2",
+                modality_routing_mode="canonical",
+                sensor_variant="drop_smartwatch",
+                batch_size=4,
+                num_workers=0,
+                device=torch.device("cpu"),
+                output_file=output_file,
+                seed=7,
+            )
+
+            run_evaluation(runtime_config)
+
+        self.assertEqual(
+            mock_create_dataloaders.call_args.kwargs["sensor_variant"],
+            "drop_smartwatch",
+        )
+
     def test_trainer_writes_best_checkpoint_even_when_first_val_acc_is_zero(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             model = nn.Linear(4, 2)

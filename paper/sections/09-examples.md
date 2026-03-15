@@ -23,7 +23,7 @@ The canonical paper is limited to:
 - replay-centric continual-learning evidence
 - the completed synthetic sensor-routing ladder
 - bootstrap real-data evidence
-- pending canonical integrated real-data evidence
+- completed canonical integrated real-data evidence
 
 Domain examples should only appear in the canonical paper as brief future-use framing. They must not be used as current empirical support unless they are both:
 

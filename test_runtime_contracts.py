@@ -612,6 +612,46 @@ class RuntimeContractsTest(unittest.TestCase):
             self.assertEqual(merged["sensor_stream"].shape[-1], 20)
             self.assertTrue(real_sensor_dataset_is_prepared("wisdm", tmpdir))
 
+    def test_prepared_real_sensor_dataset_applies_drop_and_noise_variants(self):
+        with TemporaryDirectory() as tmpdir:
+            dataset_dir = Path(tmpdir) / "wisdm"
+            dataset_dir.mkdir(parents=True, exist_ok=True)
+            (dataset_dir / "manifest.json").write_text(
+                """{
+  "schema_version": 1,
+  "dataset": "wisdm",
+  "source_name": "WISDM",
+  "description": "test",
+  "sequence_length": 8,
+  "n_classes": 2,
+  "class_names": ["a", "b"],
+  "splits": {"train": "train.pt", "val": "val.pt"}
+}
+""",
+                encoding="utf-8",
+            )
+            payload = {
+                "labels": torch.tensor([0, 1], dtype=torch.long),
+                "smartwatch": torch.ones(2, 8, 7),
+                "room_env": torch.full((2, 8, 4), 2.0),
+                "robot_arm": torch.full((2, 8, 9), 3.0),
+            }
+            torch.save(payload, dataset_dir / "train.pt")
+            torch.save(payload, dataset_dir / "val.pt")
+
+            dropped = PreparedRealSensorDataset(
+                "wisdm", "train", root=tmpdir, sensor_variant="drop_room_env"
+            )
+            noisy = PreparedRealSensorDataset(
+                "wisdm", "train", root=tmpdir, sensor_variant="noise_robot_arm"
+            )
+
+            self.assertTrue(torch.allclose(dropped[0]["room_env"], torch.zeros(8, 4)))
+            self.assertTrue(torch.allclose(dropped[0]["smartwatch"], torch.ones(8, 7)))
+            self.assertFalse(
+                torch.allclose(noisy[0]["robot_arm"], torch.full((8, 9), 3.0))
+            )
+
     def test_prepare_wisdm_dataset_builds_prepared_splits(self):
         with TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

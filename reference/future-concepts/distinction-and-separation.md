@@ -98,21 +98,14 @@ So this should currently be read as a strong architectural hypothesis with multi
 The evidence is not random.
 
 - In continual learning, the biggest mechanistic gain came from changing **where replay reaches**.
-  - That is a distinction-preserving move.
-  - It improved retention because old competence was refreshed in the representational pathway, not only in the output head.
-- In synthetic routing, typed structure helped when the benchmark actually depended on preserving modality identity.
-  - Again, distinction helped.
-- In integrated real sensor data, the story became mixed rather than uniformly positive.
-  - That is informative rather than disappointing.
-  - It suggests distinction is not magic. It helps when the data-generating structure actually benefits from preserved separation.
+- In synthetic routing, typed structure helped when the benchmark depended on preserving modality identity.
+- In integrated real sensor data, the pattern became mixed rather than uniformly positive.
 
-This yields a stronger scientific statement than “distinction always wins.”
-
-The better version is:
+Taken together, that points to a narrower and more defensible claim:
 
 - distinction helps when modalities carry genuinely different structures or nuisance regimes
 - distinction helps when forgetting happens at the representation level
-- distinction may matter less, or even cost something, when modalities are already close, redundant, weakly informative, or poorly matched to the imposed split
+- distinction may matter less, or even cost something, when modalities are close, redundant, weakly informative, or poorly matched to the imposed split
 
 That is a falsifiable hypothesis rather than a branding claim.
 
@@ -240,13 +233,7 @@ The bucket structure implies:
 - the hypothesis has clear limits
 - the hypothesis is not yet explanatory enough on its own
 
-The next scientific step is therefore not another broad benchmark sweep. It is to explain why:
-
-- `pamap2` is strongly positive,
-- `mhealth` is clearly negative,
-- and `opportunity` / `uci_har` / `hhar` are effectively near-zero.
-
-If those structural differences can be characterized, the hypothesis becomes more than a pattern description.
+The next scientific step is therefore not another broad benchmark sweep. It is the bounded probe campaign documented in [real-sensor-distinction-probes.md](/Users/zachshallbetter/Projects/Perception/docs/real-sensor-distinction-probes.md), which tests whether positive, neutral, and negative datasets separate by modality dependence, redundancy, and brittleness under targeted drop/noise perturbations.
 
 ## Strongest Defensible Scientific Claim
 

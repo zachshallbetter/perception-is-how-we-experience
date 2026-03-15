@@ -54,3 +54,4 @@ When extending any supplementary paper:
 - Architecture supplementary: expanded design rationale + evaluation blueprint; no canonical benchmark overrides.
 - Orchestrator supplementary: expanded systems model + operational validation plan.
 - Applications supplementary: expanded domain specs and promotion criteria for each domain track.
+- Canonical paper evidence now includes completed unblocked integrated audio and sensor sequences, so supplementary documents should frame domain extension as future-use or follow-on analysis rather than as a substitute for missing core evidence.

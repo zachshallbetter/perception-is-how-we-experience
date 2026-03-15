@@ -236,6 +236,8 @@ python -m src.train \
 - `train_log.csv`: Training history
 - `config.yaml`: Experiment configuration
 
+Training now hard-fails if any canonical artifact is missing at the end of fit, and Titan launch workers verify `best_model.pt` exists before starting evaluation for real-sensor, real-audio, and sensor-ablation launch paths.
+
 ### `src.eval`
 Evaluate trained model on validation set.
 

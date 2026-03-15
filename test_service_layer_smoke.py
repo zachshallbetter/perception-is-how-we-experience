@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 
 from src.models import SensoryPerceiver
@@ -24,7 +25,7 @@ from src.runtime import (
 from src.services.evaluation_service import run_evaluation
 from src.services.inference import LiveTensorAdapter, resolve_inference_plan
 from src.services.orchestration_service import ExperimentOrchestrator, run_orchestration
-from src.services.training_service import run_training
+from src.services.training_service import Trainer, run_training
 
 
 class TinyVisionDataset(Dataset):
@@ -61,6 +62,66 @@ def chdir(path: Path):
 
 
 class ServiceLayerSmokeTest(unittest.TestCase):
+    def test_trainer_writes_best_checkpoint_even_when_first_val_acc_is_zero(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model = nn.Linear(4, 2)
+            optimizer = optim.SGD(model.parameters(), lr=0.1)
+            trainer = Trainer(
+                model=model,
+                train_loader=[],
+                val_loader=[],
+                criterion=nn.CrossEntropyLoss(),
+                replay_criterion=None,
+                optimizer=optimizer,
+                scheduler=None,
+                device=torch.device("cpu"),
+                output_dir=Path(tmpdir),
+                config={"replay_buffer_size": 0},
+                classifier=None,
+            )
+            trainer.train_epoch = lambda _epoch: (1.0, 0.0)  # type: ignore[method-assign]
+            trainer.validate = lambda: (1.0, 0.0)  # type: ignore[method-assign]
+
+            trainer.fit(epochs=1)
+
+            self.assertTrue((Path(tmpdir) / "best_model.pt").exists())
+            self.assertTrue((Path(tmpdir) / "latest_model.pt").exists())
+
+    @patch("src.services.training_service.create_dataloaders", new=_mock_create_dataloaders)
+    @patch("src.services.training_service.Trainer.fit", autospec=True)
+    def test_run_training_fails_if_required_artifacts_are_missing(self, mock_fit):
+        def fake_fit(self, epochs: int):
+            self.save_checkpoint("latest_model.pt")
+            self.save_history()
+
+        mock_fit.side_effect = fake_fit
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runtime_config = TrainRuntimeConfig(
+                experiment="continual",
+                dataset="split_cifar",
+                d_model=16,
+                num_heads=2,
+                depth=1,
+                mlp_dim=32,
+                dropout=0.1,
+                replay_buffer_size=16,
+                contrastive_temp=0.07,
+                distillation_temp=2.0,
+                replay_mode="er",
+                batch_size=2,
+                epochs=1,
+                learning_rate=1e-3,
+                warmup_steps=0,
+                num_workers=0,
+                device=torch.device("cpu"),
+                seed=1,
+                output_dir=Path(tmpdir) / "train_output",
+            )
+            with self.assertRaises(AppError) as context:
+                run_training(runtime_config)
+            self.assertEqual(context.exception.code, ErrorCode.IO_ERROR)
+            self.assertIn("best_model.pt", context.exception.context["missing_artifacts"])
+
     def test_live_inference_service_accepts_native_mask_aware_model(self):
         model = SensoryPerceiver(
             modality_configs={"smartwatch": {"input_dim": 7, "use_conv": False}},

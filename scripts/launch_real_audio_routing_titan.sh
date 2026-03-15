@@ -45,6 +45,7 @@ write_worker() {
     echo "set -euo pipefail"
     echo "cd '${ROOT_DIR}'"
     echo "'${PYTHON_BIN}' -m src.train --experiment multimodal --dataset '${DATASET}' --d_model '${D_MODEL}' --mlp_dim '${MLP_DIM}' --depth '${MODEL_DEPTH}' --num_heads '${NUM_HEADS}' --batch_size '${BATCH_SIZE}' --epochs '${EPOCHS}' --seed '${seed}' --output_dir '${RESULTS_ROOT}/real_audio_${DATASET}_seed${seed}_${RUN_FAMILY}' 2>&1 | tee '${LOG_DIR}/real_audio_${DATASET}_seed${seed}_${RUN_FAMILY}.log'"
+    echo "test -f '${RESULTS_ROOT}/real_audio_${DATASET}_seed${seed}_${RUN_FAMILY}/best_model.pt'"
     echo "'${PYTHON_BIN}' -m src.eval --checkpoint '${RESULTS_ROOT}/real_audio_${DATASET}_seed${seed}_${RUN_FAMILY}/best_model.pt' --experiment multimodal --dataset '${DATASET}' --seed '${seed}' --output_file '${RESULTS_ROOT}/real_audio_${DATASET}_seed${seed}_${RUN_FAMILY}/eval_results.json' 2>&1 | tee -a '${LOG_DIR}/real_audio_${DATASET}_seed${seed}_${RUN_FAMILY}.log'"
     echo "echo '[worker] complete seed=${seed}'"
   } >> "${script_path}"

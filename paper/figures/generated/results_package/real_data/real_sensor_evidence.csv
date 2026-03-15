@@ -1,2 +1,11 @@
 stage,canonical,dataset,family,canonical_mean_accuracy,merged_mean_accuracy,canonical_minus_merged,status
 bootstrap,False,wisdm,real-seq-004-wisdm,0.6780952380952381,0.6361904761904762,0.04190476190476189,completed
+canonical,True,wisdm,real-sensor-seq-002-wisdm,0.6780952380952381,0.6361904761904762,0.04190476190476189,completed
+canonical,True,pamap2,real-sensor-seq-002-pamap2,0.5964653902798233,0.4144984454262805,0.18196694485354276,completed
+canonical,True,opportunity,real-sensor-seq-002-opportunity,0.871294287780188,0.8626174981923355,0.008676789587852562,completed
+canonical,True,uci_har,real-sensor-seq-002-uci_har,0.9265920144780002,0.929872186404253,-0.0032801719262527396,completed
+canonical,True,hhar,real-sensor-seq-002-hhar,0.8900675024108003,0.8907103825136612,-0.0006428801028608433,completed
+canonical,True,mhealth,real-sensor-seq-002-mhealth,0.886892880904857,0.9807052561543579,-0.09381237524950092,completed
+canonical,True,selfback,real-sensor-seq-002-selfback,0.7750987966786554,0.7536077438834865,0.02149105279516894,completed
+canonical,True,geomagnetic_wlan,real-sensor-seq-002-geomagnetic_wlan,0.0,0.0,0.0,completed
+canonical,True,realworld_har,real-sensor-seq-002-realworld_har,0.9206827309236948,0.8969210174029452,0.023761713520749628,completed

@@ -15,7 +15,8 @@ As of the current completed reports:
 - strongest validated quantitative result remains the replay-centric continual-learning lane
 - strongest completed perception-side result remains the synthetic sensor routing ladder
 - first promotable canonical integrated real-audio sequence now exists
-- integrated real-sensor evidence is still **pending**
+- first promotable canonical integrated real-sensor sequence now exists
+- the current paper-grade experiment program is now complete enough to support the canonical manuscript without waiting on more routine training runs
 
 ## 1. Continual-Learning Core
 
@@ -123,33 +124,35 @@ Interpretation:
 
 Operationally, this means the real-audio path is no longer only scaffold or bootstrap. It is now part of the canonical evidence package.
 
-## 5. Pending Canonical Integrated Real-Sensor Evidence
+## 5. Canonical Integrated Real-Sensor Evidence
 
-The current integrated sensor candidate is:
+The completed integrated sensor sequence is:
 
 - `real-sensor-seq-002`
 
-It must remain **pending** until all of the following are true:
+This sequence is:
 
-1. sequence report status is `completed`
-2. no blocked entries remain
-3. all expected dataset artifacts exist
-4. package rebuild succeeds without manual edits
+- `completed`
+- unblocked
+- artifact-complete
 
-Current frontier:
+Completed datasets:
 
-- `wisdm`: completed/reused in the bounded sequence
-- `pamap2`: completed/reused in the bounded sequence
-- `opportunity`: completed/reused in the bounded sequence
-- `uci_har`: currently active and now training cleanly after the canonical `7/4/9` projection bug was fixed
-
-At the time of this analysis, `real-sensor-seq-002` is still in flight and must not be promoted into the canonical paper as completed evidence.
+- `wisdm`: canonical-minus-merged `+0.0419`
+- `pamap2`: canonical-minus-merged `+0.1820`
+- `opportunity`: canonical-minus-merged `+0.0087`
+- `uci_har`: canonical-minus-merged `-0.0033`
+- `hhar`: canonical-minus-merged `-0.0006`
+- `mhealth`: canonical-minus-merged `-0.0938`
+- `selfback`: canonical-minus-merged `+0.0215`
+- `geomagnetic_wlan`: canonical-minus-merged `+0.0000`
+- `realworld_har`: canonical-minus-merged `+0.0238`
 
 Interpretation:
 
-- the integrated real-sensor line is now materially beyond the original WISDM bootstrap
-- the current question is no longer whether the chain works at all, but whether it clears the remaining sensor datasets cleanly enough to become promotable canonical evidence
-- until the bounded sequence ends `completed` with no blocked entries, this lane remains pending by design
+- this is now the first **promotable canonical integrated sensor sequence**
+- the integrated real-sensor line is materially beyond the original WISDM bootstrap
+- canonical routing is positive on five of the nine integrated sensor datasets, tied on one, and negative on three; the overall story is therefore mixed but completed rather than pending
 
 ## 6. Promotion Rules
 
@@ -163,7 +166,7 @@ For clarity, the completed summary files should be interpreted with these gates:
   - bootstrap `speech_commands`
 - **Historical only**
   - earlier blocked or superseded audio attempts such as `real-audio-seq-002`
-- **Pending**
+- **Promotable now**
   - `real-sensor-seq-002`
 
 If a sequence is still `running`, `failed`, or `blocked`, it belongs in:
@@ -181,14 +184,32 @@ What the completed summaries currently support:
 - replay-path placement is still the strongest validated mechanistic finding
 - typed routing has strong completed synthetic support
 - real audio is now an integrated evidentiary lane rather than just a bootstrap path
-- real sensor evidence is more conservative and should stay conservative until the bounded integrated sequence clears
+- real sensor evidence is now a completed integrated evidentiary lane, but its empirical story is mixed rather than uniformly dominant
 
 What they do **not** yet support:
 
 - broad claims that real multimodal perception is fully validated across the integrated sensor lineup
-- promotion of the current pending sensor chain into the paper’s completed result surface
+- broad claims that the completed integrated sensor lineup is uniformly canonical-dominant across every dataset
 
-## 8. Relevant Source Files
+## 8. Program Completion State
+
+For the current canonical paper package, the core experiment program should now be treated as:
+
+- **completed** for the continual-learning lane
+- **completed** for the synthetic routing ladder
+- **completed** for the canonical integrated audio lane
+- **completed** for the canonical integrated sensor lane
+
+This means further routine Titan runs are no longer required to justify the present manuscript. Additional runs should now be treated as one of:
+
+- strategic strengthening
+- targeted ablation
+- replication
+- future-domain expansion
+
+They are not baseline completion work anymore.
+
+## 9. Relevant Source Files
 
 - [paper/sections/06-results.md](file:///Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md)
 - [paper/sections/07-discussion.md](file:///Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md)

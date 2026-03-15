@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import json
 import shutil
+import zipfile
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -562,12 +563,46 @@ def _load_csv_xyz(
     }
 
 
+def _ensure_hhar_activity_csvs(root: Path, raw_dir: Path) -> None:
+    required = (
+        "Phones_accelerometer.csv",
+        "Phones_gyroscope.csv",
+        "Watch_accelerometer.csv",
+        "Watch_gyroscope.csv",
+    )
+    missing = [name for name in required if not (root / name).exists()]
+    if not missing:
+        return
+    archive = raw_dir / "Activity recognition exp.zip"
+    if not archive.exists():
+        raise FileNotFoundError(
+            f"HHAR raw root is missing {missing} and archive {archive} does not exist"
+        )
+    root.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive) as zf:
+        members = {
+            Path(info.filename).name: info.filename
+            for info in zf.infolist()
+            if Path(info.filename).name in missing
+        }
+        unresolved = [name for name in missing if name not in members]
+        if unresolved:
+            raise FileNotFoundError(
+                f"HHAR archive {archive} does not contain required files {unresolved}"
+            )
+        for name in missing:
+            source = members[name]
+            with zf.open(source) as src, (root / name).open("wb") as dst:
+                shutil.copyfileobj(src, dst)
+
+
 def prepare_hhar_dataset(
     raw_dir: Path, output_root: Path, sequence_length: int
 ) -> Dict[str, object]:
     root = _resolve_candidate_root(
-        raw_dir.resolve(), ["", "activity_recognition/Activity recognition exp"]
+        raw_dir.resolve(), ["activity_recognition/Activity recognition exp", ""]
     )
+    _ensure_hhar_activity_csvs(root, raw_dir.resolve())
     phone_acc = _load_csv_xyz(
         root / "Phones_accelerometer.csv", ("x", "y", "z"), ("User", "gt")
     )
@@ -665,7 +700,7 @@ def _contiguous_windows(
 def prepare_mhealth_dataset(
     raw_dir: Path, output_root: Path, sequence_length: int
 ) -> Dict[str, object]:
-    root = _resolve_candidate_root(raw_dir.resolve(), ["", "MHEALTHDATASET"])
+    root = _resolve_candidate_root(raw_dir.resolve(), ["MHEALTHDATASET", ""])
     files = sorted(root.glob("mHealth_subject*.log"))
     if not files:
         raise FileNotFoundError(f"No MHEALTH subject logs found under {root}")
@@ -895,70 +930,146 @@ def prepare_opportunity_dataset(
 def prepare_selfback_dataset(
     raw_dir: Path, output_root: Path, sequence_length: int
 ) -> Dict[str, object]:
-    root = _resolve_candidate_root(raw_dir.resolve(), ["", "selfBACK"])
-    phone_root = root / "t"
-    watch_root = root / "w"
-    activity_dirs = sorted(
-        [
-            path.name
-            for path in phone_root.iterdir()
-            if path.is_dir() and not path.name.startswith("._")
+    root = _resolve_candidate_root(raw_dir.resolve(), ["selfBACK", ""])
+    paired_trace_root = root / "wt"
+    if not paired_trace_root.exists():
+        phone_root = root / "t"
+        watch_root = root / "w"
+        activity_dirs = sorted(
+            [
+                path.name
+                for path in phone_root.iterdir()
+                if path.is_dir() and not path.name.startswith("._")
+            ]
+        )
+        class_map = {activity: idx for idx, activity in enumerate(activity_dirs)}
+        train_samples: List[Dict[str, np.ndarray]] = []
+        val_samples: List[Dict[str, np.ndarray]] = []
+        train_labels: List[int] = []
+        val_labels: List[int] = []
+        all_file_ids: List[str] = []
+        paired_files: List[Tuple[str, Path, Path]] = []
+        for activity in activity_dirs:
+            for phone_file in sorted((phone_root / activity).glob("*.csv")):
+                if phone_file.name.startswith("._"):
+                    continue
+                watch_file = watch_root / activity / phone_file.name
+                if not watch_file.exists() or watch_file.name.startswith("._"):
+                    continue
+                paired_files.append((activity, phone_file, watch_file))
+                all_file_ids.append(phone_file.stem)
+        unique_file_ids = sorted(set(all_file_ids))
+        val_ids = set(unique_file_ids[-max(1, round(len(unique_file_ids) * 0.2)) :])
+        for activity, phone_file, watch_file in paired_files:
+            phone = np.genfromtxt(
+                phone_file,
+                delimiter=",",
+                skip_header=1,
+                usecols=(1, 2, 3),
+                dtype=np.float32,
+            )
+            watch = np.genfromtxt(
+                watch_file,
+                delimiter=",",
+                skip_header=1,
+                usecols=(1, 2, 3),
+                dtype=np.float32,
+            )
+            min_len = min(len(phone), len(watch))
+            if min_len < 16:
+                continue
+            phone = phone[:min_len]
+            watch = watch[:min_len]
+            for p_win, w_win in zip(
+                _window_array(phone, sequence_length), _window_array(watch, sequence_length)
+            ):
+                sample = {
+                    "smartwatch": np.concatenate(
+                        [w_win, p_win, _vector_norm(w_win)], axis=1
+                    ),
+                    "room_env": np.concatenate([p_win, _vector_norm(p_win)], axis=1),
+                    "robot_arm": np.concatenate([p_win, w_win, w_win - p_win], axis=1),
+                }
+                if phone_file.stem in val_ids:
+                    val_samples.append(sample)
+                    val_labels.append(class_map[activity])
+                else:
+                    train_samples.append(sample)
+                    train_labels.append(class_map[activity])
+        class_names = activity_dirs
+        split_strategy = {"type": "file-holdout", "val_file_ids": sorted(val_ids)}
+        notes = [
+            "SELFBACK provides phone/watch-style accelerometer streams only; room_env and robot_arm are explicit proxy projections.",
+            "MacOS resource-fork files prefixed with '._' are ignored during preparation.",
         ]
-    )
-    class_map = {activity: idx for idx, activity in enumerate(activity_dirs)}
-    train_samples: List[Dict[str, np.ndarray]] = []
-    val_samples: List[Dict[str, np.ndarray]] = []
-    train_labels: List[int] = []
-    val_labels: List[int] = []
-    all_file_ids: List[str] = []
-    paired_files: List[Tuple[str, Path, Path]] = []
-    for activity in activity_dirs:
-        for phone_file in sorted((phone_root / activity).glob("*.csv")):
-            if phone_file.name.startswith("._"):
-                continue
-            watch_file = watch_root / activity / phone_file.name
-            if not watch_file.exists() or watch_file.name.startswith("._"):
-                continue
-            paired_files.append((activity, phone_file, watch_file))
-            all_file_ids.append(phone_file.stem)
-    unique_file_ids = sorted(set(all_file_ids))
-    val_ids = set(unique_file_ids[-max(1, round(len(unique_file_ids) * 0.2)) :])
-    for activity, phone_file, watch_file in paired_files:
-        phone = np.genfromtxt(
-            phone_file,
-            delimiter=",",
-            skip_header=1,
-            usecols=(1, 2, 3),
-            dtype=np.float32,
+    else:
+        trace_files = sorted(
+            [
+                path
+                for path in paired_trace_root.iterdir()
+                if path.is_file() and not path.name.startswith(".")
+            ]
         )
-        watch = np.genfromtxt(
-            watch_file,
-            delimiter=",",
-            skip_header=1,
-            usecols=(1, 2, 3),
-            dtype=np.float32,
-        )
-        min_len = min(len(phone), len(watch))
-        if min_len < 16:
-            continue
-        phone = phone[:min_len]
-        watch = watch[:min_len]
-        for p_win, w_win in zip(
-            _window_array(phone, sequence_length), _window_array(watch, sequence_length)
-        ):
-            sample = {
-                "smartwatch": np.concatenate(
-                    [w_win, p_win, _vector_norm(w_win)], axis=1
-                ),
-                "room_env": np.concatenate([p_win, _vector_norm(p_win)], axis=1),
-                "robot_arm": np.concatenate([p_win, w_win, w_win - p_win], axis=1),
+        activities = sorted(
+            {
+                file_path.name.split("_", 1)[1]
+                for file_path in trace_files
+                if "_" in file_path.name
             }
-            if phone_file.stem in val_ids:
-                val_samples.append(sample)
-                val_labels.append(class_map[activity])
-            else:
-                train_samples.append(sample)
-                train_labels.append(class_map[activity])
+        )
+        class_map = {activity: idx for idx, activity in enumerate(activities)}
+        train_samples = []
+        val_samples = []
+        train_labels = []
+        val_labels = []
+        subject_ids = sorted(
+            {
+                file_path.name.split("_", 1)[0]
+                for file_path in trace_files
+                if "_" in file_path.name
+            }
+        )
+        val_ids = set(subject_ids[-max(1, round(len(subject_ids) * 0.2)) :])
+        for trace_file in trace_files:
+            if "_" not in trace_file.name:
+                continue
+            subject_id, activity = trace_file.name.split("_", 1)
+            if activity not in class_map:
+                continue
+            paired = np.genfromtxt(trace_file, delimiter=",", dtype=np.float32)
+            if paired.ndim == 1:
+                paired = paired.reshape(1, -1)
+            if paired.shape[0] < 16 or paired.shape[1] < 6:
+                continue
+            phone = paired[:, 0:3]
+            watch = paired[:, 3:6]
+            min_len = min(len(phone), len(watch))
+            if min_len < 16:
+                continue
+            phone = phone[:min_len]
+            watch = watch[:min_len]
+            for p_win, w_win in zip(
+                _window_array(phone, sequence_length), _window_array(watch, sequence_length)
+            ):
+                sample = {
+                    "smartwatch": np.concatenate(
+                        [w_win, p_win, _vector_norm(w_win)], axis=1
+                    ),
+                    "room_env": np.concatenate([p_win, _vector_norm(p_win)], axis=1),
+                    "robot_arm": np.concatenate([p_win, w_win, w_win - p_win], axis=1),
+                }
+                if subject_id in val_ids:
+                    val_samples.append(sample)
+                    val_labels.append(class_map[activity])
+                else:
+                    train_samples.append(sample)
+                    train_labels.append(class_map[activity])
+        class_names = activities
+        split_strategy = {"type": "subject-holdout", "val_subject_ids": sorted(val_ids)}
+        notes = [
+            "SELFBACK wt layout provides paired six-axis traces only; room_env and robot_arm are explicit proxy projections.",
+            "MacOS resource-fork files prefixed with '._' are ignored during preparation.",
+        ]
     return _finalize_sensor_dataset(
         dataset_id="selfback",
         raw_dir=raw_dir,
@@ -968,17 +1079,14 @@ def prepare_selfback_dataset(
         train_labels=train_labels,
         val_samples=val_samples,
         val_labels=val_labels,
-        class_names=activity_dirs,
-        notes=[
-            "SELFBACK provides phone/watch-style accelerometer streams only; room_env and robot_arm are explicit proxy projections.",
-            "MacOS resource-fork files prefixed with '._' are ignored during preparation.",
-        ],
+        class_names=class_names,
+        notes=notes,
         projection_strategy={
             "smartwatch": "watch accel xyz + phone accel xyz + watch accel norm",
             "room_env": "phone accel xyz + phone accel norm",
             "robot_arm": "phone accel xyz + watch accel xyz + watch-minus-phone accel xyz",
         },
-        split_strategy={"type": "file-holdout", "val_file_ids": sorted(val_ids)},
+        split_strategy=split_strategy,
     )
 
 

@@ -1,6 +1,7 @@
 """Unit tests for runtime contract validation."""
 
 import unittest
+import zipfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
@@ -21,7 +22,9 @@ from src.data.real_sensor import (
 )
 from src.data.real_audio_prepare import prepare_speech_commands_dataset
 from src.data.real_sensor_prepare import (
+    prepare_hhar_dataset,
     prepare_opportunity_dataset,
+    prepare_selfback_dataset,
     prepare_uci_har_dataset,
     prepare_wisdm_dataset,
 )
@@ -743,6 +746,83 @@ class RuntimeContractsTest(unittest.TestCase):
             self.assertEqual(tuple(sample["smartwatch"].shape), (4, 7))
             self.assertEqual(tuple(sample["room_env"].shape), (4, 4))
             self.assertEqual(tuple(sample["robot_arm"].shape), (4, 9))
+
+    def test_prepare_hhar_dataset_extracts_missing_csvs_from_archive(self):
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            raw_dir = root / "raw"
+            activity_dir = raw_dir / "activity_recognition" / "Activity recognition exp"
+            activity_dir.mkdir(parents=True, exist_ok=True)
+
+            rows = ["Index,Arrival_Time,Creation_Time,x,y,z,User,Model,Device,gt"]
+            for idx in range(16):
+                rows.append(
+                    f"{idx},{idx},{idx},{1.0 + idx * 0.1:.1f},0.0,0.0,a,nexus4,nexus4_1,stand"
+                )
+            for idx in range(16, 32):
+                offset = idx - 16
+                rows.append(
+                    f"{idx},{idx},{idx},0.2,{0.1 + offset * 0.1:.1f},{0.3 + offset * 0.1:.1f},b,nexus4,nexus4_2,walk"
+                )
+            content = "\n".join(rows)
+            archive = raw_dir / "Activity recognition exp.zip"
+            with zipfile.ZipFile(archive, "w") as zf:
+                for name in (
+                    "Phones_accelerometer.csv",
+                    "Phones_gyroscope.csv",
+                    "Watch_accelerometer.csv",
+                    "Watch_gyroscope.csv",
+                ):
+                    zf.writestr(f"Activity recognition exp/{name}", content)
+
+            result = prepare_hhar_dataset(raw_dir, root / "prepared", sequence_length=4)
+
+            self.assertEqual(result["dataset"], "hhar")
+            self.assertTrue((activity_dir / "Phones_gyroscope.csv").exists())
+            prepared = PreparedRealSensorDataset("hhar", "train", root=root / "prepared")
+            sample = prepared[0]
+            self.assertEqual(tuple(sample["smartwatch"].shape), (4, 7))
+            self.assertEqual(tuple(sample["room_env"].shape), (4, 4))
+            self.assertEqual(tuple(sample["robot_arm"].shape), (4, 9))
+
+    def test_prepare_selfback_dataset_supports_wt_file_layout(self):
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            raw_dir = root / "selfBACK" / "wt"
+            raw_dir.mkdir(parents=True, exist_ok=True)
+
+            def write_trace(name: str, offset: float) -> None:
+                rows = []
+                for idx in range(24):
+                    base = offset + idx * 0.1
+                    rows.append(
+                        ",".join(
+                            str(value)
+                            for value in (
+                                base,
+                                base + 0.1,
+                                base + 0.2,
+                                base + 0.3,
+                                base + 0.4,
+                                base + 0.5,
+                            )
+                        )
+                    )
+                (raw_dir / name).write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+            write_trace("026_downstairs", 0.0)
+            write_trace("027_jogging", 1.0)
+            write_trace("028_downstairs", 2.0)
+            (raw_dir / "._028_downstairs").write_text("", encoding="utf-8")
+
+            result = prepare_selfback_dataset(root, root / "prepared", sequence_length=8)
+
+            self.assertEqual(result["dataset"], "selfback")
+            prepared = PreparedRealSensorDataset("selfback", "train", root=root / "prepared")
+            sample = prepared[0]
+            self.assertEqual(tuple(sample["smartwatch"].shape), (8, 7))
+            self.assertEqual(tuple(sample["room_env"].shape), (8, 4))
+            self.assertEqual(tuple(sample["robot_arm"].shape), (8, 9))
 
     def test_prepared_real_audio_dataset_loads_canonical_split(self):
         with TemporaryDirectory() as tmpdir:

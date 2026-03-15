@@ -24,6 +24,7 @@ Use these labels consistently:
 
 - [artifact-map.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/artifact-map.md)
 - [distinction-and-separation.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/distinction-and-separation.md)
+  - current best synthesis lens for why the strongest results seem to work
 - [towers-and-modality-semantics.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/towers-and-modality-semantics.md)
 - [early-fusion-vs-towers.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/early-fusion-vs-towers.md)
 - [replay-through-towers.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/replay-through-towers.md)

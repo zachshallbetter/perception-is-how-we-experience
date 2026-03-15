@@ -56,7 +56,7 @@ The next decisive question is no longer "can we tweak BWT a little more with nea
 
 This matters because it is the shortest path from architectural argument to measured perception-side evidence. The bounded Titan-local supervisor is useful here not as an optimization oracle, but as a way to execute that evidence ladder in a fixed, interpretable order with explicit stop states.
 
-The same discipline now applies to the real-data path. The repository now distinguishes **bootstrap** real-data evidence from the **canonical integrated** sequences that carry the next paper-facing quantitative claim. WISDM and Speech Commands established the first executable sensor and audio paths, and `real-audio-seq-003` is now the first promotable canonical integrated audio sequence because it completed all expected datasets without blocked entries. `real-sensor-seq-002` is the active canonical integrated sensor candidate and remains pending until its bounded report is completed cleanly. Crucially, the real-data supervisors do not erase implementation boundaries: datasets without prepared canonical splits remain blocked, and broader sensor/body or audio candidates are tracked as queued rather than reported as if they were already empirical support. This keeps the paper aligned with actual executable evidence instead of with aspirational coverage.
+The same discipline now applies to the real-data path. The repository now distinguishes **bootstrap** real-data evidence from the **canonical integrated** sequences that carry the next paper-facing quantitative claim. WISDM and Speech Commands established the first executable sensor and audio paths, and both integrated sequences have now cleared the bounded promotion gate: `real-audio-seq-003` completed all expected audio datasets without blocked entries, and `real-sensor-seq-002` completed all expected sensor datasets without blocked entries. Crucially, the real-data supervisors do not erase implementation boundaries: datasets without prepared canonical splits remain blocked, and broader sensor/body or audio candidates are tracked as queued rather than reported as if they were already empirical support. This keeps the paper aligned with actual executable evidence instead of with aspirational coverage.
 
 ```mermaid
 flowchart LR
@@ -82,7 +82,7 @@ The right current discussion stance is therefore:
 2. capacity confounding is no longer the leading explanation for the baseline gap,
 3. the claim should still be framed as controlled synthetic support until real-domain benchmarks exist.
 
-The current real-data gate reinforces the same discipline. `real-audio-seq-003` is promotable because it completed with all expected audio datasets present and no blocked entries. `real-audio-seq-002` remains a historical failed-attempt sequence because blocked datasets remained, and `real-sensor-seq-002` should not be promoted while it is still running. Those distinctions are exactly why the bootstrap-versus-canonical taxonomy exists.
+The current real-data gate reinforces the same discipline. `real-audio-seq-003` and `real-sensor-seq-002` are promotable because they completed with all expected datasets present and no blocked entries. `real-audio-seq-002` remains a historical failed-attempt sequence because blocked datasets remained. Those distinctions are exactly why the bootstrap-versus-canonical taxonomy exists.
 
 ## 7.7 Next Experimental Priorities
 

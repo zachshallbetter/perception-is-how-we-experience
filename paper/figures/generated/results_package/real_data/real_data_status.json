@@ -128,8 +128,99 @@
   },
   "canonical_sensor_sequence": {
     "sequence_id": "real-sensor-seq-002",
-    "status": "running",
-    "completed": [],
+    "status": "completed",
+    "completed": [
+      {
+        "dataset": "wisdm",
+        "family": "real-sensor-seq-002-wisdm",
+        "summary_file": "/ai/projects/Perception/results/real_sensor_sequence_summaries/real-sensor-seq-002-wisdm.json",
+        "paired_comparison": {
+          "canonical_mean_accuracy": 0.6780952380952381,
+          "merged_mean_accuracy": 0.6361904761904762,
+          "canonical_minus_merged": 0.04190476190476189
+        }
+      },
+      {
+        "dataset": "pamap2",
+        "family": "real-sensor-seq-002-pamap2",
+        "summary_file": "/ai/projects/Perception/results/real_sensor_sequence_summaries/real-sensor-seq-002-pamap2.json",
+        "paired_comparison": {
+          "canonical_mean_accuracy": 0.5964653902798233,
+          "merged_mean_accuracy": 0.4144984454262805,
+          "canonical_minus_merged": 0.18196694485354276
+        }
+      },
+      {
+        "dataset": "opportunity",
+        "family": "real-sensor-seq-002-opportunity",
+        "summary_file": "/ai/projects/Perception/results/real_sensor_sequence_summaries/real-sensor-seq-002-opportunity.json",
+        "paired_comparison": {
+          "canonical_mean_accuracy": 0.871294287780188,
+          "merged_mean_accuracy": 0.8626174981923355,
+          "canonical_minus_merged": 0.008676789587852562
+        }
+      },
+      {
+        "dataset": "uci_har",
+        "family": "real-sensor-seq-002-uci_har",
+        "summary_file": "/ai/projects/Perception/results/real_sensor_sequence_summaries/real-sensor-seq-002-uci_har.json",
+        "paired_comparison": {
+          "canonical_mean_accuracy": 0.9265920144780002,
+          "merged_mean_accuracy": 0.929872186404253,
+          "canonical_minus_merged": -0.0032801719262527396
+        }
+      },
+      {
+        "dataset": "hhar",
+        "family": "real-sensor-seq-002-hhar",
+        "summary_file": "/ai/projects/Perception/results/real_sensor_sequence_summaries/real-sensor-seq-002-hhar.json",
+        "paired_comparison": {
+          "canonical_mean_accuracy": 0.8900675024108003,
+          "merged_mean_accuracy": 0.8907103825136612,
+          "canonical_minus_merged": -0.0006428801028608433
+        }
+      },
+      {
+        "dataset": "mhealth",
+        "family": "real-sensor-seq-002-mhealth",
+        "summary_file": "/ai/projects/Perception/results/real_sensor_sequence_summaries/real-sensor-seq-002-mhealth.json",
+        "paired_comparison": {
+          "canonical_mean_accuracy": 0.886892880904857,
+          "merged_mean_accuracy": 0.9807052561543579,
+          "canonical_minus_merged": -0.09381237524950092
+        }
+      },
+      {
+        "dataset": "selfback",
+        "family": "real-sensor-seq-002-selfback",
+        "summary_file": "/ai/projects/Perception/results/real_sensor_sequence_summaries/real-sensor-seq-002-selfback.json",
+        "paired_comparison": {
+          "canonical_mean_accuracy": 0.7750987966786554,
+          "merged_mean_accuracy": 0.7536077438834865,
+          "canonical_minus_merged": 0.02149105279516894
+        }
+      },
+      {
+        "dataset": "geomagnetic_wlan",
+        "family": "real-sensor-seq-002-geomagnetic_wlan",
+        "summary_file": "/ai/projects/Perception/results/real_sensor_sequence_summaries/real-sensor-seq-002-geomagnetic_wlan.json",
+        "paired_comparison": {
+          "canonical_mean_accuracy": 0.0,
+          "merged_mean_accuracy": 0.0,
+          "canonical_minus_merged": 0.0
+        }
+      },
+      {
+        "dataset": "realworld_har",
+        "family": "real-sensor-seq-002-realworld_har",
+        "summary_file": "/ai/projects/Perception/results/real_sensor_sequence_summaries/real-sensor-seq-002-realworld_har.json",
+        "paired_comparison": {
+          "canonical_mean_accuracy": 0.9206827309236948,
+          "merged_mean_accuracy": 0.8969210174029452,
+          "canonical_minus_merged": 0.023761713520749628
+        }
+      }
+    ],
     "blocked": [],
     "expected_integrated_datasets": [
       "wisdm",
@@ -142,7 +233,7 @@
       "geomagnetic_wlan",
       "realworld_har"
     ],
-    "promotable": false,
+    "promotable": true,
     "superseded_attempts": [
       {
         "sequence_id": "real-sensor-seq-001",

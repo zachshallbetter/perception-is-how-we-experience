@@ -40,7 +40,7 @@
 \begin{abstract}
 Sensory Perceiver is a multimodal architecture that combines modality-specific towers with shared cross-modal attention in settings where systems must keep learning over time. The implementation keeps modality identity explicit through runtime-validated MIME-style contracts, while the current empirical core is a replay-centric continual-learning program built on the attention and latent-bottleneck lineage running from Transformers to Perceivers \citep{cite1,cite2,cite3}. On Split-CIFAR-100, feature-only replay fails with severe forgetting (CIL 4.86\%, BWT $-53.80\%$), raw-input replay with reservoir sampling materially improves retention (CIL 19.54\%, BWT $-34.91\%$), and the current tuned-core configuration improves the multiseed mean further to CIL 23.96\% and BWT $-30.39\%$ over six Titan runs. The strongest mechanistic conclusion is therefore that replay signals must reach shared feature extractors, not only late task heads.
 
-The strongest completed perception-side evidence is the hardened synthetic sensor-routing ladder, where typed canonical routing outperforms merged routing on the baseline, capacity-matched control, leave-one-out branches, corruption branch, and two of three single-modality noise branches, with \texttt{noise\_robot\_arm} as the main exception. Real-data evidence is now reported conservatively with an explicit bootstrap-versus-canonical split: bootstrap runs on Speech Commands and WISDM are includable now, \texttt{real-audio-seq-003} is the first promotable canonical integrated audio sequence, and \texttt{real-sensor-seq-002} remains pending behind the same promotion gate. The current contribution is therefore a disciplined blueprint for building domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone.
+The strongest completed perception-side evidence is the hardened synthetic sensor-routing ladder, where typed canonical routing outperforms merged routing on the baseline, capacity-matched control, leave-one-out branches, corruption branch, and two of three single-modality noise branches, with \texttt{noise\_robot\_arm} as the main exception. Real-data evidence is now reported conservatively with an explicit bootstrap-versus-canonical split: bootstrap runs on Speech Commands and WISDM are includable now, \texttt{real-audio-seq-003} is the first promotable canonical integrated audio sequence, and \texttt{real-sensor-seq-002} is now the promotable canonical integrated sensor sequence. The current contribution is therefore a disciplined blueprint for building domain-specific perception systems: keep modality identity explicit, validate routing semantics at the runtime boundary, and make continual-learning safeguards act on the shared perceptual backbone.
 \end{abstract}
 
 \section{Introduction}
@@ -52,7 +52,7 @@ Sensory Perceiver is motivated by a simple systems question: how should a percep
   \item replay-centric continual learning attempts to preserve that shared representation over time.
 \end{enumerate}
 
-The broad framing is machine perception, but the evidence is intentionally bounded. The strongest validated result remains the continual-learning lane on Split-CIFAR-100. The strongest completed perception-side result is the synthetic sensor-routing ladder. Real-data support exists as bootstrap evidence on Speech Commands and WISDM, while canonical integrated promotion is still blocked by incomplete or failed bounded sequences. This manuscript follows that evidence boundary rather than the broadest architectural ambition.
+The broad framing is machine perception, but the evidence is intentionally bounded. The strongest validated result remains the continual-learning lane on Split-CIFAR-100. The strongest completed perception-side result is the synthetic sensor-routing ladder. Real-data support exists as bootstrap evidence on Speech Commands and WISDM, and the first canonical integrated audio and sensor sequences are now promotable because their bounded reports completed unblocked. This manuscript follows that evidence boundary rather than the broadest architectural ambition.
 
 \section{Related Work}
 
@@ -226,7 +226,7 @@ The real-data lane is intentionally conservative. Bootstrap evidence is includab
   \item \texttt{real-audio-seq-001} on \texttt{speech\_commands}
   \item \texttt{real-seq-004} on \texttt{wisdm}
 \end{itemize}
-Canonical integrated audio evidence is now promotable, while the integrated sensor lane remains pending:
+Canonical integrated audio and sensor evidence are now promotable:
 \begin{itemize}[leftmargin=*]
   \item \texttt{real-audio-seq-003} on \texttt{speech\_commands}, \texttt{esc50}, \texttt{urbansound8k}, and \texttt{fsd50k}
   \item \texttt{real-sensor-seq-002} on the integrated real-sensor lineup including \texttt{realworld\_har}
@@ -275,7 +275,7 @@ Figure~\ref{fig:real-data-evidence-overview} summarizes the current real-data pa
   \item \texttt{real-audio-seq-001} on Speech Commands: mean accuracy 88.32\%
   \item \texttt{real-seq-004} on WISDM: canonical-minus-merged gap $+4.19$ percentage points
 \end{itemize}
-These runs establish that the first real audio and real sensor paths work end to end on Titan. \texttt{real-audio-seq-003} is now the first promotable canonical integrated audio sequence because it completed all expected datasets without blocked entries. \texttt{real-audio-seq-002} remains historical only, because it completed with blocked datasets. \texttt{real-sensor-seq-002} is the current integrated sensor candidate and remains pending until its bounded report completes cleanly. The generated package under \texttt{paper/figures/generated/results\_package/real\_data/} is the source of truth for bootstrap-versus-canonical status.
+These runs establish that the first real audio and real sensor paths work end to end on Titan. \texttt{real-audio-seq-003} is now the first promotable canonical integrated audio sequence because it completed all expected datasets without blocked entries. \texttt{real-audio-seq-002} remains historical only, because it completed with blocked datasets. \texttt{real-sensor-seq-002} is now the first promotable canonical integrated sensor sequence because it completed all expected sensor datasets without blocked entries. The generated package under \texttt{paper/figures/generated/results\_package/real\_data/} is the source of truth for bootstrap-versus-canonical status.
 
 \section{Discussion}
 
@@ -289,7 +289,7 @@ The completed synthetic sensor ladder materially strengthens the broader percept
 
 \subsection{What The Real-Data Lane Adds}
 
-The real-data lane now matters because it prevents the project from staying trapped in synthetic-only evidence. Bootstrap Speech Commands and WISDM runs prove that the real-data path is executable. The first integrated audio sequence has now cleared the evidence gate: \texttt{real-audio-seq-003} completed all expected datasets with no blocked entries. The corresponding sensor lane remains intentionally conservative: \texttt{real-sensor-seq-002} is still running and should not be promoted until its bounded report completes cleanly. This bootstrap-versus-canonical split is the main guardrail against overstating progress while Titan is still resolving bounded evidence chains.
+The real-data lane now matters because it prevents the project from staying trapped in synthetic-only evidence. Bootstrap Speech Commands and WISDM runs prove that the real-data path is executable. Both integrated sequences have now cleared the evidence gate: \texttt{real-audio-seq-003} completed all expected audio datasets with no blocked entries, and \texttt{real-sensor-seq-002} completed all expected sensor datasets with no blocked entries. This bootstrap-versus-canonical split remains the main guardrail against overstating progress while Titan is still resolving bounded evidence chains.
 
 \subsection{Claim Surface Versus Evidence Surface}
 

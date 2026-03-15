@@ -448,11 +448,13 @@ def create_dataloaders(
                 dataset_name,
                 "train",
                 merge_modalities=(modality_routing_mode == "merged"),
+                sensor_variant=sensor_variant,
             )
             val_ds = PreparedRealSensorDataset(
                 dataset_name,
                 "val",
                 merge_modalities=(modality_routing_mode == "merged"),
+                sensor_variant=sensor_variant,
             )
         elif dataset_name in {"sensor_streaming_smoke", "sensor_streaming_small"}:
             if dataset_name == "sensor_streaming_smoke":

@@ -296,7 +296,7 @@ Implemented in dataloader factory:
 - `sensor_streaming` (generated multistream sensor dataset)
 - `multimodal` (audio-visual proxy dataset)
 
-Real benchmark ingestion is now bounded explicitly. Bootstrap real-data paths exist for WISDM and Speech Commands, while integrated canonical sequences remain pending. The active bounded lineups now extend beyond those bootstrap runs to include HF-backed replacements `fsd50k` and `realworld_har`, while the older `audioset` and `ubiqlog` options remain deferred outside the active chain.
+Real benchmark ingestion is now bounded explicitly. Bootstrap real-data paths exist for WISDM and Speech Commands, and the integrated canonical sequences have now completed cleanly on both lanes: `real-audio-seq-003` for the bounded audio lineup and `real-sensor-seq-002` for the bounded sensor lineup. The active lineups now include HF-backed replacements `fsd50k` and `realworld_har`, while the older `audioset` and `ubiqlog` options remain deferred outside the active chain.
 
 External benchmark sources are tracked in [real-sensor-datasets.md](/Users/zachshallbetter/Projects/Perception/docs/real-sensor-datasets.md), including:
 - [WISDM](https://archive.ics.uci.edu/dataset/507/wisdm%2Bsmartphone%2Band%2Bsmartwatch%2Bactivity%2Band%2Bbiometrics%2Bdataset)
@@ -865,9 +865,9 @@ This section compares core paper concepts against current implementation behavio
    - Interpretation: concept is integrated as an opt-in path rather than an always-on default.
 
 3. **Multimodal architecture claims vs benchmark evidence scope**
-   - Architecture and proxy multimodal datasets exist.
-   - Reported quantitative CL outcomes are still centered on Split-CIFAR-100.
-   - Interpretation: capability breadth exceeds currently published evidence breadth.
+   - Architecture, synthetic routing evidence, and bounded integrated real-data sequences now exist.
+   - The replay-centric continual-learning story is still the clearest mechanistic result, while the routing and integrated real-data lanes provide more conditional perception-side support.
+   - Interpretation: capability breadth still exceeds full domain coverage, but the paper is no longer limited to proxy or bootstrap-only perception evidence.
 
 4. **Isolation availability vs isolation superiority**
    - Isolation/regularization paths are available and now directly runnable on Titan.
@@ -881,7 +881,7 @@ Use these canonical phrasings in the main paper to keep claims defensible:
 - **Replay claim**: “Raw-input replay with reservoir sampling materially improves retention in the current Split-CIFAR-100 continual-learning setting.”
 - **Isolation claim**: “Task-adapter isolation and sequential rollover are implemented and exposed as an opt-in service path, but their empirical advantage over the tuned replay-centric baseline remains under evaluation.”
 - **MIME claim**: “MIME semantics are canonicalized at runtime-contract boundaries and drive modality validation/setup; model forward dispatch currently uses modality keys.”
-- **Multimodal claim**: “Completed synthetic routing evidence exists, bootstrap real-data evidence exists on Speech Commands and WISDM, canonical integrated real-data promotion is gated on complete unblocked sequences, and deferred legacy sources remain explicit.”
+- **Multimodal claim**: “Completed synthetic routing evidence exists, bootstrap real-data evidence exists on Speech Commands and WISDM, and completed unblocked integrated audio and sensor sequences now provide promotable canonical real-data evidence; deferred legacy sources remain explicit.”
 
 ## 10.4 Immediate Paper Synchronization Actions
 

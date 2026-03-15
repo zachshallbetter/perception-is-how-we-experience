@@ -65,10 +65,10 @@ This stage is largely in place now.
 Goal:
 - target one real sensor domain rather than broad synthetic scope
 
-Recommended domains:
-- wearable + room sensing
-- robot arm + ambient sensing
-- industrial equipment monitoring
+Recommended first proof domains:
+- audio + video recognition
+- healthcare waveforms + physiological context
+- robot state + environment sensing
 
 Requirements:
 - replace synthetic `sensor_streaming` with real or recorded domain data
@@ -88,9 +88,9 @@ At this stage, the system should already behave like a narrow live perception se
 
 Suggested first proof domains:
 
-1. wearable + room sensing for context/activity inference
-2. robot arm + ambient sensing for failure or state detection
-3. industrial equipment monitoring with multi-sensor anomaly detection
+1. audio + video recognition for clearly heterogeneous multimodal evidence
+2. healthcare waveforms + physiological context for multi-timescale body-state sensing
+3. robot state + environment sensing for embodied perception under distinct physical channels
 
 ### Stage 3: Continual Update Service
 

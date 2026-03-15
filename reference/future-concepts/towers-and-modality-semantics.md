@@ -18,10 +18,18 @@ Different modalities have different structure:
 - audio has time-frequency structure
 - wearables and telemetry have temporal and state-transition structure
 - ambient or room streams may be sparse contextual signals
+- tactile/contact signals often have fast local event structure
+- chemical or olfactory-style signals often have slower contextual composition structure
 
 Treating them as one generic input stream too early risks destroying exactly the structure the model should learn.
 
 This is one instance of a broader repository pattern captured in [distinction-and-separation.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/distinction-and-separation.md): preserve important distinctions early, integrate later, and only collapse structure when the model has already extracted the semantics that make those distinctions useful.
+
+The useful operational question is therefore not just “how many sensors do we have?” It is:
+
+- which signals share the same physical mechanism,
+- which carry different nuisance structure,
+- and which deserve separate representation before fusion?
 
 ## Where It Applies
 

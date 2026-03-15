@@ -34,10 +34,20 @@ This directory is the operator and research bridge between the codebase and the 
    - [/Users/zachshallbetter/Projects/Perception/docs/completed-summary-analysis.md](/Users/zachshallbetter/Projects/Perception/docs/completed-summary-analysis.md)
    - operator-facing synthesis of completed summary files
    - what is promotable now and why the current paper-grade program is complete
-9. `strategic-next-questions.md`
+9. `compiled-results.md`
+   - [/Users/zachshallbetter/Projects/Perception/docs/compiled-results.md](/Users/zachshallbetter/Projects/Perception/docs/compiled-results.md)
+   - one concatenated view of the completed continual-learning, synthetic routing, real-audio, and real-sensor result lanes
+10. `concept-verification-audit.md`
+   - [/Users/zachshallbetter/Projects/Perception/docs/concept-verification-audit.md](/Users/zachshallbetter/Projects/Perception/docs/concept-verification-audit.md)
+   - repo-wide audit of which concepts are implemented, evidenced, conceptual, or patent-track
+   - the shortest path to improve each one without muddying the paper
+11. `strategic-next-questions.md`
    - [/Users/zachshallbetter/Projects/Perception/docs/strategic-next-questions.md](/Users/zachshallbetter/Projects/Perception/docs/strategic-next-questions.md)
    - what is strategically worth running after canonical completion
-10. `paper/latex/README.md`
+12. `real-sensor-distinction-probes.md`
+   - [/Users/zachshallbetter/Projects/Perception/docs/real-sensor-distinction-probes.md](/Users/zachshallbetter/Projects/Perception/docs/real-sensor-distinction-probes.md)
+   - bounded follow-up probes for explaining why positive, neutral, and negative real-sensor datasets differ
+13. `paper/latex/README.md`
    - [/Users/zachshallbetter/Projects/Perception/paper/latex/README.md](/Users/zachshallbetter/Projects/Perception/paper/latex/README.md)
    - TeX toolchain installation and manuscript PDF generation
 
@@ -46,6 +56,8 @@ This directory is the operator and research bridge between the codebase and the 
 - If you are operating Titan today, start with `training-guide.md`.
 - If you are trying to understand what the paper currently proves, read [sensor-mime-experiment-plan.md](/Users/zachshallbetter/Projects/Perception/docs/sensor-mime-experiment-plan.md) together with [06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md) and [07-discussion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md).
 - If you need the current bounded evidence state in one place, read [completed-summary-analysis.md](/Users/zachshallbetter/Projects/Perception/docs/completed-summary-analysis.md) before promoting any Titan run into the paper.
+- If you need all completed result lanes in one place, read [compiled-results.md](/Users/zachshallbetter/Projects/Perception/docs/compiled-results.md).
+- If you need to verify which concepts are already true enough to defend and which are still future-facing, read [concept-verification-audit.md](/Users/zachshallbetter/Projects/Perception/docs/concept-verification-audit.md).
 - If you need to decide what is actually worth running next, read [strategic-next-questions.md](/Users/zachshallbetter/Projects/Perception/docs/strategic-next-questions.md) instead of defaulting to more routine benchmark work.
 - If you are trying to decide whether this work is usable beyond the paper, read [productization-roadmap.md](/Users/zachshallbetter/Projects/Perception/docs/productization-roadmap.md).
 - If you are thinking about a real live deployment, read [live-deployment-architecture.md](/Users/zachshallbetter/Projects/Perception/docs/live-deployment-architecture.md) before trying to infer product behavior from the training scripts.

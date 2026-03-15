@@ -192,11 +192,12 @@ If you are orienting yourself to the project, read in this order:
 4. [docs/live-deployment-architecture.md](/Users/zachshallbetter/Projects/Perception/docs/live-deployment-architecture.md) for the concrete live-system interpretation of the current architecture.
 5. [docs/training-guide.md](/Users/zachshallbetter/Projects/Perception/docs/training-guide.md) for the canonical Titan workflow.
 6. [docs/completed-summary-analysis.md](/Users/zachshallbetter/Projects/Perception/docs/completed-summary-analysis.md) for the current completed evidence state and why the current paper-grade experiment program is now complete.
-7. [docs/strategic-next-questions.md](/Users/zachshallbetter/Projects/Perception/docs/strategic-next-questions.md) for what is strategically worth running after canonical completion.
-8. [docs/sensor-mime-experiment-plan.md](/Users/zachshallbetter/Projects/Perception/docs/sensor-mime-experiment-plan.md) for the current perception-side evidence ladder.
-9. [paper/sections/README.md](/Users/zachshallbetter/Projects/Perception/paper/sections/README.md), [paper/sections/06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md), and [paper/sections/07-discussion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md) for the current paper-aligned claim surface.
-10. [paper/latex/README.md](/Users/zachshallbetter/Projects/Perception/paper/latex/README.md) for the TeX toolchain and PDF build path.
-11. [reference/future-concepts/README.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/README.md) for reusable multimodal design patterns that are intentionally non-canonical.
+7. [docs/concept-verification-audit.md](/Users/zachshallbetter/Projects/Perception/docs/concept-verification-audit.md) for the current truth level of each major concept and what still needs improvement.
+8. [docs/compiled-results.md](/Users/zachshallbetter/Projects/Perception/docs/compiled-results.md) for one concatenated view of the completed result lanes.
+9. [docs/strategic-next-questions.md](/Users/zachshallbetter/Projects/Perception/docs/strategic-next-questions.md) for what is strategically worth running after canonical completion.
+10. [docs/sensor-mime-experiment-plan.md](/Users/zachshallbetter/Projects/Perception/docs/sensor-mime-experiment-plan.md) for the current perception-side evidence ladder.
+11. [paper/sections/README.md](/Users/zachshallbetter/Projects/Perception/paper/sections/README.md), [paper/sections/06-results.md](/Users/zachshallbetter/Projects/Perception/paper/sections/06-results.md), and [paper/sections/07-discussion.md](/Users/zachshallbetter/Projects/Perception/paper/sections/07-discussion.md) for the current paper-aligned claim surface.
+12. [reference/future-concepts/README.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/README.md) for reusable multimodal design patterns that are intentionally non-canonical.
 
 ## Concept Map
 

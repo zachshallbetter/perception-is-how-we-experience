@@ -179,12 +179,14 @@ class PreparedRealSensorDataset(Dataset):
         split: str,
         *,
         merge_modalities: bool = False,
+        sensor_variant: str = "baseline",
         root: Optional[Union[str, Path]] = None,
     ) -> None:
         super().__init__()
         self.dataset_name = dataset_name
         self.split = split
         self.merge_modalities = merge_modalities
+        self.sensor_variant = sensor_variant
         self.root = get_real_sensor_root(root)
         self.manifest = load_real_sensor_manifest(dataset_name, self.root)
         split_path = _resolve_split_file(dataset_name, split, self.root)
@@ -199,6 +201,7 @@ class PreparedRealSensorDataset(Dataset):
             for modality in REAL_SENSOR_MODALITY_DIMS
         }
         self._validate_payload()
+        self._apply_sensor_variant()
 
     def _validate_payload(self) -> None:
         n_sequences = int(self.labels.shape[0])
@@ -223,6 +226,35 @@ class PreparedRealSensorDataset(Dataset):
 
     def __len__(self) -> int:
         return int(self.labels.shape[0])
+
+    def _apply_sensor_variant(self) -> None:
+        if self.sensor_variant == "baseline":
+            return
+        if self.sensor_variant.startswith("drop_"):
+            dropped_modality = self.sensor_variant.replace("drop_", "", 1)
+            self.data[dropped_modality] = torch.zeros_like(self.data[dropped_modality])
+            return
+        if self.sensor_variant.startswith("noise_"):
+            target = self.sensor_variant.replace("noise_", "", 1)
+            self.data[target] = self._inject_noise_and_drift(target, self.data[target])
+
+    def _inject_noise_and_drift(
+        self, modality: str, tensor: torch.Tensor
+    ) -> torch.Tensor:
+        sequence_length = tensor.shape[1]
+        drift_scale = {"smartwatch": 0.45, "room_env": 2.5, "robot_arm": 0.3}[modality]
+        noise_scale = {"smartwatch": 0.18, "room_env": 0.35, "robot_arm": 0.14}[
+            modality
+        ]
+        drift = torch.linspace(0.0, 1.0, sequence_length).view(
+            1, sequence_length, 1
+        )
+        direction = torch.randn(1, 1, tensor.shape[-1], dtype=tensor.dtype)
+        return (
+            tensor
+            + noise_scale * torch.randn_like(tensor)
+            + drift_scale * drift * direction
+        )
 
     def __getitem__(self, idx: int) -> dict:
         if self.merge_modalities:

@@ -55,6 +55,54 @@ bash scripts/launch_real_sensor_routing_titan.sh
 
 This currently assumes the dataset has already been prepared under `data/real-sensor/<dataset>/`.
 
+### `launch_real_sensor_distinction_probe_titan.sh`
+Launch an eval-only real-sensor probe campaign against completed canonical and merged checkpoints.
+
+```bash
+PYTHON_BIN=/ai/envs/perception/bin/python \
+SOURCE_SEQUENCE_ID=real-sensor-seq-002 \
+bash scripts/launch_real_sensor_distinction_probe_titan.sh
+```
+
+This launcher is for explanatory follow-up work after the integrated real-sensor sequence has completed. It reuses finished `best_model.pt` artifacts and evaluates them under existing `sensor_variant` drop/noise conditions for:
+
+- `pamap2`
+- `mhealth`
+- `opportunity`
+- `uci_har`
+- `hhar`
+
+By default it probes both:
+
+- `canonical`
+- `merged`
+
+under these eval-only stress variants:
+
+- `drop_smartwatch`
+- `drop_room_env`
+- `drop_robot_arm`
+- `noise_smartwatch`
+- `noise_room_env`
+- `noise_robot_arm`
+
+Use this to investigate why some real-sensor datasets are positive, neutral, or negative under typed routing without launching another full training campaign.
+
+### `summarize_real_sensor_distinction_probes.py`
+Aggregate one distinction-probe campaign against the baseline sequence.
+
+```bash
+python3 scripts/summarize_real_sensor_distinction_probes.py \
+  --campaign real-sensor-distinction-YYYYMMDD_HHMMSS \
+  --source-sequence-id real-sensor-seq-002
+```
+
+The summary reports:
+
+- mean probe accuracy by dataset / routing / variant
+- mean delta versus the completed baseline checkpoint family
+- canonical-minus-merged gap per probe variant
+
 ### `summarize_real_sensor_results.py`
 Aggregate completed real-data routing runs for one dataset/family.
 

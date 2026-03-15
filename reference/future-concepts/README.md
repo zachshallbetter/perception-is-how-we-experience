@@ -9,6 +9,7 @@ Authority boundary:
 - Code-aligned operational guidance lives under [docs](/Users/zachshallbetter/Projects/Perception/docs).
 - This directory is for **Conceptual** and **future-use** material only.
 - Patent-oriented derivatives belong under [paper/patents](/Users/zachshallbetter/Projects/Perception/paper/patents).
+- Cross-lane verification of concept truth levels lives under [docs/concept-verification-audit.md](/Users/zachshallbetter/Projects/Perception/docs/concept-verification-audit.md).
 
 ## Labeling Rule
 
@@ -25,6 +26,8 @@ Use these labels consistently:
 - [artifact-map.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/artifact-map.md)
 - [distinction-and-separation.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/distinction-and-separation.md)
   - current best synthesis lens for why the strongest results seem to work
+- [sensory-modality-framework.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/sensory-modality-framework.md)
+  - structural taxonomy for thinking about modality families and future tower splits
 - [towers-and-modality-semantics.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/towers-and-modality-semantics.md)
 - [early-fusion-vs-towers.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/early-fusion-vs-towers.md)
 - [replay-through-towers.md](/Users/zachshallbetter/Projects/Perception/reference/future-concepts/replay-through-towers.md)

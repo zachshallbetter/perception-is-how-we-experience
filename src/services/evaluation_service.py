@@ -267,9 +267,9 @@ def run_evaluation(runtime_config: EvalRuntimeConfig) -> EvaluationRunResult:
             modality_routing_mode=checkpoint_config.get(
                 "modality_routing_mode", runtime_config.modality_routing_mode
             ),
-            sensor_variant=checkpoint_config.get(
-                "sensor_variant", runtime_config.sensor_variant
-            ),
+            # Evaluation-time sensor variants must be runtime-controlled so
+            # ablation/noise probes can reuse finished checkpoints.
+            sensor_variant=runtime_config.sensor_variant,
         )
 
         evaluator = Evaluator(

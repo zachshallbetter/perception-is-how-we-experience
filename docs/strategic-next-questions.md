@@ -38,6 +38,7 @@ Good next targets:
 
 2. **What exact properties predict typed-routing gains?**
    - Candidate factors:
+     - non-overlapping information
      - modality heterogeneity
      - nuisance overlap
      - temporal granularity mismatch

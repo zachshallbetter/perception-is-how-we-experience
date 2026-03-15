@@ -16,14 +16,23 @@ These probes are designed to test whether the observed routing gaps are associat
 - distributed signal across multiple projected modalities
 - asymmetry under modality-specific noise
 - different brittleness patterns between canonical and merged routing
-- underlying modality heterogeneity versus redundancy
+- underlying non-overlapping information versus redundancy
 
 ## Core Hypothesis
 
 The working hypothesis is:
 
-- typed routing helps when the projected modalities carry meaningfully different task-relevant or nuisance structure
+- typed routing helps when the projected modalities carry meaningfully non-overlapping task-relevant or nuisance structure
 - typed routing helps less, or can hurt, when the projected modalities are highly redundant, weakly informative, or poorly aligned with the imposed split
+
+This is intentionally stronger than "different modality = separate."
+
+Two signals from the same broad sensory family can still deserve separation if they provide different information:
+
+- left/right auditory channels for localization
+- left/right visual channels for depth
+
+And two nominally different sensors can still behave as redundancy if they mostly measure the same phenomenon.
 
 In practical terms:
 
@@ -76,6 +85,7 @@ If `pamap2` is positive because the current split preserves meaningful distincti
 - dropping `smartwatch` or `robot_arm` should hurt accuracy materially
 - canonical routing should either degrade less gracefully than merged under noise, or retain a positive canonical-minus-merged gap even when stressed
 - the result should suggest that multiple projected modalities are carrying non-redundant signal
+- the positive effect should look like complementary information, not just “more sensors”
 
 ### Negative-case prediction: `mhealth`
 
@@ -84,6 +94,7 @@ If `mhealth` is negative because the current split is redundant or mismatched, t
 - merged routing should remain competitive or superior under drop/noise probes
 - canonical routing may degrade more than merged when a single modality is impaired
 - the negative baseline gap may persist or widen under stress
+- dropping any single projected stream may hurt both routings similarly if the dataset is effectively redundant sensor soup
 
 ### Near-zero prediction: `opportunity`, `uci_har`, `hhar`
 
@@ -150,7 +161,7 @@ That would upgrade the result from:
 
 to:
 
-- typed routing helps when modality structure is meaningfully heterogeneous and can backfire when the split is redundant or mismatched
+- typed routing helps when inputs carry meaningfully non-overlapping information and can backfire when the split is redundant or mismatched
 
 ### Mixed support
 

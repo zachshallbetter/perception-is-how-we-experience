@@ -103,9 +103,9 @@ The evidence is not random.
 
 Taken together, that points to a narrower and more defensible claim:
 
-- distinction helps when modalities carry genuinely different structures or nuisance regimes
+- distinction helps when inputs carry genuinely different structures, nuisance regimes, or non-overlapping information
 - distinction helps when forgetting happens at the representation level
-- distinction may matter less, or even cost something, when modalities are close, redundant, weakly informative, or poorly matched to the imposed split
+- distinction may matter less, or even cost something, when inputs are close, redundant, weakly informative, or poorly matched to the imposed split
 
 That is a falsifiable hypothesis rather than a branding claim.
 
@@ -130,7 +130,16 @@ Seen this way, those are not separate tricks. They are one principle applied at 
 
 The bounded version of the distinction hypothesis is:
 
-- **If a continual multimodal task contains semantically distinct input streams whose task-relevant structure or nuisance structure differs meaningfully across streams, then preserving those distinctions through typed routing and tower-first representation learning should outperform or better retain competence than collapsing those streams too early.**
+- **If a continual multimodal task contains input streams that carry meaningfully non-overlapping task-relevant structure or nuisance structure, then preserving those distinctions through typed routing and tower-first representation learning should outperform or better retain competence than collapsing those streams too early.**
+
+That is stronger than a naive rule like "different modality means separate" or "same modality means merge."
+
+Two streams from the same broad sensory family can still deserve separation if they provide different information:
+
+- left and right ears enable localization
+- left and right eyes enable depth
+
+Conversely, nominally different sensors can still behave as practical redundancy when they mostly measure the same underlying phenomenon from nearby positions.
 
 In the current repository, that claim is operationalized as:
 
@@ -174,6 +183,7 @@ The next serious question is:
 
 Candidate factors include:
 
+- degree of non-overlapping information
 - degree of modality heterogeneity
 - mismatch in temporal scales
 - noise independence
@@ -202,7 +212,7 @@ Using that convention, the completed integrated sensor sequence buckets as follo
 Interpretation:
 
 - these datasets currently support the distinction-first hypothesis
-- they suggest the canonical typed route can help when the underlying signal decomposition is informative enough to survive the current modality split
+- they suggest the canonical typed route can help when the underlying signal decomposition contains enough non-overlapping information to survive the current modality split
 
 ### Neutral Cases
 

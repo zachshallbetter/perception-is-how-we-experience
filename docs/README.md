@@ -47,7 +47,10 @@ This directory is the operator and research bridge between the codebase and the 
 12. `real-sensor-distinction-probes.md`
    - [/Users/zachshallbetter/Projects/Perception/docs/real-sensor-distinction-probes.md](/Users/zachshallbetter/Projects/Perception/docs/real-sensor-distinction-probes.md)
    - bounded follow-up probes for explaining why positive, neutral, and negative real-sensor datasets differ
-13. `paper/latex/README.md`
+13. `non-technical-explanation.md`
+   - [/Users/zachshallbetter/Projects/Perception/docs/non-technical-explanation.md](/Users/zachshallbetter/Projects/Perception/docs/non-technical-explanation.md)
+   - short plain-English explanation of the project and the refined non-overlapping-information principle
+14. `paper/latex/README.md`
    - [/Users/zachshallbetter/Projects/Perception/paper/latex/README.md](/Users/zachshallbetter/Projects/Perception/paper/latex/README.md)
    - TeX toolchain installation and manuscript PDF generation
 

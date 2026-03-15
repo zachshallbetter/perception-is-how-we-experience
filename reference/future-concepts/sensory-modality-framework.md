@@ -92,6 +92,17 @@ Not all good multimodal systems are built from completely independent senses. So
 
 The point is not to eliminate overlap. The point is to separate streams that carry different kinds of evidence before fusion, then let the shared core learn how those overlaps matter.
 
+This is the key refinement:
+
+- the right question is not only “are these the same modality?”
+- the right question is “do these inputs carry non-overlapping information?”
+
+That is why:
+
+- left and right ears can justify separation for localization
+- left and right eyes can justify separation for depth
+- several nearby accelerometers may benefit from merging if they mostly average the same body motion signal
+
 ## Practical Split Heuristics
 
 When choosing whether two signals should share a tower or be separated, the best current heuristics are:

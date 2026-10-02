@@ -88,11 +88,18 @@ def main() -> int:
     out["home"] = {k: {**score_binary(train, test, k), "arrival": arrival_error(train, test, k)} for k in homes}
     out["tv_evening"] = score_binary(train, test, "tv_on", keep=lambda w: w["hour"] >= 17)
     out["heating"] = score_binary(train, test, "heating")
-    sp = [w for w in test if "setpoint" in w]
-    tr_sp = [w for w in train if "setpoint" in w]
-    if sp and tr_sp:
-        mean = sum(w["setpoint"] for w in tr_sp) / len(tr_sp)
-        out["setpoint_mae"] = {"n_test": len(sp), "mean_baseline": round(sum(abs(w["setpoint"] - mean) for w in sp) / len(sp), 2)}
+    for key in ("setpoint", "setpoint_low", "setpoint_high"):
+        sp = [w for w in test if key in w]
+        tr_sp = [w for w in train if key in w]
+        if sp and tr_sp:
+            mean = sum(w[key] for w in tr_sp) / len(tr_sp)
+            by_hour: dict[int, list[float]] = defaultdict(list)
+            for w in tr_sp:
+                by_hour[w["hour"]].append(w[key])
+            hod = lambda w: (sum(by_hour[w["hour"]]) / len(by_hour[w["hour"]])) if by_hour.get(w["hour"]) else mean   # noqa: E731
+            out[f"{key}_mae"] = {"n_test": len(sp), "mean": round(sum(abs(w[key] - mean) for w in sp) / len(sp), 2),
+                                 "hour_of_day": round(sum(abs(w[key] - hod(w)) for w in sp) / len(sp), 2),
+                                 "changes_test": sum(1 for a_, b_ in zip(sp, sp[1:]) if a_[key] != b_[key])}
     print(json.dumps(out, indent=1))
     return 0
 

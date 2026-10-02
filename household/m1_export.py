@@ -69,8 +69,9 @@ def windows(climate: list[dict], tvs: list[list[dict]], places: dict[str, list[t
         if c:
             a = c.get("attributes") or {}
             w["heating"] = 1 if a.get("hvac_action") == "heating" else 0
+            # heat_cool runs on a range: its heat and cool setpoints (10-02: no single setpoint was ever set)
             for k, name in (("temperature", "setpoint"), ("target_temp_low", "setpoint_low"),
-                            ("current_temperature", "inside")):
+                            ("target_temp_high", "setpoint_high"), ("current_temperature", "inside")):
                 if a.get(k) is not None:
                     w[name] = float(a[k])
         states = [state_at(rows, mid) for rows in tvs]

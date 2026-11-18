@@ -338,3 +338,7 @@ The strongest validated conclusion remains replay-centric:
 - Sensor/MIME follow-on experiments can now be driven by a bounded Titan-local supervisor rather than a manual queue, with results recorded under `results/sensor_sequence_summaries/`.
 - Continual `src.train` jobs follow the dataset benchmark task count by default. Split-CIFAR-100 and Permuted MNIST therefore run 20 sequential tasks unless `--continual_task_count` is overridden.
 - Use a separate environment for baselines and install [requirements-baselines.txt](/Users/zachshallbetter/Projects/Perception/requirements-baselines.txt) there.
+
+## License
+
+No license is declared yet.

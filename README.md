@@ -341,4 +341,4 @@ The strongest validated conclusion remains replay-centric:
 
 ## License
 
-No license is declared yet.
+MIT. See [LICENSE](LICENSE).
